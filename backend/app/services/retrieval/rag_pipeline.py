@@ -1,4 +1,8 @@
-"""Dense ANN retrieval and reranking over the tracked ESCO source layer."""
+"""Dense ANN retrieval over the tracked ESCO source layer.
+
+Reranking remains available only for explicit ablations and is disabled by
+default in runtime configuration.
+"""
 
 from __future__ import annotations
 
@@ -20,20 +24,29 @@ def build_retrieval_context(
     question: str,
     memory_items: list[MemoryItemPayload],
     top_k: int | None = None,
+    use_reranker: bool | None = None,
 ) -> RetrievalContext:
-    """Build ranked retrieval context for the assistant."""
+    """Build ranked retrieval context for the assistant.
+
+    The active path is dense-only retrieval unless reranking is explicitly
+    requested.
+    """
 
     retrieval_service = get_faiss_hnsw_retrieval_service()
     result_count = top_k or settings.default_top_k
     candidate_count = max(result_count, settings.retrieval_candidate_pool_size)
     candidates = retrieval_service.search(question, candidate_count)
-    selected_chunks = rerank_chunks(question=question, candidates=candidates, top_k=result_count)
+    reranker_enabled = settings.retrieval_enable_reranker if use_reranker is None else use_reranker
+    if reranker_enabled:
+        selected_chunks = rerank_chunks(question=question, candidates=candidates, top_k=result_count)
+    else:
+        selected_chunks = candidates[:result_count]
     memory_summary = summarize_memory_for_prompt(question=question, memory_items=memory_items)
     return RetrievalContext(chunks=selected_chunks, memory_summary=memory_summary)
 
 
 def rerank_chunks(question: str, candidates: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
-    """Rerank dense ANN candidates before prompt assembly."""
+    """Rerank dense ANN candidates for explicit ablation or comparison runs."""
 
     if not candidates:
         return []
@@ -44,6 +57,7 @@ def rerank_chunks(question: str, candidates: list[RetrievedChunk], top_k: int) -
 
     reranked = [
         RetrievedChunk(
+            chunk_id=chunk.chunk_id,
             source_name=chunk.source_name,
             source_url=chunk.source_url,
             title=chunk.title,

@@ -14,11 +14,29 @@ from backend.db.models import Base
 database_path = Path(settings.database_url.removeprefix("sqlite:///"))
 database_path.parent.mkdir(parents=True, exist_ok=True)
 
-engine = create_engine(
-    settings.database_url,
-    connect_args={"check_same_thread": False},
-)
+
+def _create_engine(database_url: str):
+    database_path = Path(database_url.removeprefix("sqlite:///"))
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    return create_engine(
+        database_url,
+        connect_args={"check_same_thread": False},
+    )
+
+
+engine = _create_engine(settings.database_url)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
+
+
+def configure_database(database_url: str) -> None:
+    """Rebind the global engine/session factory to a new SQLite database."""
+
+    global engine
+    global SessionLocal
+
+    engine.dispose()
+    engine = _create_engine(database_url)
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
 
 
 def init_db() -> None:

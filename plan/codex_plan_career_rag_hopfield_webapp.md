@@ -29,7 +29,7 @@ Do **not** spend project time on these unless the core AI path is already workin
 
 The science here is not “can we build a CRUD web app.” The science is:
 1. Can a small local/server-side LLM answer career questions well when grounded in curated corpora?
-2. Does dense ANN retrieval plus reranking improve grounding enough to justify itself?
+2. Does dense ANN retrieval ground answers well enough on its own?
 3. Does a Hopfield-style memory layer measurably improve personalization and constraint adherence?
 
 ---
@@ -66,6 +66,10 @@ This is the simplest defensible trio:
 - standard for RAG,
 - easy to explain academically,
 - easy to swap later.
+
+The important nuance is that reranking is not part of the minimal baseline by
+default. The current tracked qrels already show that the reranker hurts ranking
+quality while adding cost, so the active path is dense-only retrieval.
 
 ### 3.4 Why not use a larger model?
 
@@ -449,11 +453,10 @@ System prompt must explicitly require:
 
 ### 7.1 Core design
 
-Use **dense ANN retrieval**:
+Use **dense ANN retrieval** as the baseline:
 1. dense query embedding
 2. FAISS HNSW candidate search
-3. reranking
-4. prompt assembly
+3. prompt assembly
 
 This matches the current implementation direction and keeps the retrieval stack honest about what is actually doing the search.
 
@@ -464,13 +467,21 @@ Use cosine-equivalent inner-product search over normalized `Qwen/Qwen3-Embedding
 For MVP:
 - compute and persist all chunk embeddings
 - build a FAISS HNSW index
+- track the canonical FAISS index and manifest in git for the active retrieval configuration
+- allow the build command to restore stale SQLite retrieval rows from the tracked FAISS cache without full re-embedding
 - take top 20–30 dense ANN candidates
 
 ### 7.3 Reranking
 
-Rerank top 20–30 candidates using `Qwen/Qwen3-Reranker-0.6B`.
+Reranking was evaluated as an ablation using `Qwen/Qwen3-Reranker-0.6B`.
 
-This keeps the retrieval stack within the Qwen family and avoids treating lexical heuristics as a substitute for semantic search.
+Current outcome:
+- it does not improve final recall on the tracked qrels
+- it lowers ranking quality at important cutoffs
+- it adds substantial runtime cost
+
+So reranking is not part of the active runtime path. Keep the reranker only as
+historical ablation context and as a reproducible negative result.
 
 Final prompt context should usually include **5–8 chunks** max.
 
@@ -775,7 +786,7 @@ backend/
 
 #### `faiss_hnsw.py`
 - run dense ANN search over persisted embeddings
-- return top-k candidates for reranking
+- return top-k candidates for final context selection
 
 #### `hopfield.py`
 - read relevant memory with softmax associative retrieval
@@ -804,7 +815,7 @@ A one-page scope memo fixing:
 ### Decisions to lock
 - generator = `Qwen/Qwen3-0.6B` via `Qwen/Qwen3-0.6B-GGUF:Q8_0`
 - embedder = `Qwen/Qwen3-Embedding-0.6B`
-- reranker = `Qwen/Qwen3-Reranker-0.6B`
+- reranker artifact retained only for reproducible ablation, not active runtime use
 - no fine-tuning in MVP
 - no browser-local LLM in MVP
 - no vector DB in MVP
@@ -850,12 +861,11 @@ Given a target role query like “cybersecurity analyst”, the database contain
 Make the RAG pipeline work before touching memory.
 
 ### Tasks
-1. Implement SQLite FTS over chunk text and titles.
+1. Persist chunk text and metadata in SQLite.
 2. Compute embeddings for all chunks.
-3. Implement dense similarity search.
-4. Implement score fusion.
-5. Implement reranking.
-6. Return top-k evidence with metadata.
+3. Implement FAISS HNSW dense similarity search.
+4. Return top-k evidence with metadata.
+5. Run canonical dense-versus-rerank evaluation and keep only what earns its cost.
 
 ### Output artifact
 A CLI or endpoint that answers:
@@ -866,7 +876,7 @@ A CLI or endpoint that answers:
 ### Acceptance tests
 For 20 hand-written queries:
 - at least 70–80% of top-5 chunks should be judged relevant,
-- obviously irrelevant chunks should decrease after reranking,
+- dense-only retrieval should produce stable relevant evidence lists,
 - retrieval should finish in acceptable local time.
 
 ---
@@ -1068,11 +1078,12 @@ That is enough for the scientific core.
 4. ingest GitLab ladder corpus into `career_level`
 5. ingest wellbeing docs into tagged chunks
 6. build embeddings for all chunks
-7. implement FAISS HNSW + reranker retrieval
-8. implement answer pipeline returning JSON with citations
-9. implement memory extraction/upsert
-10. implement Hopfield-style read and integrate it
-11. implement evaluation harness
+7. implement FAISS HNSW retrieval
+8. keep reranker only as a preserved ablation path if future evidence warrants revisiting it
+9. implement answer pipeline returning JSON with citations
+10. implement memory extraction/upsert
+11. implement Hopfield-style read and integrate it
+12. implement scored evaluation harness on top of tracked qrels and answer-evaluation cases
 
 ---
 
@@ -1101,9 +1112,10 @@ Codex should not spend cycles “designing a modern web architecture.” It shou
 
 For this project, the cleanest concrete plan is:
 
-- Build a **Python-first backend** around **Qwen/Qwen3-0.6B + Qwen/Qwen3-Embedding-0.6B + Qwen/Qwen3-Reranker-0.6B**.
+- Build a **Python-first backend** around **Qwen/Qwen3-0.6B + Qwen/Qwen3-Embedding-0.6B**.
 - Build a **curated authoritative corpus** from **O*NET + ESCO + OOH + GitLab ladder pages + WHO/NIOSH/CCOHS wellbeing guidance**.
-- Implement **dense ANN retrieval plus reranking** over both chunked text and normalized structured tables.
+- Implement **dense ANN retrieval** over both chunked text and normalized structured tables.
+- Keep **reranking** only as a documented negative ablation result unless future evidence materially changes.
 - Implement **Hopfield-style memory** as a softmax associative read over user memory embeddings.
 - Evaluate **RAG-only vs RAG + memory** as the actual scientific comparison.
 

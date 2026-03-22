@@ -1,0 +1,56 @@
+[
+  {
+    "id": "software_developer_en",
+    "language": "en",
+    "query": "software developer",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "software_developer_ru",
+    "language": "ru",
+    "query": "разработчик программного обеспечения",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "business_analyst_en",
+    "language": "en",
+    "query": "business analyst",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "business_analyst_ru",
+    "language": "ru",
+    "query": "бизнес-аналитик",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "ict_business_analyst_en",
+    "language": "en",
+    "query": "ICT business analyst",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "project_manager_en",
+    "language": "en",
+    "query": "project manager",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "project_manager_ru",
+    "language": "ru",
+    "query": "руководитель проекта",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "data_analyst_en",
+    "language": "en",
+    "query": "data analyst",
+    "expected_focus": "occupation lookup"
+  },
+  {
+    "id": "data_analyst_ru",
+    "language": "ru",
+    "query": "аналитик данных",
+    "expected_focus": "occupation lookup"
+  }
+]

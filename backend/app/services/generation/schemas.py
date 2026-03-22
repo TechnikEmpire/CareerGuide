@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class RetrievedChunk(BaseModel):
+    chunk_id: str | None = None
     source_name: str
     source_url: str
     title: str

@@ -8,7 +8,9 @@ Last updated: 2026-03-22
 
 ### Current Phase
 
-Foundational scaffold with repo governance, tracked ESCO source artifacts, and a Qwen3-targeted FAISS-backed dense retrieval path.
+Foundational scaffold plus tracked ESCO source artifacts, a Qwen3-targeted
+FAISS-backed dense retrieval stack, and canonical retrieval evaluation with a
+measured dense-versus-reranker outcome.
 
 ### What Is Already Done
 
@@ -16,132 +18,168 @@ Foundational scaffold with repo governance, tracked ESCO source artifacts, and a
 - Canonical decision tracking is in place.
 - Local setup instructions exist for WSL, Windows, and macOS.
 - A Python-first backend scaffold exists with FastAPI routing and explicit service boundaries.
-- The initial retrieval scaffold exists.
 - The initial Hopfield-style associative-read scaffold exists.
-- Bilingual evaluation scenarios exist.
-- Standalone ESCO preprocessing and translation tooling now exists under `tooling/translation/`.
-- The ESCO English CSV classification dump has been inspected and normalized into the repository's common bilingual-ready concept and relation format.
+- Standalone ESCO preprocessing and translation tooling exists under `tooling/translation/`.
+- The ESCO English CSV classification dump has been normalized into the repo's common concept and relation format.
 - The one-time ESCO English-to-Russian translation run has been completed and written to the tracked bilingual corpus.
-- ESCO artifact tracking policy is now defined: raw vendor data stays ignored, while the normalized concept layer, normalized relation graph, bilingual translated corpus, and preprocessing manifests are tracked deliverables.
-- The retrieval pipeline no longer depends on hard-coded demo chunks. It now uses a FAISS HNSW dense index built from a SQLite-persisted ESCO chunk store.
-- The production retrieval defaults now point at `Qwen/Qwen3-Embedding-0.6B` for dense embeddings and `Qwen/Qwen3-Reranker-0.6B` for reranking.
-- The planned generator default is now `Qwen/Qwen3-0.6B` via `llama.cpp`, replacing the older Qwen2.5 pin.
-- The ESCO translation script now supports length-bucketing for translation batches and an optional `torch.compile` path for workstation-side throughput tuning.
-- ESCO preprocessing now treats `conceptUri` as the canonical concept key and collapses duplicate vendor concept rows by keeping the latest `modifiedDate`.
-- The first backend tests are passing in the `careerguide` Conda environment.
+- ESCO artifact tracking policy is defined: raw vendor data stays ignored, while normalized concepts, normalized relations, the bilingual translated corpus, and preprocessing manifests are tracked.
+- The active retrieval path now uses SQLite for persisted ESCO chunks and metadata plus FAISS HNSW for dense ANN retrieval.
+- The active dense retrieval baseline now uses `Qwen/Qwen3-Embedding-0.6B`.
+- The persisted FAISS retrieval cache (`faiss_hnsw.index` and `faiss_hnsw_manifest.json`) is a tracked repo artifact.
+- The retrieval build workflow is explicit: `python -m backend.scripts.build_retrieval_index`.
+- The retrieval build command can restore stale SQLite retrieval rows from the tracked FAISS cache without forcing a second full corpus-embedding pass.
+- The canonical benchmark baseline is now CPU-only HNSW search over already-built retrieval artifacts.
+- Canonical evaluation fixtures now exist in `eval/retrieval_qrels.json` and `eval/answer_eval_cases.json`.
+- Canonical persisted retrieval-eval outputs now exist in `eval/out/`.
+- The current dense-versus-reranker ablation has been run and persisted.
+- The measured result is negative for reranking on the current tracked qrels, so reranking is disabled by default and is not part of the active runtime path.
+- The planned generator default is now `Qwen/Qwen3-0.6B` via `llama.cpp`.
 
 ### What Is In Progress
 
-- Adding explicit FAISS index rebuild and refresh workflow instead of relying on first-query materialization
-- Moving from stub generation to real `llama.cpp` integration
-- Moving from placeholder evaluation to baseline-comparison evaluation
+- Moving from retrieval-backed context assembly to real `llama.cpp` generation.
+- Moving from retrieval-only evaluation into answer-output evaluation on generated responses.
 
 ### What Is Not Done Yet
 
-- Full end-to-end runtime validation of the Qwen3 retrieval models on a real indexed corpus
-- Full end-to-end runtime validation of the Qwen3 0.6B generator path through `llama.cpp`
+- Full end-to-end runtime validation of the `Qwen/Qwen3-0.6B` generator path through `llama.cpp`
+- Dense-only top-k and candidate-pool tuning against the tracked qrels
+- Answer-level evaluation over real generated outputs
 - Persistent memory storage
-- Full safety policy implementation
+- Full safety-policy implementation
 - Full experiment harness and report-ready result exports
 
 ### Immediate Next Steps
 
-1. Add an explicit corpus-build or index-refresh command instead of seeding the persisted retrieval store lazily on first query.
-2. Benchmark the Qwen3 embedding and reranking path on the real ESCO index and tune candidate-pool settings.
-3. Move from the current FAISS-backed retrieval context into real retrieval-backed generation through the pinned `Qwen/Qwen3-0.6B` runtime.
-4. Add persistent memory storage and stronger evaluation traces.
+1. Wire the real `llama.cpp` generation client for `Qwen/Qwen3-0.6B`.
+2. Run dense-only top-k and candidate-pool ablations against the tracked qrels.
+3. Add answer-level scoring over real generated outputs.
+4. Continue with persistent memory storage and stronger evaluation traces.
 
 ### Current Risks and Notes
 
-- The pinned generator model now also sits on the Qwen3 family, alongside the retrieval encoder and reranker. The remaining risk is runtime validation and tuning, not cross-family mismatch.
+- The reranker question is no longer open for the current retrieval configuration. The tracked qrels show that reranking hurts ranking quality while adding substantial runtime cost, so it should stay off by default unless the corpus, qrels, or model stack changes materially.
+- The current dense baseline is good enough to move forward, but top-k and candidate-pool settings are still empirical and need a measured sweep.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
-- The tests still force deterministic retrieval providers to keep smoke runs fast and independent of model downloads. Production defaults now point at Qwen3, so runtime model fetches happen outside the smoke-test path.
+- Smoke tests still force deterministic retrieval providers so they remain fast and independent of model downloads. Production defaults point at Qwen3.
 - The current generation behavior is still scaffold logic, not the final academic system.
-- FastAPI currently raises a deprecation warning for `on_event`; this is not blocking, but it should be cleaned up when the app wiring matures.
+- FastAPI still raises a deprecation warning for `on_event`; this is not blocking, but it should be cleaned up when the app wiring matures.
 
-### Latest Verification
+### Latest Verified State
 
-- `python -m pytest backend/tests -q`
-- Result: `5 passed`
-- `python -m tooling.translation.normalize_esco_csv`
-- Result: normalized ESCO output written successfully
-- Parsed deduped concept counts: `occupation=3039`, `skill_concept=13939`, `isco_group=619`, `skill_group=640`
-- Duplicate vendor concept rows removed during normalization: `25`
-- Final tracked ESCO outputs: normalized concepts=`18237`, normalized relations=`156336`, bilingual translated concepts=`18237`
-- Retrieval backend: SQLite-persisted ESCO chunks plus FAISS HNSW dense ANN search
-- Production retrieval-model defaults: `Qwen/Qwen3-Embedding-0.6B` and `Qwen/Qwen3-Reranker-0.6B`
-- Planned generator default: `Qwen/Qwen3-0.6B` via `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- `python -m pytest backend/tests -q`
-- Result after switching retrieval onto the FAISS HNSW backend: `5 passed`
-- Current recommended RTX 4090 translation baseline: `python -m tooling.translation.translate_esco_to_russian --text-batch-size 64 --record-batch-size 8 --num-beams 1 --max-source-length 256 --max-new-tokens 256`
+- Tracked ESCO outputs:
+  - normalized concepts=`18237`
+  - normalized relations=`156336`
+  - bilingual translated concepts=`18237`
+- Retrieval backend:
+  - SQLite-persisted ESCO chunks and metadata
+  - FAISS HNSW dense ANN index
+  - active embedder=`Qwen/Qwen3-Embedding-0.6B`
+  - reranker disabled by default
+- Retrieval cache artifacts tracked in git:
+  - `data/processed/retrieval/faiss_hnsw.index`
+  - `data/processed/retrieval/faiss_hnsw_manifest.json`
+- Canonical scored retrieval outputs tracked in git:
+  - `eval/out/retrieval_predictions_dense.json`
+  - `eval/out/retrieval_predictions_rerank.json`
+  - `eval/out/retrieval_scores_dense.json`
+  - `eval/out/retrieval_scores_rerank.json`
+- Current measured retrieval outcome on tracked qrels:
+  - `recall@20`: dense=`0.8611`, rerank=`0.8611`
+  - `recall@10`: dense=`0.7963`, rerank=`0.7222`
+  - `ndcg@10`: dense=`0.9304`, rerank=`0.8814`
+  - `ndcg@20`: dense=`0.9397`, rerank=`0.9048`
+- Interpretation:
+  - reranking does not improve final recall on the current qrels
+  - reranking degrades ranking quality at mid and high cutoffs
+  - reranking is therefore not part of the active baseline
 
 ## Русский
 
 ### Текущая фаза
 
-Базовый scaffold с governance-документацией репозитория, отслеживаемыми ESCO source artifacts и Qwen3-ориентированным FAISS-backed dense retrieval path.
+Базовый scaffold плюс отслеживаемые ESCO source-артефакты, dense retrieval
+stack на базе FAISS для Qwen3 и каноническая evaluation retrieval с уже
+полученным измеренным результатом dense-versus-reranker.
 
 ### Что уже сделано
 
-- Создана двуязычная authoritative-документация репозитория.
-- Настроено каноническое отслеживание решений.
-- Есть инструкции по локальной настройке для WSL, Windows и macOS.
-- Существует Python-first backend scaffold с FastAPI-routing и явными границами сервисов.
-- Существует начальный retrieval-scaffold.
-- Существует начальный Hopfield-style associative-read scaffold.
-- Существуют двуязычные evaluation-сценарии.
-- Теперь существует standalone tooling для preprocessing и перевода ESCO в `tooling/translation/`.
-- Английский ESCO CSV classification dump был проверен и нормализован во внутренний common bilingual-ready format для concept и relation records.
-- One-time ESCO translation run с английского на русский завершен и записан в отслеживаемый двуязычный corpus.
-- Теперь определена политика отслеживания ESCO-артефактов: raw vendor data остается игнорируемой, а нормализованный слой concept, нормализованный relation graph, двуязычный translated corpus и preprocessing manifests считаются отслеживаемыми deliverables.
-- Retrieval pipeline больше не зависит от hard-coded demo chunks. Теперь он использует FAISS HNSW dense index, построенный из SQLite-persisted ESCO chunk store.
-- Production-default для retrieval теперь указывает на `Qwen/Qwen3-Embedding-0.6B` для dense embeddings и `Qwen/Qwen3-Reranker-0.6B` для reranking.
-- Планируемый generator-default теперь - `Qwen/Qwen3-0.6B` через `llama.cpp`, вместо более старого pin на Qwen2.5.
-- Translation script для ESCO теперь поддерживает length-bucketing для translation batches и optional-путь `torch.compile` для настройки throughput на workstation.
-- ESCO preprocessing теперь рассматривает `conceptUri` как канонический concept key и схлопывает duplicate vendor concept rows, сохраняя самую новую `modifiedDate`.
-- Первые backend-тесты проходят в Conda-окружении `careerguide`.
+- Билингвальная authoritative-документация репозитория уже создана.
+- Каноническое отслеживание решений уже работает.
+- Есть инструкции локальной настройки для WSL, Windows и macOS.
+- Существует Python-first backend scaffold с FastAPI routing и явными service boundaries.
+- Есть начальный scaffold для Hopfield-style associative read.
+- Существует standalone tooling для preprocessing и перевода ESCO в `tooling/translation/`.
+- English CSV classification dump ESCO уже нормализован в общий формат concepts и relations репозитория.
+- One-time перевод ESCO с английского на русский уже выполнен и записан в отслеживаемый bilingual corpus.
+- Политика отслеживания ESCO-артефактов определена: raw vendor data игнорируется, а normalized concepts, normalized relations, bilingual translated corpus и preprocessing manifests отслеживаются.
+- Активный retrieval-path теперь использует SQLite для persisted ESCO chunks и metadata и FAISS HNSW для dense ANN retrieval.
+- Активный dense baseline retrieval теперь использует `Qwen/Qwen3-Embedding-0.6B`.
+- Persisted FAISS retrieval cache (`faiss_hnsw.index` и `faiss_hnsw_manifest.json`) теперь является отслеживаемым артефактом репозитория.
+- Workflow сборки retrieval сделан явным: `python -m backend.scripts.build_retrieval_index`.
+- Команда сборки retrieval умеет восстанавливать устаревшие SQLite retrieval-rows из отслеживаемого FAISS-cache без повторного полного corpus-embedding pass.
+- Канонический benchmark baseline теперь является CPU-only HNSW-search по уже собранным retrieval-артефактам.
+- Канонические evaluation-fixtures теперь существуют в `eval/retrieval_qrels.json` и `eval/answer_eval_cases.json`.
+- Канонические persisted retrieval-eval outputs теперь существуют в `eval/out/`.
+- Текущая ablation dense-versus-reranker уже выполнена и зафиксирована.
+- Измеренный результат для reranking на текущих отслеживаемых qrels отрицательный, поэтому reranking отключен по умолчанию и не является частью активного runtime-path.
+- Планируемый generator-default теперь - `Qwen/Qwen3-0.6B` через `llama.cpp`.
 
 ### Что сейчас в работе
 
-- Добавление явного corpus-build/index-refresh workflow вместо ленивой материализации persisted retrieval store при первом запросе
-- Переход от stub-generation к реальной интеграции `llama.cpp`
-- Переход от placeholder-evaluation к сравнению baseline-режимов
+- Переход от сборки retrieval-context к реальной генерации через `llama.cpp`.
+- Переход от retrieval-only evaluation к answer-output evaluation на реально сгенерированных ответах.
 
 ### Что еще не сделано
 
-- Полная end-to-end runtime-валидация retrieval-моделей Qwen3 на реальном indexed corpus
-- Полная end-to-end runtime-валидация генератора `Qwen/Qwen3-0.6B` через `llama.cpp`
+- Полная end-to-end runtime-валидация пути генератора `Qwen/Qwen3-0.6B` через `llama.cpp`
+- Настройка dense-only top-k и candidate-pool по отслеживаемым qrels
+- Answer-level evaluation на реальных сгенерированных ответах
 - Persistent storage для памяти
 - Полноценная реализация safety policy
-- Полноценный experiment harness и экспорт результатов в report-ready формате
+- Полноценный experiment harness и report-ready экспорт результатов
 
 ### Ближайшие шаги
 
-1. Добавить явную команду corpus-build/index-refresh вместо ленивого наполнения persisted retrieval store при первом запросе.
-2. Замерить и настроить путь Qwen3 embeddings + reranking на реальном ESCO index.
-3. Перейти от текущего FAISS-backed retrieval context к реальной retrieval-backed generation через зафиксированный runtime `Qwen/Qwen3-0.6B`.
-4. Добавить persistent storage для памяти и более сильные evaluation traces.
+1. Подключить реальный `llama.cpp` generation client для `Qwen/Qwen3-0.6B`.
+2. Выполнить dense-only ablation по top-k и candidate-pool на отслеживаемых qrels.
+3. Добавить answer-level scoring на реально сгенерированных ответах.
+4. Продолжить работу над persistent memory storage и более сильными evaluation traces.
 
 ### Текущие риски и заметки
 
-- Зафиксированная модель-генератор теперь тоже относится к семейству Qwen3, как и retrieval stack. Основной оставшийся риск связан не с несовпадением семейств моделей, а с runtime-валидацией и настройкой.
-- ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV parser.
-- Тесты по-прежнему принудительно используют deterministic retrieval providers, чтобы smoke-run оставался быстрым и не требовал загрузки моделей. Production-default при этом уже указывает на Qwen3.
-- Текущее поведение generation пока является scaffold-логикой, а не финальной академической системой.
-- FastAPI сейчас выдает deprecation warning для `on_event`; это не блокирует работу, но должно быть приведено в порядок по мере взросления app wiring.
+- Вопрос о reranker для текущей retrieval-конфигурации больше не является открытым. Отслеживаемые qrels показывают, что reranking ухудшает ranking quality и одновременно добавляет заметную runtime-стоимость, поэтому по умолчанию он должен оставаться выключенным, если только корпус, qrels или model stack существенно не изменятся.
+- Текущий dense baseline уже достаточно хорош, чтобы двигаться дальше, но настройки top-k и candidate-pool все еще остаются эмпирическими и требуют измеряемого sweep.
+- ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.
+- Smoke-тесты по-прежнему принудительно используют deterministic retrieval providers, чтобы оставаться быстрыми и независимыми от загрузки моделей. Production-default уже указывает на Qwen3.
+- Текущее поведение generation пока остается scaffold-логикой, а не финальной академической системой.
+- FastAPI по-прежнему выдает deprecation warning для `on_event`; это не блокирует работу, но должно быть приведено в порядок по мере взросления app wiring.
 
-### Последняя проверка
+### Последнее подтвержденное состояние
 
-- `python -m pytest backend/tests -q`
-- Результат: `5 passed`
-- `python -m tooling.translation.normalize_esco_csv`
-- Результат: нормализованный ESCO output успешно записан
-- Parsed deduped concept counts: `occupation=3039`, `skill_concept=13939`, `isco_group=619`, `skill_group=640`
-- Во время normalization удалено duplicate vendor concept rows: `25`
-- Финальные отслеживаемые ESCO outputs: normalized concepts=`18237`, normalized relations=`156336`, bilingual translated concepts=`18237`
-- Retrieval backend: SQLite-persisted ESCO chunks плюс FAISS HNSW dense ANN-search
-- Production-default для retrieval-моделей: `Qwen/Qwen3-Embedding-0.6B` и `Qwen/Qwen3-Reranker-0.6B`
-- Планируемый generator-default: `Qwen/Qwen3-0.6B` через `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- `python -m pytest backend/tests -q`
-- Результат после переключения retrieval на FAISS HNSW backend: `5 passed`
-- Текущий рекомендуемый RTX 4090 baseline для перевода: `python -m tooling.translation.translate_esco_to_russian --text-batch-size 64 --record-batch-size 8 --num-beams 1 --max-source-length 256 --max-new-tokens 256`
+- Отслеживаемые ESCO outputs:
+  - normalized concepts=`18237`
+  - normalized relations=`156336`
+  - bilingual translated concepts=`18237`
+- Retrieval backend:
+  - SQLite-persisted ESCO chunks и metadata
+  - FAISS HNSW dense ANN index
+  - active embedder=`Qwen/Qwen3-Embedding-0.6B`
+  - reranker отключен по умолчанию
+- Retrieval cache-артефакты, отслеживаемые в git:
+  - `data/processed/retrieval/faiss_hnsw.index`
+  - `data/processed/retrieval/faiss_hnsw_manifest.json`
+- Канонические scored retrieval outputs, отслеживаемые в git:
+  - `eval/out/retrieval_predictions_dense.json`
+  - `eval/out/retrieval_predictions_rerank.json`
+  - `eval/out/retrieval_scores_dense.json`
+  - `eval/out/retrieval_scores_rerank.json`
+- Текущий измеренный retrieval-result на отслеживаемых qrels:
+  - `recall@20`: dense=`0.8611`, rerank=`0.8611`
+  - `recall@10`: dense=`0.7963`, rerank=`0.7222`
+  - `ndcg@10`: dense=`0.9304`, rerank=`0.8814`
+  - `ndcg@20`: dense=`0.9397`, rerank=`0.9048`
+- Интерпретация:
+  - reranking не улучшает итоговый recall на текущих qrels
+  - reranking ухудшает ranking quality на средних и высоких cutoff
+  - поэтому reranking не входит в активный baseline

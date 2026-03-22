@@ -37,6 +37,14 @@ def _default_esco_bilingual_path() -> Path:
     return _repo_root() / "data" / "processed" / "esco" / "bilingual" / "esco_concepts.en_ru.jsonl"
 
 
+def _default_retrieval_index_path() -> Path:
+    return _repo_root() / "data" / "processed" / "retrieval" / "faiss_hnsw.index"
+
+
+def _default_retrieval_manifest_path() -> Path:
+    return _repo_root() / "data" / "processed" / "retrieval" / "faiss_hnsw_manifest.json"
+
+
 class AppSettings(BaseSettings):
     """Environment-driven backend settings."""
 
@@ -54,12 +62,15 @@ class AppSettings(BaseSettings):
     generation_model_name: str = "Qwen/Qwen3-0.6B"
     generation_model_artifact: str = "Qwen/Qwen3-0.6B-GGUF:Q8_0"
     generation_context_length: int = 32768
+    retrieval_index_path: Path = Field(default_factory=_default_retrieval_index_path)
+    retrieval_index_manifest_path: Path = Field(default_factory=_default_retrieval_manifest_path)
     retrieval_vector_size: int = 1024
     retrieval_embedding_provider: str = "qwen3"
     retrieval_embedding_model_name: str = "Qwen/Qwen3-Embedding-0.6B"
     retrieval_query_instruction: str = (
         "Given a career guidance question, retrieve passages that best answer the question."
     )
+    retrieval_enable_reranker: bool = False
     retrieval_reranker_provider: str = "qwen3"
     retrieval_reranker_model_name: str = "Qwen/Qwen3-Reranker-0.6B"
     retrieval_embedding_batch_size: int = 32

@@ -1,0 +1,164 @@
+[
+  {
+    "query_id": "software_developer_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/f2b15a0e-e65a-438a-affb-29b9d50b77d1",
+    "relevance": 3,
+    "rationale": "Exact occupation match."
+  },
+  {
+    "query_id": "software_developer_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/04ba4d6c-957d-417f-bf63-5b9e015a9f86",
+    "relevance": 2,
+    "rationale": "Adjacent software-analysis role."
+  },
+  {
+    "query_id": "software_developer_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/57af9090-55b4-4911-b2d0-86db01c00b02",
+    "relevance": 2,
+    "rationale": "Close software-development specialization."
+  },
+  {
+    "query_id": "software_developer_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/781a6350-e686-45b9-b075-e4c8d5a05ff7",
+    "relevance": 2,
+    "rationale": "Close software-development specialization."
+  },
+  {
+    "query_id": "software_developer_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/f2b15a0e-e65a-438a-affb-29b9d50b77d1",
+    "relevance": 3,
+    "rationale": "Точное совпадение occupation."
+  },
+  {
+    "query_id": "software_developer_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/04ba4d6c-957d-417f-bf63-5b9e015a9f86",
+    "relevance": 2,
+    "rationale": "Соседняя роль, связанная с software analysis."
+  },
+  {
+    "query_id": "software_developer_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/57af9090-55b4-4911-b2d0-86db01c00b02",
+    "relevance": 2,
+    "rationale": "Близкая специализация software development."
+  },
+  {
+    "query_id": "software_developer_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/781a6350-e686-45b9-b075-e4c8d5a05ff7",
+    "relevance": 2,
+    "rationale": "Близкая специализация software development."
+  },
+  {
+    "query_id": "business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/60082a99-d8ef-4e84-9290-78902681b6ed",
+    "relevance": 3,
+    "rationale": "Exact occupation match."
+  },
+  {
+    "query_id": "business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/fe0fa514-b48d-4a53-9757-a283c0baacf0",
+    "relevance": 2,
+    "rationale": "Domain-specific business-analysis role."
+  },
+  {
+    "query_id": "business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/4b3201cb-ffc5-4f61-9fc3-5c0f0038fa5f",
+    "relevance": 1,
+    "rationale": "Managerial adjacent role in the same domain."
+  },
+  {
+    "query_id": "business_analyst_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/60082a99-d8ef-4e84-9290-78902681b6ed",
+    "relevance": 3,
+    "rationale": "Точное совпадение occupation."
+  },
+  {
+    "query_id": "business_analyst_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/fe0fa514-b48d-4a53-9757-a283c0baacf0",
+    "relevance": 2,
+    "rationale": "Предметно близкая роль business analysis в ИКТ."
+  },
+  {
+    "query_id": "business_analyst_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/4b3201cb-ffc5-4f61-9fc3-5c0f0038fa5f",
+    "relevance": 1,
+    "rationale": "Менеджерская adjacent-роль в той же области."
+  },
+  {
+    "query_id": "ict_business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/fe0fa514-b48d-4a53-9757-a283c0baacf0",
+    "relevance": 3,
+    "rationale": "Exact occupation match."
+  },
+  {
+    "query_id": "ict_business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/60082a99-d8ef-4e84-9290-78902681b6ed",
+    "relevance": 2,
+    "rationale": "General business-analysis role closely related to the query."
+  },
+  {
+    "query_id": "ict_business_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/4b3201cb-ffc5-4f61-9fc3-5c0f0038fa5f",
+    "relevance": 2,
+    "rationale": "Managerial adjacent role in the same ICT business-analysis domain."
+  },
+  {
+    "query_id": "project_manager_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/bea99fea-0383-4c63-b944-70d4799de2c5",
+    "relevance": 3,
+    "rationale": "Exact occupation match."
+  },
+  {
+    "query_id": "project_manager_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/8b6388a4-4904-471b-9331-d3b1211f5525",
+    "relevance": 2,
+    "rationale": "ICT specialization of project management."
+  },
+  {
+    "query_id": "project_manager_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/351a0eb0-a1d0-49bd-a2f8-6dc447ddf316",
+    "relevance": 1,
+    "rationale": "Narrow domain-specific project-management role."
+  },
+  {
+    "query_id": "project_manager_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/bea99fea-0383-4c63-b944-70d4799de2c5",
+    "relevance": 3,
+    "rationale": "Точное совпадение occupation."
+  },
+  {
+    "query_id": "project_manager_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/8b6388a4-4904-471b-9331-d3b1211f5525",
+    "relevance": 2,
+    "rationale": "ИКТ-специализация project management."
+  },
+  {
+    "query_id": "project_manager_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/351a0eb0-a1d0-49bd-a2f8-6dc447ddf316",
+    "relevance": 1,
+    "rationale": "Узкая domain-specific роль project management."
+  },
+  {
+    "query_id": "data_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/d3edb8f8-3a06-47a0-8fb9-9b212c006aa2",
+    "relevance": 3,
+    "rationale": "Exact occupation match."
+  },
+  {
+    "query_id": "data_analyst_en",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/a6a0b60f-08da-4faa-bf54-942987efb471",
+    "relevance": 1,
+    "rationale": "Adjacent analyst role in ICT."
+  },
+  {
+    "query_id": "data_analyst_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/d3edb8f8-3a06-47a0-8fb9-9b212c006aa2",
+    "relevance": 3,
+    "rationale": "Точное совпадение occupation."
+  },
+  {
+    "query_id": "data_analyst_ru",
+    "chunk_id": "esco:http://data.europa.eu/esco/occupation/a6a0b60f-08da-4faa-bf54-942987efb471",
+    "relevance": 1,
+    "rationale": "Соседняя analyst-роль в ИКТ."
+  }
+]

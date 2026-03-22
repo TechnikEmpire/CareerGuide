@@ -6,7 +6,7 @@
 This document is a build plan for Codex. It is intentionally centered on the parts that matter academically and technically:
 
 - corpus selection and ingestion
-- retrieval and reranking
+- retrieval and retrieval ablation results
 - LLM inference choices
 - structured generation
 - associative memory using a Hopfield-style read
@@ -90,21 +90,28 @@ Only use this for an ablation if needed. Do not build the whole project around c
 
 ---
 
-## 1.3 Reranker
+## 1.3 Optional reranker ablation
 
-### Primary reranker
+### Primary reranker for ablation
 - **Qwen/Qwen3-Reranker-0.6B**
 
-Why:
+Why it was tested:
 - multilingual, which matters for a Russian-first assistant
-- practical for top-k reranking in a student-scale pipeline
 - aligned with the Qwen embedding choice
-- helps reduce semantically-near-but-wrong retrieval hits after dense ANN retrieval
+- plausible as a top-k reranking refinement over dense ANN retrieval
 
 ### Reranker operating point
 - retrieve top 20 candidates
 - rerank to top 6–8
 - pass top 4–6 chunks to the generator by default
+
+Current outcome:
+- the tracked qrels show that reranking is not worth keeping in the active path
+- it does not improve final recall and it hurts ranking quality at important cutoffs
+- it also adds major runtime cost on modest hardware
+
+Keep this section only as historical ablation context. The active path is now
+dense ANN retrieval without reranking.
 
 ---
 
@@ -157,7 +164,9 @@ reranker:
   model_name: Qwen/Qwen3-Reranker-0.6B
 ```
 
-Do not replace these components during the initial build. Get the pipeline working first, then run ablations later.
+Do not replace these components during the initial build. Get the pipeline
+working first, then run ablations later. The reranker entry remains pinned for
+reproducible ablation work, not because it is part of the active default path.
 
 ## 1.5 Storage/indexing strategy
 
@@ -166,7 +175,7 @@ Use:
 - **SQLite** for chunk persistence and provenance
 - **FAISS HNSW** for dense ANN retrieval
 - dense embeddings stored in SQLite tables
-- reranking over dense ANN candidates
+- no active reranking in the default runtime path
 
 Reason:
 - the corpus is modest but large enough to justify a proper ANN layer
@@ -410,7 +419,9 @@ At generation time, prefer tier 1 and tier 2 for explicit advice.
 
 ## 4. Retrieval design
 
-The assistant should use **dense ANN retrieval plus reranking**, not lexical fusion.
+The assistant should use **dense ANN retrieval as the baseline**. The tracked
+qrels now show that reranking is not justified for the current stack, so the
+active runtime path should remain dense-only.
 
 ## 4.1 Retrieval pipeline
 
@@ -419,9 +430,8 @@ For each user query:
 1. classify query intent
 2. generate dense query embedding
 3. retrieve dense ANN candidates with FAISS HNSW
-4. rerank candidates with the Qwen reranker
-5. select final context chunks
-6. pass context to generator with citations
+4. select final context chunks
+5. pass context to generator with citations
 
 ---
 
@@ -473,23 +483,13 @@ Start with:
 
 ## 4.4 Reranking
 
-Rerank dense ANN candidates using:
-- `Qwen/Qwen3-Reranker-0.6B`
+Reranking is no longer part of the active runtime path.
 
-Inputs:
-- `(query, candidate_chunk_text)`
-
-Output:
-- relevance score
-
-Select:
-- top 6 candidates
-- trim to 4–6 final chunks based on token budget
-
-Log for evaluation:
-- dense score
-- rerank score
-- final rank
+The Qwen reranker remains pinned only so the repo can preserve and reproduce
+the current negative ablation result. On the tracked qrels, reranking kept
+`recall@20` flat while lowering `recall@10` and `nDCG@10/@20`, so it should
+stay off by default unless future corpus or qrels changes justify revisiting
+it.
 
 ---
 
@@ -499,10 +499,12 @@ Every assistant run must store:
 - original query
 - intent label
 - dense candidates
-- reranked list
 - final selected contexts
 - final prompt
 - model response
+
+If a future explicit reranker ablation is run again, store the reranked list as
+an additional debug artifact for that experiment only.
 
 This is mandatory for evaluation and debugging.
 
@@ -955,7 +957,9 @@ If time allows, run these ablations:
 4. RAG + naive memory
 5. RAG + Hopfield-style memory
 
-This gives an actual experimental story instead of a demo-only story.
+The reranker ablation has already produced a negative result on the current
+tracked qrels, so it should not take priority over generation integration or
+memory evaluation unless the retrieval stack changes materially.
 
 ---
 
@@ -997,7 +1001,8 @@ Build the reference corpus and normalized storage.
 ## Stage 2 — Embeddings and retrieval index
 
 ### Goal
-Make the corpus searchable with dense ANN retrieval plus reranking.
+Make the corpus searchable with dense ANN retrieval and establish the dense-only
+baseline cleanly.
 
 ### Tasks
 1. create SQLite database schema:
@@ -1008,6 +1013,8 @@ Make the corpus searchable with dense ANN retrieval plus reranking.
 3. build a FAISS HNSW index over normalized vectors
 4. implement dense ANN retrieval
 5. persist chunk metadata and embedding payloads in SQLite
+6. add an explicit `build_retrieval_index` command instead of lazy first-query seeding
+7. track the canonical FAISS index artifact and manifest in git for the active retrieval configuration
 
 ### Acceptance criteria
 - retrieval returns sensible candidates for 10 hand-written test queries
@@ -1018,36 +1025,40 @@ Make the corpus searchable with dense ANN retrieval plus reranking.
 - `build_embeddings.py`
 - `retrieval.py`
 - `tests/test_retrieval_smoke.py`
+- `benchmark_retrieval.py`
 
 ---
 
-## Stage 3 — Reranking and baseline RAG
+## Stage 3 — Baseline RAG
 
 ### Goal
-Create the baseline RAG assistant with structured output.
+Create the baseline RAG assistant with structured output on top of the dense-only
+retrieval path.
 
 ### Tasks
-1. add reranker with `Qwen/Qwen3-Reranker-0.6B`
-2. implement end-to-end retrieval pipeline
-3. add prompt templates
-4. add generator client for llama.cpp server using the pinned `Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact
-5. add JSON schema enforcement for:
+1. implement end-to-end retrieval pipeline
+2. add prompt templates
+3. add generator client for llama.cpp server using the pinned `Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact
+4. add JSON schema enforcement for:
    - career plan
    - skills gap
    - balance guidance
-6. store full run traces
+5. store full run traces
+6. benchmark dense-only top-k and candidate-pool settings against the tracked qrels
 
 ### Acceptance criteria
 - assistant answers are grounded in retrieved chunks
 - citations point to real source chunks
 - JSON output is valid in at least 90% of test runs
-- unsupported claims are visibly reduced with reranking on
+- retrieval quality is scored canonically for the dense-only baseline
+- the documented reranker outcome remains preserved as a negative ablation result, not as an unresolved open question
 
 ### Deliverables
 - `rag_pipeline.py`
 - `generator_client.py`
 - `prompt_templates.py`
 - `schemas.py`
+- tracked retrieval qrels and answer-evaluation cases
 
 ---
 
@@ -1296,8 +1307,8 @@ If time is limited, implement in this exact order:
 
 1. corpus ingestion
 2. dense ANN retrieval
-3. reranker
-4. baseline RAG structured outputs
+3. baseline RAG structured outputs
+4. reranker ablation
 5. user profile memory
 6. memory extraction
 7. Hopfield-style read
@@ -1320,7 +1331,7 @@ If time gets tight, cut:
 
 Do **not** cut:
 - authoritative corpus
-- reranker
+- retrieval evaluation
 - structured outputs
 - stable memory layer
 - evaluation against baselines
@@ -1336,6 +1347,7 @@ The project is successful if it can demonstrate all of the following:
 3. the assistant preserves explicit user constraints
 4. the memory layer improves personalization over RAG-only baseline
 5. the system logs enough artifacts to defend the results in a report
+6. retrieval quality is scored canonically, and reranker on/off can be compared explicitly
 
 ---
 

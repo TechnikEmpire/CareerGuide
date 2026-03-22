@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import lru_cache
+import json
+from pathlib import Path
 
 import faiss
 import numpy as np
@@ -28,12 +31,249 @@ class IndexedChunk:
     text: str
 
 
+@dataclass(frozen=True)
+class BenchmarkQueryVector:
+    """Stored vector sample used for pure HNSW benchmarking."""
+
+    chunk_id: str
+    title: str
+    vector: np.ndarray
+
+
+@dataclass(frozen=True)
+class RetrievalBuildStats:
+    """Summary of a retrieval-index build or refresh run."""
+
+    chunk_count: int
+    embedding_model: str
+    vector_size: int
+    index_path: Path
+    manifest_path: Path
+    rebuilt_sqlite: bool
+    rebuilt_faiss: bool
+
+
+@dataclass(frozen=True)
+class RetrievalArtifactStatus:
+    """Current retrieval-artifact validity without mutating local state."""
+
+    chunk_count: int
+    embedding_model: str
+    vector_size: int
+    index_path: Path
+    manifest_path: Path
+    sqlite_current: bool
+    faiss_current: bool
+
+
 def _embedding_to_bytes(values: tuple[float, ...]) -> bytes:
     return np.asarray(values, dtype=np.float32).tobytes()
 
 
 def _bytes_to_embedding(payload: bytes) -> np.ndarray:
     return np.frombuffer(payload, dtype=np.float32)
+
+
+def _manifest_payload(*, chunk_count: int, embedding_model: str, vector_size: int) -> dict[str, object]:
+    return {
+        "built_at": datetime.now(UTC).isoformat(),
+        "chunk_count": chunk_count,
+        "embedding_model": embedding_model,
+        "vector_size": vector_size,
+        "faiss_hnsw_m": settings.faiss_hnsw_m,
+        "faiss_hnsw_ef_construction": settings.faiss_hnsw_ef_construction,
+    }
+
+
+def _read_manifest(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    with path.open("r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _sorted_source_chunks():
+    return sorted(load_esco_retrieval_chunks(), key=lambda chunk: chunk.chunk_id)
+
+
+def _sqlite_corpus_matches(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
+    with SessionLocal() as session:
+        existing_count = session.query(RetrievalChunkRecord).count()
+        first_row = session.scalars(select(RetrievalChunkRecord).limit(1)).first()
+        if existing_count != expected_count or existing_count == 0 or first_row is None:
+            return False
+        first_dim = len(_bytes_to_embedding(first_row.embedding))
+        return first_dim == vector_size and first_row.embedding_model == embedding_model
+
+
+def _faiss_artifacts_match(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
+    manifest = _read_manifest(settings.retrieval_index_manifest_path)
+    index_path = settings.retrieval_index_path
+    if manifest is None or not index_path.exists():
+        return False
+
+    expected_manifest = {
+        "chunk_count": expected_count,
+        "embedding_model": embedding_model,
+        "vector_size": vector_size,
+        "faiss_hnsw_m": settings.faiss_hnsw_m,
+        "faiss_hnsw_ef_construction": settings.faiss_hnsw_ef_construction,
+    }
+    for key, expected_value in expected_manifest.items():
+        if manifest.get(key) != expected_value:
+            return False
+
+    index = faiss.read_index(str(index_path))
+    return index.ntotal == expected_count and index.d == vector_size
+
+
+def _build_faiss_index(vectors: np.ndarray) -> faiss.IndexHNSWFlat:
+    index = faiss.IndexHNSWFlat(vectors.shape[1], settings.faiss_hnsw_m, faiss.METRIC_INNER_PRODUCT)
+    index.hnsw.efConstruction = settings.faiss_hnsw_ef_construction
+    index.hnsw.efSearch = settings.faiss_hnsw_ef_search
+    index.add(vectors)
+    return index
+
+
+def _rewrite_sqlite_rows(
+    *,
+    source_chunks,
+    embedding_model: str,
+    embeddings: list[list[float]] | None,
+    vector_size: int,
+) -> None:
+    if embeddings is None:
+        zero_payload = _embedding_to_bytes(tuple(np.zeros(vector_size, dtype=np.float32).tolist()))
+        payloads = [zero_payload] * len(source_chunks)
+    else:
+        payloads = [_embedding_to_bytes(tuple(embedding)) for embedding in embeddings]
+
+    with SessionLocal() as session:
+        session.query(RetrievalChunkRecord).delete()
+        session.bulk_save_objects(
+            [
+                RetrievalChunkRecord(
+                    chunk_id=chunk.chunk_id,
+                    concept_uri=chunk.concept_uri,
+                    concept_kind=chunk.concept_kind,
+                    source_name=chunk.source_name,
+                    source_url=chunk.source_url,
+                    title=chunk.title,
+                    text=chunk.text,
+                    chunk_type=chunk.chunk_type,
+                    embedding_model=embedding_model,
+                    embedding=payload,
+                )
+                for chunk, payload in zip(source_chunks, payloads, strict=True)
+            ]
+        )
+        session.commit()
+
+
+def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
+    """Build or refresh the persisted retrieval corpus and FAISS index."""
+
+    init_db()
+    settings.retrieval_index_path.parent.mkdir(parents=True, exist_ok=True)
+    source_chunks = _sorted_source_chunks()
+    embedder = get_embedding_provider()
+    expected_count = len(source_chunks)
+
+    sqlite_current = _sqlite_corpus_matches(
+        expected_count,
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+    )
+    faiss_current = _faiss_artifacts_match(
+        expected_count,
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+    )
+
+    rebuilt_sqlite = force or not sqlite_current
+    rebuilt_faiss = force or not faiss_current
+
+    if rebuilt_sqlite:
+        if rebuilt_faiss:
+            embeddings = embedder.embed_documents([chunk.embedding_text for chunk in source_chunks])
+            _rewrite_sqlite_rows(
+                source_chunks=source_chunks,
+                embedding_model=embedder.model_id,
+                embeddings=embeddings,
+                vector_size=embedder.vector_size,
+            )
+        else:
+            # When the tracked FAISS artifact is already current, restoring the
+            # SQLite metadata rows should not force a second full embedding pass.
+            _rewrite_sqlite_rows(
+                source_chunks=source_chunks,
+                embedding_model=embedder.model_id,
+                embeddings=None,
+                vector_size=embedder.vector_size,
+            )
+
+    with SessionLocal() as session:
+        rows = list(
+            session.scalars(
+                select(RetrievalChunkRecord).order_by(RetrievalChunkRecord.chunk_id)
+            )
+        )
+
+    if rebuilt_faiss:
+        vectors = np.vstack([_bytes_to_embedding(row.embedding) for row in rows]).astype(np.float32)
+        index = _build_faiss_index(vectors)
+        faiss.write_index(index, str(settings.retrieval_index_path))
+        with settings.retrieval_index_manifest_path.open("w", encoding="utf-8") as handle:
+            json.dump(
+                _manifest_payload(
+                    chunk_count=len(rows),
+                    embedding_model=embedder.model_id,
+                    vector_size=embedder.vector_size,
+                ),
+                handle,
+                ensure_ascii=False,
+                indent=2,
+            )
+
+    get_faiss_hnsw_retrieval_service.cache_clear()
+    return RetrievalBuildStats(
+        chunk_count=len(rows),
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+        index_path=settings.retrieval_index_path,
+        manifest_path=settings.retrieval_index_manifest_path,
+        rebuilt_sqlite=rebuilt_sqlite,
+        rebuilt_faiss=rebuilt_faiss,
+    )
+
+
+def inspect_retrieval_artifacts() -> RetrievalArtifactStatus:
+    """Return the current retrieval-artifact status without rebuilding them."""
+
+    init_db()
+    source_chunks = _sorted_source_chunks()
+    embedder = get_embedding_provider()
+    expected_count = len(source_chunks)
+
+    sqlite_current = _sqlite_corpus_matches(
+        expected_count,
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+    )
+    faiss_current = _faiss_artifacts_match(
+        expected_count,
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+    )
+    return RetrievalArtifactStatus(
+        chunk_count=expected_count,
+        embedding_model=embedder.model_id,
+        vector_size=embedder.vector_size,
+        index_path=settings.retrieval_index_path,
+        manifest_path=settings.retrieval_index_manifest_path,
+        sqlite_current=sqlite_current,
+        faiss_current=faiss_current,
+    )
 
 
 class FaissHnswRetrievalService:
@@ -55,8 +295,17 @@ class FaissHnswRetrievalService:
         if not self._chunks or self._index is None:
             return []
 
-        query_vector = np.asarray([self.embedder.embed_query(query)], dtype=np.float32)
-        scores, indices = self._index.search(query_vector, top_k)
+        return self.search_with_vector(self.embedder.embed_query(query), top_k)
+
+    def search_with_vector(self, query_vector: list[float] | np.ndarray, top_k: int) -> list[RetrievedChunk]:
+        """Return the top-k chunks for a precomputed query vector."""
+
+        self._ensure_loaded()
+        if not self._chunks or self._index is None:
+            return []
+
+        search_vector = np.asarray([query_vector], dtype=np.float32)
+        scores, indices = self._index.search(search_vector, top_k)
 
         retrieved: list[RetrievedChunk] = []
         for score, chunk_index in zip(scores[0], indices[0], strict=True):
@@ -66,6 +315,7 @@ class FaissHnswRetrievalService:
             chunk = self._chunks[chunk_index]
             retrieved.append(
                 RetrievedChunk(
+                    chunk_id=chunk.chunk_id,
                     source_name=chunk.source_name,
                     source_url=chunk.source_url,
                     title=chunk.title,
@@ -76,11 +326,32 @@ class FaissHnswRetrievalService:
             )
         return retrieved
 
+    def benchmark_query_vectors(self, limit: int) -> list[BenchmarkQueryVector]:
+        """Return representative stored vectors for pure ANN benchmarking."""
+
+        self._ensure_loaded()
+        if self._index is None or not self._chunks:
+            return []
+
+        sample_count = min(limit, len(self._chunks))
+        samples: list[BenchmarkQueryVector] = []
+        for index in range(sample_count):
+            vector = np.asarray(self._index.reconstruct(index), dtype=np.float32)
+            chunk = self._chunks[index]
+            samples.append(
+                BenchmarkQueryVector(
+                    chunk_id=chunk.chunk_id,
+                    title=chunk.title,
+                    vector=vector,
+                )
+            )
+        return samples
+
     def _ensure_loaded(self) -> None:
         if self._index is not None and self._chunks:
             return
 
-        self._ensure_sqlite_corpus()
+        self._ensure_built_artifacts()
 
         with SessionLocal() as session:
             rows = list(
@@ -94,11 +365,8 @@ class FaissHnswRetrievalService:
             self._chunks = []
             return
 
-        vectors = np.vstack([_bytes_to_embedding(row.embedding) for row in rows]).astype(np.float32)
-        index = faiss.IndexHNSWFlat(self.embedder.vector_size, settings.faiss_hnsw_m, faiss.METRIC_INNER_PRODUCT)
-        index.hnsw.efConstruction = settings.faiss_hnsw_ef_construction
+        index = faiss.read_index(str(settings.retrieval_index_path))
         index.hnsw.efSearch = settings.faiss_hnsw_ef_search
-        index.add(vectors)
 
         self._index = index
         self._chunks = [
@@ -112,43 +380,26 @@ class FaissHnswRetrievalService:
             for row in rows
         ]
 
-    def _ensure_sqlite_corpus(self) -> None:
+    def _ensure_built_artifacts(self) -> None:
         init_db()
-        source_chunks = load_esco_retrieval_chunks()
-        expected_count = len(source_chunks)
+        expected_count = len(_sorted_source_chunks())
+        sqlite_current = _sqlite_corpus_matches(
+            expected_count,
+            embedding_model=self.embedder.model_id,
+            vector_size=self.embedder.vector_size,
+        )
+        faiss_current = _faiss_artifacts_match(
+            expected_count,
+            embedding_model=self.embedder.model_id,
+            vector_size=self.embedder.vector_size,
+        )
+        if sqlite_current and faiss_current:
+            return
 
-        with SessionLocal() as session:
-            existing_count = session.query(RetrievalChunkRecord).count()
-            first_row = session.scalars(select(RetrievalChunkRecord).limit(1)).first()
-            first_dim = len(_bytes_to_embedding(first_row.embedding)) if first_row else 0
-            if (
-                existing_count == expected_count
-                and existing_count > 0
-                and first_dim == self.embedder.vector_size
-                and first_row.embedding_model == self.embedder.model_id
-            ):
-                return
-
-            embeddings = self.embedder.embed_documents([chunk.embedding_text for chunk in source_chunks])
-            session.query(RetrievalChunkRecord).delete()
-            session.bulk_save_objects(
-                [
-                    RetrievalChunkRecord(
-                        chunk_id=chunk.chunk_id,
-                        concept_uri=chunk.concept_uri,
-                        concept_kind=chunk.concept_kind,
-                        source_name=chunk.source_name,
-                        source_url=chunk.source_url,
-                        title=chunk.title,
-                        text=chunk.text,
-                        chunk_type=chunk.chunk_type,
-                        embedding_model=self.embedder.model_id,
-                        embedding=_embedding_to_bytes(tuple(embedding)),
-                    )
-                    for chunk, embedding in zip(source_chunks, embeddings, strict=True)
-                ]
-            )
-            session.commit()
+        raise RuntimeError(
+            "Retrieval artifacts are missing or stale. "
+            "Run `python -m backend.scripts.build_retrieval_index` before querying the API."
+        )
 
 
 @lru_cache(maxsize=1)

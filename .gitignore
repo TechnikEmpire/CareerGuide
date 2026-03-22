@@ -223,3 +223,18 @@ data/processed/esco/**/*.jsonl
 !data/processed/esco/normalized/esco_relations.jsonl
 !data/processed/esco/manifests/*.json
 !data/processed/esco/bilingual/esco_concepts.en_ru.jsonl
+
+# Persist the canonical FAISS retrieval cache for the active Qwen3 retrieval
+# configuration. The local SQLite database remains untracked.
+data/processed/retrieval/*
+!data/processed/retrieval/README.md
+!data/processed/retrieval/faiss_hnsw.index
+!data/processed/retrieval/faiss_hnsw_manifest.json
+
+# Generated benchmark and evaluation outputs
+eval/out/*
+!eval/out/README.md
+!eval/out/retrieval_predictions_dense.json
+!eval/out/retrieval_predictions_rerank.json
+!eval/out/retrieval_scores_dense.json
+!eval/out/retrieval_scores_rerank.json
