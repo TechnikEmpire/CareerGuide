@@ -48,6 +48,18 @@ Dense retrieval benchmark on CPU:
 python -m backend.scripts.benchmark_retrieval --mode dense
 ```
 
+Canonical dense-only tuning sweep:
+
+```bash
+python -m backend.scripts.tune_dense_retrieval --output-json eval/out/dense_retrieval_tuning.json
+```
+
+For the current local operator workflow, that tuning step is also included in:
+
+```bash
+python -m backend.scripts.run_local_eval_workflow
+```
+
 Optional heavy diagnostic benchmark:
 
 ```bash
@@ -94,7 +106,13 @@ Because of that:
 
 - the active runtime path is dense-only retrieval
 - reranker benchmarking is diagnostic only
-- the next tuning focus is dense-only top-k and candidate-pool behavior
+- the dense-only elbow has now been locked at `top_k=10`
+- `candidate_pool` is not an active runtime lever while reranking stays off
+
+One important implementation detail: when reranking is off, `candidate_pool`
+does not change the final ranked list if it is only used to over-fetch and then
+trim the same FAISS top-k results. The tuning script records candidate-pool
+values for pipeline parity, but the main signal is the top-k sweep.
 
 ## Русский
 
@@ -140,6 +158,18 @@ Benchmark dense retrieval на CPU:
 
 ```bash
 python -m backend.scripts.benchmark_retrieval --mode dense
+```
+
+Канонический dense-only tuning sweep:
+
+```bash
+python -m backend.scripts.tune_dense_retrieval --output-json eval/out/dense_retrieval_tuning.json
+```
+
+Для текущего локального operator-workflow этот tuning-шаг также входит в:
+
+```bash
+python -m backend.scripts.run_local_eval_workflow
 ```
 
 Опциональный тяжелый diagnostic-benchmark:
@@ -188,4 +218,11 @@ Benchmark нужен для отделения поведения ANN от model
 
 - активный runtime-path использует dense-only retrieval
 - benchmark reranker нужен только для диагностики
-- следующий фокус настройки — поведение dense-only top-k и candidate-pool
+- dense-only elbow теперь зафиксирован на `top_k=10`
+- `candidate_pool` не является активным runtime-рычагом, пока reranking остается выключенным
+
+Одна важная деталь реализации: когда reranking выключен, `candidate_pool` не
+меняет итоговый ranked list, если он используется только для over-fetch и
+последующего trim тех же FAISS top-k результатов. Tuning-скрипт сохраняет
+значения candidate-pool для parity с pipeline, но основной сигнал дает именно
+sweep по top-k.

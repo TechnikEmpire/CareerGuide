@@ -118,10 +118,11 @@ dense ANN retrieval without reranking.
 ## 1.4 Inference runtime
 
 ### Default runtime
-- **Python backend + llama.cpp server**
+- **Python backend + local OpenAI-compatible GGUF server** (`llama-cpp-python[server]` preferred)
 - serve **`Qwen/Qwen3-0.6B-GGUF:Q8_0`**
 - call it from FastAPI
 - keep generation deterministic and short for structured tasks
+- cache local runtime artifacts under repo-local ignored `models/` paths rather than treating them as tracked source artifacts
 
 ### Optional secondary runtime
 - **Ollama**
@@ -1038,19 +1039,21 @@ retrieval path.
 ### Tasks
 1. implement end-to-end retrieval pipeline
 2. add prompt templates
-3. add generator client for llama.cpp server using the pinned `Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact
+3. add generator client for the local OpenAI-compatible GGUF server using the pinned `Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact
 4. add JSON schema enforcement for:
    - career plan
    - skills gap
    - balance guidance
 5. store full run traces
 6. benchmark dense-only top-k and candidate-pool settings against the tracked qrels
+7. lock the active dense-only runtime default after the measured elbow is clear
 
 ### Acceptance criteria
 - assistant answers are grounded in retrieved chunks
 - citations point to real source chunks
 - JSON output is valid in at least 90% of test runs
 - retrieval quality is scored canonically for the dense-only baseline
+- the active dense-only default is explicitly documented and justified from tracked tuning outputs
 - the documented reranker outcome remains preserved as a negative ablation result, not as an unresolved open question
 
 ### Deliverables
@@ -1221,7 +1224,7 @@ Generate quantitative and qualitative results for the report.
 ## Stage 10 — Optional browser inference experiment
 
 ### Goal
-Test whether a local/private browser mode is feasible **without changing the main system design**. The browser experiment is not allowed to replace the Python + llama.cpp server path.
+Test whether a local/private browser mode is feasible **without changing the main system design**. The browser experiment is not allowed to replace the Python backend + local GGUF server path.
 
 ### Tasks
 1. implement capability detection

@@ -29,14 +29,19 @@ def build_retrieval_context(
     """Build ranked retrieval context for the assistant.
 
     The active path is dense-only retrieval unless reranking is explicitly
-    requested.
+    requested. While reranking is off, the live path retrieves exactly `top_k`
+    chunks and does not use `candidate_pool` as a separate runtime lever.
     """
 
     retrieval_service = get_faiss_hnsw_retrieval_service()
     result_count = top_k or settings.default_top_k
-    candidate_count = max(result_count, settings.retrieval_candidate_pool_size)
-    candidates = retrieval_service.search(question, candidate_count)
     reranker_enabled = settings.retrieval_enable_reranker if use_reranker is None else use_reranker
+    candidate_count = (
+        max(result_count, settings.retrieval_candidate_pool_size)
+        if reranker_enabled
+        else result_count
+    )
+    candidates = retrieval_service.search(question, candidate_count)
     if reranker_enabled:
         selected_chunks = rerank_chunks(question=question, candidates=candidates, top_k=result_count)
     else:

@@ -85,6 +85,18 @@ def _manifest_payload(*, chunk_count: int, embedding_model: str, vector_size: in
     }
 
 
+def _normalize_embedding_model_id(value: str) -> str:
+    configured = settings.retrieval_embedding_model_id
+    if value == configured:
+        return configured
+
+    configured_name = Path(configured).name
+    value_name = Path(value).name
+    if value_name and value_name == configured_name:
+        return configured
+    return value
+
+
 def _read_manifest(path: Path) -> dict[str, object] | None:
     if not path.exists():
         return None
@@ -103,7 +115,9 @@ def _sqlite_corpus_matches(expected_count: int, *, embedding_model: str, vector_
         if existing_count != expected_count or existing_count == 0 or first_row is None:
             return False
         first_dim = len(_bytes_to_embedding(first_row.embedding))
-        return first_dim == vector_size and first_row.embedding_model == embedding_model
+        stored_model = _normalize_embedding_model_id(first_row.embedding_model)
+        expected_model = _normalize_embedding_model_id(embedding_model)
+        return first_dim == vector_size and stored_model == expected_model
 
 
 def _faiss_artifacts_match(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
@@ -120,7 +134,11 @@ def _faiss_artifacts_match(expected_count: int, *, embedding_model: str, vector_
         "faiss_hnsw_ef_construction": settings.faiss_hnsw_ef_construction,
     }
     for key, expected_value in expected_manifest.items():
-        if manifest.get(key) != expected_value:
+        actual_value = manifest.get(key)
+        if key == "embedding_model":
+            actual_value = _normalize_embedding_model_id(str(actual_value))
+            expected_value = _normalize_embedding_model_id(str(expected_value))
+        if actual_value != expected_value:
             return False
 
     index = faiss.read_index(str(index_path))

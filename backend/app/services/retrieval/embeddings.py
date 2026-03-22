@@ -71,8 +71,9 @@ class DeterministicHashEmbeddingProvider:
 class Qwen3EmbeddingProvider:
     """Sentence-Transformers wrapper for the Qwen3 embedding series."""
 
-    def __init__(self, model_name: str, batch_size: int = 32) -> None:
-        self.model_id = model_name
+    def __init__(self, model_name: str, *, model_id: str, batch_size: int = 32) -> None:
+        self.model_id = model_id
+        self.model_source = model_name
         self.vector_size = settings.retrieval_vector_size
         self.batch_size = batch_size
         self._model = None
@@ -112,7 +113,7 @@ class Qwen3EmbeddingProvider:
         if self._model is None:
             from sentence_transformers import SentenceTransformer
 
-            self._model = SentenceTransformer(self.model_id)
+            self._model = SentenceTransformer(self.model_source)
         return self._model
 
 
@@ -126,6 +127,7 @@ def get_embedding_provider() -> EmbeddingProvider:
     if provider_name == "qwen3":
         return Qwen3EmbeddingProvider(
             model_name=settings.retrieval_embedding_model_name,
+            model_id=settings.retrieval_embedding_model_id,
             batch_size=settings.retrieval_embedding_batch_size,
         )
     raise ValueError(f"Unsupported retrieval embedding provider: {settings.retrieval_embedding_provider}")

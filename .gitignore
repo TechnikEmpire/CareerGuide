@@ -136,6 +136,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
 .envrc
 .venv
 env/
@@ -224,6 +225,11 @@ data/processed/esco/**/*.jsonl
 !data/processed/esco/manifests/*.json
 !data/processed/esco/bilingual/esco_concepts.en_ru.jsonl
 
+# Local model runtime artifacts and generated runtime config
+models/*
+!models/README.md
+config/*.local.json
+
 # Persist the canonical FAISS retrieval cache for the active Qwen3 retrieval
 # configuration. The local SQLite database remains untracked.
 data/processed/retrieval/*
@@ -234,6 +240,9 @@ data/processed/retrieval/*
 # Generated benchmark and evaluation outputs
 eval/out/*
 !eval/out/README.md
+!eval/out/dense_retrieval_tuning.json
+!eval/out/answer_predictions.json
+!eval/out/answer_scores.json
 !eval/out/retrieval_predictions_dense.json
 !eval/out/retrieval_predictions_rerank.json
 !eval/out/retrieval_scores_dense.json

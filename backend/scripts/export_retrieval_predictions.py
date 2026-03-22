@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-json",
         type=Path,
-        default=Path("eval/out/retrieval_predictions.json"),
+        default=Path("eval/out/retrieval_predictions_dense.json"),
         help="Output path for ranked retrieval predictions.",
     )
     parser.add_argument(

@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.config import settings
 from backend.app.main import create_app
+from backend.app.services.generation.generator_client import get_generator_client
 from backend.app.services.retrieval.embeddings import get_embedding_provider
 from backend.app.services.retrieval.faiss_hnsw import build_retrieval_index
 from backend.app.services.retrieval.faiss_hnsw import get_faiss_hnsw_retrieval_service
@@ -32,6 +33,7 @@ def use_deterministic_retrieval_backend(tmp_path_factory) -> Iterator[None]:
     previous_bilingual_path = settings.esco_bilingual_concepts_path
     previous_relations_path = settings.esco_relations_path
     previous_database_url = settings.database_url
+    previous_generation_runtime = settings.generation_runtime
 
     tmp_path = tmp_path_factory.mktemp("retrieval-index")
     _write_test_esco_fixture(tmp_path)
@@ -46,9 +48,11 @@ def use_deterministic_retrieval_backend(tmp_path_factory) -> Iterator[None]:
     settings.esco_bilingual_concepts_path = tmp_path / "esco_concepts.en_ru.jsonl"
     settings.esco_relations_path = tmp_path / "esco_relations.jsonl"
     settings.database_url = f"sqlite:///{test_database_path}"
+    settings.generation_runtime = "stub"
     configure_database(settings.database_url)
     get_embedding_provider.cache_clear()
     get_reranker_provider.cache_clear()
+    get_generator_client.cache_clear()
     get_faiss_hnsw_retrieval_service.cache_clear()
     load_esco_retrieval_chunks.cache_clear()
     build_retrieval_index(force=True)
@@ -64,9 +68,11 @@ def use_deterministic_retrieval_backend(tmp_path_factory) -> Iterator[None]:
         settings.esco_bilingual_concepts_path = previous_bilingual_path
         settings.esco_relations_path = previous_relations_path
         settings.database_url = previous_database_url
+        settings.generation_runtime = previous_generation_runtime
         configure_database(settings.database_url)
         get_embedding_provider.cache_clear()
         get_reranker_provider.cache_clear()
+        get_generator_client.cache_clear()
         get_faiss_hnsw_retrieval_service.cache_clear()
         load_esco_retrieval_chunks.cache_clear()
 

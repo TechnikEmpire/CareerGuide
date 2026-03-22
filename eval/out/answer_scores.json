@@ -1,0 +1,45 @@
+{
+  "scored_at": "2026-03-22T22:59:26.604598+00:00",
+  "report": {
+    "answer_evidence": {
+      "case_count": 6,
+      "aggregate": {
+        "evidence_precision": 0.75,
+        "evidence_recall": 0.5833,
+        "evidence_f1": 0.6389
+      },
+      "per_case": {
+        "career-transition-en-001": {
+          "evidence_precision": 1.0,
+          "evidence_recall": 0.5,
+          "evidence_f1": 0.6667
+        },
+        "career-transition-ru-001": {
+          "evidence_precision": 1.0,
+          "evidence_recall": 0.5,
+          "evidence_f1": 0.6667
+        },
+        "project-management-en-001": {
+          "evidence_precision": 0.5,
+          "evidence_recall": 0.5,
+          "evidence_f1": 0.5
+        },
+        "project-management-ru-001": {
+          "evidence_precision": 0.5,
+          "evidence_recall": 0.5,
+          "evidence_f1": 0.5
+        },
+        "data-analytics-en-001": {
+          "evidence_precision": 1.0,
+          "evidence_recall": 1.0,
+          "evidence_f1": 1.0
+        },
+        "data-analytics-ru-001": {
+          "evidence_precision": 0.5,
+          "evidence_recall": 0.5,
+          "evidence_f1": 0.5
+        }
+      }
+    }
+  }
+}

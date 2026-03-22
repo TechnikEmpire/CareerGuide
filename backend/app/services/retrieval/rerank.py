@@ -57,7 +57,8 @@ class Qwen3RerankerProvider:
     """Qwen3-based passage reranker using the official yes/no scoring pattern."""
 
     def __init__(self) -> None:
-        self.model_id = settings.retrieval_reranker_model_name
+        self.model_id = settings.retrieval_reranker_model_id
+        self.model_source = settings.retrieval_reranker_model_name
         self._tokenizer = None
         self._model = None
         self._torch = None
@@ -111,7 +112,7 @@ class Qwen3RerankerProvider:
                 "Install the backend requirements before enabling the qwen3 reranker."
             ) from exc
 
-        tokenizer = AutoTokenizer.from_pretrained(self.model_id, padding_side="left")
+        tokenizer = AutoTokenizer.from_pretrained(self.model_source, padding_side="left")
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
 
@@ -119,7 +120,7 @@ class Qwen3RerankerProvider:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         if torch.cuda.is_available():
             model_kwargs["dtype"] = torch.float16
-        model = AutoModelForCausalLM.from_pretrained(self.model_id, **model_kwargs).to(device).eval()
+        model = AutoModelForCausalLM.from_pretrained(self.model_source, **model_kwargs).to(device).eval()
 
         prefix = f"<|im_start|>system\n{_SYSTEM_PROMPT}<|im_end|>\n<|im_start|>user\n"
         suffix = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"

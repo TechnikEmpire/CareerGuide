@@ -3,8 +3,11 @@
 # Heavier model and ingestion dependencies can be added once the core scaffold is stable.
 # One-time ESCO translation tooling has its own WSL2/GPU-oriented requirements under
 # `tooling/translation/requirements.txt`.
+# Real local GGUF generation runtime dependencies live in `requirements-runtime.txt`
+# so the main app environment does not force a native inference build by default.
 faiss-cpu
 fastapi
+huggingface-hub>=1.3,<2
 httpx
 numpy
 pydantic

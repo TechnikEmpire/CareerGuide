@@ -1,0 +1,11 @@
+{
+  "host": "127.0.0.1",
+  "port": 8080,
+  "models": [
+    {
+      "model": "/absolute/path/to/qwen3-0.6b-q8_0.gguf",
+      "model_alias": "Qwen/Qwen3-0.6B-GGUF:Q8_0",
+      "n_ctx": 32768
+    }
+  ]
+}

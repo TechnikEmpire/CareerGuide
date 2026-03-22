@@ -1,0 +1,5 @@
+# Optional local generation runtime for real GGUF-backed answers.
+# Install this only when you want the backend to call a real local model server
+# instead of the deterministic stub generator.
+llama-cpp-python[server]>=0.3.16,<0.4
+huggingface-hub>=1.3,<2

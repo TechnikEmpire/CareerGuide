@@ -1,0 +1,166 @@
+{
+  "evaluated_at": "2026-03-22T22:40:33.658436+00:00",
+  "queries_file": "eval/retrieval_benchmark_queries.json",
+  "qrels_file": "eval/retrieval_qrels.json",
+  "retrieval_artifacts": {
+    "chunk_count": 16978,
+    "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+    "vector_size": 1024,
+    "index_path": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/data/processed/retrieval/faiss_hnsw.index",
+    "manifest_path": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/data/processed/retrieval/faiss_hnsw_manifest.json",
+    "sqlite_current": true,
+    "faiss_current": true
+  },
+  "settings": {
+    "cpu_only": true,
+    "top_k_values": [
+      3,
+      5,
+      10,
+      20
+    ],
+    "candidate_pool_values": [
+      5,
+      10,
+      20
+    ],
+    "faiss_hnsw_m": 32,
+    "faiss_hnsw_ef_construction": 80,
+    "faiss_hnsw_ef_search": 64,
+    "note": "When reranking is disabled, candidate_pool does not change the final ranking because the dense path simply trims the top-k FAISS results."
+  },
+  "results": [
+    {
+      "top_k": 3,
+      "candidate_pool": 5,
+      "search_k": 5,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@3": 0.5833,
+        "mrr@3": 1.0,
+        "ndcg@3": 0.9035
+      }
+    },
+    {
+      "top_k": 3,
+      "candidate_pool": 10,
+      "search_k": 10,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@3": 0.5833,
+        "mrr@3": 1.0,
+        "ndcg@3": 0.9035
+      }
+    },
+    {
+      "top_k": 3,
+      "candidate_pool": 20,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@3": 0.5833,
+        "mrr@3": 1.0,
+        "ndcg@3": 0.9035
+      }
+    },
+    {
+      "top_k": 5,
+      "candidate_pool": 5,
+      "search_k": 5,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@5": 0.6574,
+        "mrr@5": 1.0,
+        "ndcg@5": 0.9011
+      }
+    },
+    {
+      "top_k": 5,
+      "candidate_pool": 10,
+      "search_k": 10,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@5": 0.6574,
+        "mrr@5": 1.0,
+        "ndcg@5": 0.9011
+      }
+    },
+    {
+      "top_k": 5,
+      "candidate_pool": 20,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@5": 0.6574,
+        "mrr@5": 1.0,
+        "ndcg@5": 0.9011
+      }
+    },
+    {
+      "top_k": 10,
+      "candidate_pool": 5,
+      "search_k": 10,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@10": 0.7963,
+        "mrr@10": 1.0,
+        "ndcg@10": 0.9304
+      }
+    },
+    {
+      "top_k": 10,
+      "candidate_pool": 10,
+      "search_k": 10,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@10": 0.7963,
+        "mrr@10": 1.0,
+        "ndcg@10": 0.9304
+      }
+    },
+    {
+      "top_k": 10,
+      "candidate_pool": 20,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@10": 0.7963,
+        "mrr@10": 1.0,
+        "ndcg@10": 0.9304
+      }
+    },
+    {
+      "top_k": 20,
+      "candidate_pool": 5,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@20": 0.8611,
+        "mrr@20": 1.0,
+        "ndcg@20": 0.9397
+      }
+    },
+    {
+      "top_k": 20,
+      "candidate_pool": 10,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@20": 0.8611,
+        "mrr@20": 1.0,
+        "ndcg@20": 0.9397
+      }
+    },
+    {
+      "top_k": 20,
+      "candidate_pool": 20,
+      "search_k": 20,
+      "candidate_pool_affects_dense_only_ranking": false,
+      "aggregate": {
+        "recall@20": 0.8611,
+        "mrr@20": 1.0,
+        "ndcg@20": 0.9397
+      }
+    }
+  ]
+}

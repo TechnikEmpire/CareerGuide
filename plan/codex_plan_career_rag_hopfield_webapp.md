@@ -71,6 +71,9 @@ The important nuance is that reranking is not part of the minimal baseline by
 default. The current tracked qrels already show that the reranker hurts ranking
 quality while adding cost, so the active path is dense-only retrieval.
 
+For the current tracked tuning curve, the practical dense-only elbow is
+`top_k=10`, so that is now the active runtime default.
+
 ### 3.4 Why not use a larger model?
 
 Because the project’s difficulty is not raw generation power. The difficulty is grounded retrieval, personalized memory, and careful evaluation. A 7B+ model increases latency and hardware demands without changing the research question much.
@@ -381,9 +384,10 @@ This is the default because:
 ### 6.2 Concrete deployment path
 
 Use:
-- **llama.cpp server**
+- **local OpenAI-compatible GGUF server** (`llama-cpp-python[server]` preferred)
 - GGUF quantized model
 - Python backend calls local inference endpoint
+- cache local runtime artifacts under repo-local ignored `models/` paths
 
 Recommended quantization starting point:
 - `Qwen/Qwen3-0.6B-GGUF:Q8_0`

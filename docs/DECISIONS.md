@@ -37,16 +37,16 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The default generator path is `Qwen/Qwen3-0.6B` served via `llama.cpp`.
+- Decision: The default generator path is `Qwen/Qwen3-0.6B` served through an OpenAI-compatible local GGUF server, with `llama-cpp-python[server]` as the preferred local implementation.
 - Pinned artifact: `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- Rationale: This keeps the generation model compact while moving to the stronger Qwen3 generation line, aligns the generator with the same Qwen3 model family used for retrieval, and matches the official GGUF distribution that Qwen documents for `llama.cpp`.
+- Rationale: This keeps the generation model compact while moving to the stronger Qwen3 generation line, aligns the generator with the same Qwen3 model family used for retrieval, keeps the backend isolated behind a simple HTTP boundary, and avoids requiring a hand-built external `llama.cpp` binary in the normal setup flow.
 
 **Русский**
 
 - Статус: активно
-- Решение: Путь генератора по умолчанию - `Qwen/Qwen3-0.6B`, обслуживаемый через `llama.cpp`.
+- Решение: Путь генератора по умолчанию - `Qwen/Qwen3-0.6B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]` является предпочтительной локальной реализацией.
 - Зафиксированный артефакт: `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- Обоснование: Это сохраняет генератор компактным, одновременно переводя его на более сильную линейку Qwen3, выравнивает генератор с тем же семейством Qwen3, которое используется для retrieval, и соответствует официальному GGUF-дистрибутиву, который Qwen документирует для `llama.cpp`.
+- Обоснование: Это сохраняет генератор компактным, одновременно переводя его на более сильную линейку Qwen3, выравнивает генератор с тем же семейством Qwen3, которое используется для retrieval, сохраняет простой HTTP-барьер между backend и runtime и избавляет обычный setup-flow от необходимости вручную собирать внешний бинарник `llama.cpp`.
 
 ## D-004 Retrieval Stack
 
@@ -317,6 +317,66 @@ Last updated: 2026-03-22
 - Решение: Оставить reranker отключенным по умолчанию.
 - Доказательство: Отслеживаемые score-report показывают одинаковый `recall@20` (`0.8611` против `0.8611`), но худшие dense-versus-rerank результаты для `recall@10` (`0.7963` против `0.7222`), `ndcg@10` (`0.9304` против `0.8814`) и `ndcg@20` (`0.9397` против `0.9048`).
 - Обоснование: Reranker дороже по runtime и в текущем виде хуже на отслеживаемых qrels, поэтому он не должен входить в активный runtime-path.
+
+## D-023 Active Dense-Only Retrieval Default
+
+**English**
+
+- Status: active
+- Decision: Lock the active dense-only runtime default at `top_k=10`.
+- Evidence: The tracked dense-only tuning report shows the practical elbow at `top_k=10`, with `recall@10=0.7963` and `ndcg@10=0.9304`, while `top_k=20` only adds diminishing recall gains (`recall@20=0.8611`, `ndcg@20=0.9397`) at the cost of larger grounded context.
+- Rationale: `top_k=10` captures most of the measured retrieval benefit without paying the full prompt-size cost of `top_k=20`, and is therefore the best current dense-only runtime tradeoff.
+
+**Русский**
+
+- Статус: активно
+- Решение: Зафиксировать активный dense-only runtime-default на `top_k=10`.
+- Доказательство: Отслеживаемый dense-only tuning-report показывает практический elbow на `top_k=10`, где `recall@10=0.7963` и `ndcg@10=0.9304`, тогда как `top_k=20` дает уже убывающую прибавку recall (`recall@20=0.8611`, `ndcg@20=0.9397`) ценой большего grounded-context.
+- Обоснование: `top_k=10` захватывает большую часть измеренной retrieval-пользы без полной цены `top_k=20` по размеру prompt, поэтому на текущий момент это лучший dense-only runtime tradeoff.
+
+## D-024 Candidate Pool In Active Dense-Only Mode
+
+**English**
+
+- Status: active
+- Decision: Treat `candidate_pool` as inactive in the live dense-only runtime path while reranking remains disabled.
+- Evidence: The tracked dense-only tuning output shows identical scores for all tested `candidate_pool` values at the same `top_k`, and the active path no longer reranks candidates.
+- Rationale: Leaving `candidate_pool` in the active path would imply a runtime tuning lever that currently does not exist. It should remain only for explicit ablation or future reranker work.
+
+**Русский**
+
+- Статус: активно
+- Решение: Считать `candidate_pool` неактивным в live dense-only runtime-path, пока reranking остается выключенным.
+- Доказательство: Отслеживаемый dense-only tuning-output показывает одинаковые score для всех протестированных значений `candidate_pool` при одном и том же `top_k`, а активный path больше не делает reranking candidates.
+- Обоснование: Оставлять `candidate_pool` в активном path означало бы притворяться, что сейчас существует runtime-рычаг настройки, которого на деле нет. Он должен сохраняться только для явных ablation-экспериментов или будущей работы с reranker.
+
+## D-025 Local Runtime Artifact Policy
+
+**English**
+
+- Status: active
+- Decision: Local generator and retrieval-runtime model artifacts must be cached under repo-local ignored paths in `models/`, and helper scripts must generate `.env.local` plus the local generation-server config automatically.
+- Rationale: The project now depends on local model artifacts for repeatable generation and query-embedding behavior, but those artifacts are too large and machine-specific for Git. Keeping them repo-local, ignored, and script-managed makes the workflow reproducible without pretending the artifacts are source-controlled.
+
+**Русский**
+
+- Статус: активно
+- Решение: Локальные model-артефакты для generator и retrieval-runtime должны кэшироваться в игнорируемых repo-local путях внутри `models/`, а helper-скрипты должны автоматически генерировать `.env.local` и локальную конфигурацию generation-server.
+- Обоснование: Теперь проект зависит от локальных model-артефактов для повторяемого поведения generation и query-embedding, но эти артефакты слишком велики и слишком machine-specific для Git. Хранение их в repo-local ignored-path и управление через скрипты делает workflow воспроизводимым, не притворяясь, что эти артефакты контролируются Git.
+
+## D-026 Answer-Evidence Citation Attribution
+
+**English**
+
+- Status: active
+- Decision: Canonical answer-evidence scoring must rely on explicit model-selected `cited_chunk_ids`. The system must not score the entire retrieved context as if every retrieved chunk had been cited.
+- Rationale: Treating the whole retrieval context as citations makes answer-evidence precision collapse as `top_k` grows and turns the metric into a proxy for context width rather than attribution quality. The canonical answer export must therefore preserve explicit citation selection.
+
+**Русский**
+
+- Статус: активно
+- Решение: Канонический score для answer-evidence должен опираться на явные `cited_chunk_ids`, выбранные моделью. Система не должна score-ить весь retrieved-context так, как будто каждая извлеченная запись была процитирована.
+- Обоснование: Если считать цитатами весь retrieval-context, precision для answer-evidence разрушается по мере роста `top_k`, и метрика превращается в прокси ширины context, а не качества атрибуции. Поэтому канонический export ответов обязан сохранять явный выбор citation-ID.
 
 ## Decision Maintenance Rule
 

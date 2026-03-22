@@ -1,0 +1,149 @@
+"""Unit tests for local generator-client parsing helpers."""
+
+from __future__ import annotations
+
+from backend.app.services.generation.generator_client import _extract_answer_payload
+from backend.app.services.generation.generator_client import _extract_json_object
+from backend.app.services.generation.generator_client import _strip_think_tags
+from backend.app.services.generation.schemas import RetrievedChunk
+from backend.app.services.retrieval.rag_pipeline import RetrievalContext
+
+
+def test_strip_think_tags_removes_reasoning_block() -> None:
+    text = "<think>hidden reasoning</think>\nFinal answer"
+    assert _strip_think_tags(text) == "Final answer"
+
+
+def test_extract_json_object_reads_fenced_json() -> None:
+    payload = _extract_json_object(
+        "```json\n"
+        '{"goal":"become a developer","target_role":"software developer","steps":[{"title":"Study","description":"Start small"}]}\n'
+        "```"
+    )
+    assert payload["goal"] == "become a developer"
+    assert payload["steps"][0]["title"] == "Study"
+
+
+def test_extract_json_object_ignores_think_tags() -> None:
+    payload = _extract_json_object(
+        "<think>do not expose this</think>"
+        '{"goal":"grow","target_role":"analyst","steps":[{"title":"Map skills","description":"Compare evidence"}]}'
+    )
+    assert payload["target_role"] == "analyst"
+
+
+def test_extract_answer_payload_uses_explicit_cited_chunk_ids() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Chunk 1",
+                text="First chunk",
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="chunk-2",
+                source_name="ESCO",
+                source_url="http://example.com/2",
+                title="Chunk 2",
+                text="Second chunk",
+                score=0.8,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        '{"answer":"Grounded answer","cited_chunk_ids":["chunk-2","chunk-1","chunk-2"]}',
+        retrieval_context,
+    )
+
+    assert answer == "Grounded answer"
+    assert [chunk.chunk_id for chunk in citations] == ["chunk-2", "chunk-1"]
+
+
+def test_extract_answer_payload_resolves_numeric_evidence_refs() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Chunk 1",
+                text="First chunk",
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="chunk-2",
+                source_name="ESCO",
+                source_url="http://example.com/2",
+                title="Chunk 2",
+                text="Second chunk",
+                score=0.8,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        '{"answer":"Grounded answer","cited_refs":[2,1,2]}',
+        retrieval_context,
+    )
+
+    assert answer == "Grounded answer"
+    assert [chunk.chunk_id for chunk in citations] == ["chunk-2", "chunk-1"]
+
+
+def test_extract_answer_payload_salvages_partial_json_and_refs() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Chunk 1",
+                text="First chunk",
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="chunk-2",
+                source_name="ESCO",
+                source_url="http://example.com/2",
+                title="Chunk 2",
+                text="Second chunk",
+                score=0.8,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        '{"answer":"Grounded answer","cited_refs":[2,1',
+        retrieval_context,
+    )
+
+    assert answer == "Grounded answer"
+    assert [chunk.chunk_id for chunk in citations] == ["chunk-2", "chunk-1"]
+
+
+def test_extract_answer_payload_falls_back_to_plain_text_without_fake_citations() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Chunk 1",
+                text="First chunk",
+                score=0.9,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload("Plain text answer", retrieval_context)
+
+    assert answer == "Plain text answer"
+    assert citations == []
