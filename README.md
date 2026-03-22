@@ -8,6 +8,10 @@ Russian-first for end users. English documentation is maintained for collaborati
 
 Проект ориентирован в первую очередь на русскоязычных пользователей. Английская документация поддерживается для совместной работы и ревью.
 
+The repository now tracks the processed ESCO source layer needed to continue implementation: normalized concept artifacts, normalized relation artifacts, the bilingual translated concept corpus, and preprocessing manifests. Raw ESCO vendor downloads remain ignored.
+
+Репозиторий теперь отслеживает обработанный ESCO source layer, необходимый для продолжения реализации: нормализованные concept-артефакты, нормализованные relation-артефакты, двуязычный translated concept corpus и preprocessing manifests. Raw ESCO vendor downloads по-прежнему игнорируются.
+
 ## Authoritative Repository Docs
 
 - `AGENTS.md` - canonical working guide for AI coding agents
@@ -17,6 +21,7 @@ Russian-first for end users. English documentation is maintained for collaborati
 - `docs/SETUP.md` - local environment setup for WSL, Windows, and macOS
 - `docs/ROADMAP.md` - long-horizon implementation stages
 - `docs/STATUS.md` - current project snapshot and next steps
+- `docs/ESCO_PREPROCESSING.md` - one-time ESCO normalization and translation workflow
 
 ## Канонические документы репозитория
 
@@ -27,6 +32,7 @@ Russian-first for end users. English documentation is maintained for collaborati
 - `docs/SETUP.md` - настройка локального окружения для WSL, Windows и macOS
 - `docs/ROADMAP.md` - долгосрочные стадии реализации
 - `docs/STATUS.md` - текущий снимок проекта и ближайшие шаги
+- `docs/ESCO_PREPROCESSING.md` - one-time workflow нормализации и перевода ESCO
 
 ## Local Environment
 

@@ -27,7 +27,7 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | Stage | Status | Summary |
 | --- | --- | --- |
 | 0. Repo foundation and governance | completed | Bilingual repo guidance, setup docs, engineering standards, decisions log, and initial scaffold are in place. |
-| 1. Corpus acquisition and normalization | in_progress | Ingestion module entry points exist, but real authoritative source ingestion and normalized artifacts are not implemented yet. |
+| 1. Corpus acquisition and normalization | completed | ESCO English source ingestion, normalization, deduplication, and tracked bilingual preprocessing artifacts are now in place for the current first-source scope. |
 | 2. Embeddings and retrieval index | scaffolded | A transparent retrieval scaffold exists, but the real SQLite corpus index, multilingual embeddings, and rebuild flow are still pending. |
 | 3. Reranking and baseline RAG | scaffolded | API shape and stub generation exist, but real multilingual reranking and `llama.cpp` generation are not wired yet. |
 | 4. User profile and artifact memory | scaffolded | Memory schemas and in-process storage exist, but editable persistent profile and artifact storage are not finished. |
@@ -42,7 +42,7 @@ For the short-term snapshot, use `docs/STATUS.md`.
 
 The most important next implementation path remains:
 
-1. real corpus ingestion
+1. chunk generation from the tracked ESCO source layer
 2. real multilingual retrieval index
 3. real multilingual reranking
 4. real `llama.cpp` generator integration
@@ -75,7 +75,7 @@ The most important next implementation path remains:
 | Stage | Status | Summary |
 | --- | --- | --- |
 | 0. Основа репозитория и governance | completed | Созданы двуязычные правила репозитория, setup-документация, engineering standards, decisions log и начальный scaffold. |
-| 1. Сбор корпуса и нормализация | in_progress | Точки входа для ingestion-модулей существуют, но реальная загрузка авторитетных источников и нормализованные артефакты еще не реализованы. |
+| 1. Сбор корпуса и нормализация | completed | Для текущего scope первого источника уже реализованы загрузка ESCO English source, normalization, deduplication и отслеживаемые двуязычные preprocessing-артефакты. |
 | 2. Эмбеддинги и retrieval index | scaffolded | Прозрачный retrieval-scaffold уже есть, но настоящий SQLite-индекс корпуса, multilingual embeddings и воспроизводимая сборка еще не готовы. |
 | 3. Reranking и baseline RAG | scaffolded | Форма API и stub-generation уже есть, но настоящий multilingual reranking и генерация через `llama.cpp` еще не подключены. |
 | 4. User profile и artifact memory | scaffolded | Схемы памяти и in-process storage уже есть, но редактируемый persistent profile и artifact storage еще не завершены. |
@@ -90,7 +90,7 @@ The most important next implementation path remains:
 
 Наиболее важная следующая последовательность реализации остается такой:
 
-1. реальная загрузка корпуса
+1. генерация chunk-ов из отслеживаемого ESCO source layer
 2. реальный multilingual retrieval index
 3. реальный multilingual reranking
 4. реальная интеграция генератора через `llama.cpp`

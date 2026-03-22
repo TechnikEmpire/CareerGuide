@@ -1,0 +1,28 @@
+{
+  "dataset": "esco",
+  "input_concepts_path": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/data/processed/esco/normalized/esco_concepts.en.jsonl",
+  "output_concepts_path": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/data/processed/esco/bilingual/esco_concepts.en_ru.jsonl",
+  "model_name": "facebook/nllb-200-3.3B",
+  "source_lang": "eng_Latn",
+  "target_lang": "rus_Cyrl",
+  "record_batch_size": 8,
+  "text_batch_size": 64,
+  "max_source_length": 256,
+  "max_new_tokens": 256,
+  "num_beams": 1,
+  "compile_enabled": false,
+  "compile_mode": null,
+  "length_bucketing_enabled": true,
+  "run_started_at": "2026-03-22T17:43:39.150512+00:00",
+  "run_completed_at": "2026-03-22T18:18:21.297554+00:00",
+  "records_seen": 18237,
+  "records_previously_completed": 3190,
+  "records_translated_this_run": 15047,
+  "translated_fields_this_run": 117488,
+  "duplicate_input_rows_removed": 0,
+  "notes": [
+    "Source English fields remain canonical.",
+    "Russian fields are derived translations for one-time preprocessing.",
+    "Relations remain language-neutral through concept URIs and should be joined against bilingual concept records later."
+  ]
+}

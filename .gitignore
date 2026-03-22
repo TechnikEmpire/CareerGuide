@@ -210,3 +210,16 @@ __marimo__/
 data/processed/*.db
 data/processed/*.sqlite
 data/processed/*.sqlite3
+
+# CareerGuide raw and generated corpus artifacts
+# Policy:
+# - raw vendor ESCO downloads stay ignored
+# - normalized ESCO concept/relation artifacts, bilingual translated ESCO corpus,
+#   and preprocessing manifests are tracked deliverables
+data/raw/ESCO/
+data/processed/esco/**/*.json
+data/processed/esco/**/*.jsonl
+!data/processed/esco/normalized/esco_concepts.en.jsonl
+!data/processed/esco/normalized/esco_relations.jsonl
+!data/processed/esco/manifests/*.json
+!data/processed/esco/bilingual/esco_concepts.en_ru.jsonl

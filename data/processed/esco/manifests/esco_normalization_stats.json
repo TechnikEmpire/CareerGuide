@@ -1,0 +1,38 @@
+{
+  "dataset": "esco",
+  "dataset_version": "1.2.1",
+  "raw_dir": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/data/raw/ESCO/ESCO_dataset_v1.2.1_classification_en_csv",
+  "generated_at": "2026-03-22T17:42:07.386908+00:00",
+  "concept_source_row_count": 18262,
+  "concept_count": 18237,
+  "relation_count": 156336,
+  "counts_by_concept_kind": {
+    "occupation": 3039,
+    "skill_concept": 13939,
+    "isco_group": 619,
+    "skill_group": 640
+  },
+  "duplicate_concept_groups": 25,
+  "duplicate_concept_rows_removed": 25,
+  "duplicate_concepts_by_kind": {
+    "occupation": 4,
+    "skill_concept": 21
+  },
+  "counts_by_relation_family": {
+    "occupation_skill": 126051,
+    "skill_skill": 5818,
+    "broader": 24467
+  },
+  "concept_source_files": [
+    "occupations_en.csv",
+    "skills_en.csv",
+    "ISCOGroups_en.csv",
+    "skillGroups_en.csv"
+  ],
+  "relation_source_files": [
+    "occupationSkillRelations_en.csv",
+    "skillSkillRelations_en.csv",
+    "broaderRelationsOccPillar_en.csv",
+    "broaderRelationsSkillPillar_en.csv"
+  ]
+}

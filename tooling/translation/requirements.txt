@@ -1,0 +1,20 @@
+# Standalone requirements for one-time ESCO preprocessing and EN->RU translation.
+# This file is the canonical clean-install path for a WSL2/Linux workstation with
+# an NVIDIA GPU. It pins a CUDA-enabled PyTorch wheel baseline so the translation
+# model can run on the GPU without extra manual package selection.
+#
+# Baseline choice:
+# - PyTorch 2.6.0
+# - CUDA 12.4 wheel index
+# - Python 3.11 recommended
+#
+# If you reuse an existing Conda environment that already has a working CUDA
+# PyTorch stack, you may install the non-torch packages manually instead of
+# reapplying this file.
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+accelerate>=1.2,<2
+safetensors>=0.4,<1
+sentencepiece>=0.2,<1
+transformers>=4.48,<5
+tqdm>=4.66,<5
