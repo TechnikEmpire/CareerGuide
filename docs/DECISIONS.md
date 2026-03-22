@@ -37,30 +37,30 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The default generator path is `Qwen2.5-1.5B-Instruct-GGUF` served via `llama.cpp`.
-- Pinned artifact: `qwen2.5-1.5b-instruct-q4_k_m.gguf`
-- Rationale: This path is compact, reproducible, practical for modest hardware, and aligned with the execution plan.
+- Decision: The default generator path is `Qwen/Qwen3-0.6B` served via `llama.cpp`.
+- Pinned artifact: `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- Rationale: This keeps the generation model compact while moving to the stronger Qwen3 generation line, aligns the generator with the same Qwen3 model family used for retrieval, and matches the official GGUF distribution that Qwen documents for `llama.cpp`.
 
 **Русский**
 
 - Статус: активно
-- Решение: Путь генератора по умолчанию - `Qwen2.5-1.5B-Instruct-GGUF`, обслуживаемый через `llama.cpp`.
-- Зафиксированный артефакт: `qwen2.5-1.5b-instruct-q4_k_m.gguf`
-- Обоснование: Этот путь компактен, воспроизводим, практичен для умеренного железа и согласован с execution plan.
+- Решение: Путь генератора по умолчанию - `Qwen/Qwen3-0.6B`, обслуживаемый через `llama.cpp`.
+- Зафиксированный артефакт: `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- Обоснование: Это сохраняет генератор компактным, одновременно переводя его на более сильную линейку Qwen3, выравнивает генератор с тем же семейством Qwen3, которое используется для retrieval, и соответствует официальному GGUF-дистрибутиву, который Qwen документирует для `llama.cpp`.
 
 ## D-004 Retrieval Stack
 
 **English**
 
 - Status: active
-- Decision: The MVP retrieval stack uses SQLite, SQLite FTS5, dense embeddings stored in tables, and reranking.
-- Rationale: The corpus is expected to remain small enough for a transparent, lightweight MVP without introducing vector database complexity.
+- Decision: The retrieval stack uses SQLite to persist chunk text, provenance metadata, and embedding payloads, while dense ANN retrieval is handled by FAISS HNSW.
+- Rationale: SQLite remains appropriate for local persistence and inspection, but the vector index itself should be a real ANN structure rather than a database pretending to be one.
 
 **Русский**
 
 - Статус: активно
-- Решение: В MVP retrieval stack использует SQLite, SQLite FTS5, dense embeddings, хранимые в таблицах, и reranking.
-- Обоснование: Ожидается, что корпус останется достаточно небольшим для прозрачного и легковесного MVP без усложнения через vector database.
+- Решение: Retrieval stack использует SQLite для сохранения chunk text, provenance metadata и embedding payloads, а dense ANN-retrieval выполняется через FAISS HNSW.
+- Обоснование: SQLite остается подходящим для локального хранения и инспекции, но сам vector index должен быть настоящей ANN-структурой, а не базой данных, притворяющейся таковой.
 
 ## D-005 User Language Priority
 
@@ -139,14 +139,14 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The planned production retrieval stack should use multilingual retrieval components: `BAAI/bge-m3` for embeddings and `BAAI/bge-reranker-v2-m3` for reranking.
-- Rationale: The project is Russian-first, so production retrieval cannot depend on English-only components without introducing avoidable grounding errors.
+- Decision: The planned production retrieval stack should use `Qwen/Qwen3-Embedding-0.6B` for embeddings and `Qwen/Qwen3-Reranker-0.6B` for reranking.
+- Rationale: This keeps the retrieval stack multilingual, aligns the project with the current Qwen family rather than an older external embedding default, and matches the official Qwen positioning of the embedding/reranking line as a 100+ language retrieval stack.
 
 **Русский**
 
 - Статус: активно
-- Решение: Планируемый production retrieval stack должен использовать multilingual-компоненты: `BAAI/bge-m3` для embeddings и `BAAI/bge-reranker-v2-m3` для reranking.
-- Обоснование: Проект ориентирован прежде всего на русский язык, поэтому production retrieval не может опираться на English-only компоненты без лишних ошибок grounding.
+- Решение: Планируемый production retrieval stack должен использовать `Qwen/Qwen3-Embedding-0.6B` для embeddings и `Qwen/Qwen3-Reranker-0.6B` для reranking.
+- Обоснование: Это сохраняет multilingual retrieval stack, одновременно выравнивает проект по текущему семейству Qwen вместо более старого внешнего embedding default и соответствует официальному позиционированию линейки Qwen Embedding/Reranker как retrieval-стека с поддержкой 100+ языков.
 
 ## D-011 Progress Tracking
 
@@ -189,6 +189,20 @@ Last updated: 2026-03-22
 - Статус: активно
 - Решение: Значения ESCO `conceptUri` являются каноническими идентификаторами concept, используемыми для связывания bilingual concept text с ESCO relation graph, а duplicate source concept rows с одинаковым URI должны схлопываться во время preprocessing с сохранением самой новой `modifiedDate`.
 - Обоснование: URI является стабильным graph key. Текущий English CSV dump ESCO содержит небольшое число duplicate concept rows, которые отличаются только `modifiedDate`, поэтому preprocessing должен удалять это дублирование vendor data, а не переносить его в отслеживаемые bilingual artifacts.
+
+## D-014 Dense Retrieval Backend
+
+**English**
+
+- Status: active
+- Decision: The primary retrieval path should use FAISS HNSW for dense ANN search over the ESCO chunk corpus, while SQLite should persist chunk text, provenance metadata, and stored embedding payloads for that FAISS-backed system.
+- Rationale: SQLite is appropriate for local persistence and inspection, but it should not pretend to be the vector index. FAISS HNSW gives the project a proper ANN retrieval layer without introducing heavier external infrastructure.
+
+**Русский**
+
+- Статус: активно
+- Решение: Основной retrieval path должен использовать FAISS HNSW для dense ANN-search по корпусу ESCO chunk-ов, а SQLite должен сохранять chunk text, provenance metadata и embedding payloads для этой FAISS-backed системы.
+- Обоснование: SQLite подходит для локального хранения и инспекции, но не должен притворяться vector index. FAISS HNSW дает проекту корректный ANN retrieval layer без введения более тяжелой внешней инфраструктуры.
 
 ## Decision Maintenance Rule
 

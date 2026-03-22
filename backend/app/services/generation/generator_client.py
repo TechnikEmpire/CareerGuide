@@ -1,8 +1,9 @@
 """Generation client abstraction.
 
-The real project will call a local `llama.cpp` server with the pinned GGUF
-artifact. Until that runtime is wired in, the stub client returns transparent
-structured responses so API and evaluation work can move forward.
+The real project will call a local `llama.cpp` server with the pinned
+`Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact. Until that runtime is wired in, the stub
+client returns transparent structured responses so API and evaluation work can
+move forward.
 """
 
 from __future__ import annotations

@@ -33,12 +33,13 @@ The claim is:
 ## 1.1 Generator LLM
 
 ### Primary model
-- **Qwen2.5-1.5B-Instruct-GGUF**
-- exact server artifact: **`qwen2.5-1.5b-instruct-q4_k_m.gguf`**
+- **Qwen/Qwen3-0.6B** via GGUF
+- exact server artifact: **`Qwen/Qwen3-0.6B-GGUF:Q8_0`**
 
 Why:
-- much smaller and more realistic for a modest Python-hosted server
-- strong enough for evidence-grounded summarization, schema-following, memory extraction, and short conversational replies
+- compact enough for a modest Python-hosted server
+- stronger generation line than the older Qwen2.5 instruct choice while staying very small
+- aligned with the same Qwen3 model generation used by the retrieval stack
 - the real intelligence in this system should come from retrieval quality and memory relevance, not from a larger generator
 - straightforward to serve with llama.cpp
 
@@ -57,7 +58,7 @@ The LLM is **not** responsible for:
 - making scheduling decisions without emitting structured task objects
 
 ### Fallback model
-- **Qwen2.5-0.5B-Instruct** or another very small instruct model only as an ultra-light experiment
+- another very small instruct model only as an ultra-light experiment
 
 Use this only if hardware is extremely constrained and accept that output quality will drop.
 
@@ -74,13 +75,13 @@ The novelty is the retrieval + memory architecture, not training.
 ## 1.2 Embedding model
 
 ### Primary embedding model
-- **BAAI/bge-m3**
+- **Qwen/Qwen3-Embedding-0.6B**
 
 Why:
 - multilingual and therefore appropriate for a Russian-first product
-- supports more than 100 working languages
-- practical for dense retrieval now and flexible enough for future retrieval experiments
-- still reasonable for local Python-hosted use at student-project scale
+- supports more than 100 languages
+- keeps the retrieval stack aligned with the current Qwen family direction
+- compact enough to be more defensible here than an older heavier multilingual default
 
 ### Optional comparison embedding
 - **e5-small-v2**
@@ -92,13 +93,13 @@ Only use this for an ablation if needed. Do not build the whole project around c
 ## 1.3 Reranker
 
 ### Primary reranker
-- **BAAI/bge-reranker-v2-m3**
+- **Qwen/Qwen3-Reranker-0.6B**
 
 Why:
 - multilingual, which matters for a Russian-first assistant
 - practical for top-k reranking in a student-scale pipeline
-- aligned with the multilingual embedding choice
-- helps reduce semantically-near-but-wrong retrieval hits after hybrid retrieval
+- aligned with the Qwen embedding choice
+- helps reduce semantically-near-but-wrong retrieval hits after dense ANN retrieval
 
 ### Reranker operating point
 - retrieve top 20 candidates
@@ -111,7 +112,7 @@ Why:
 
 ### Default runtime
 - **Python backend + llama.cpp server**
-- serve **`qwen2.5-1.5b-instruct-q4_k_m.gguf`**
+- serve **`Qwen/Qwen3-0.6B-GGUF:Q8_0`**
 - call it from FastAPI
 - keep generation deterministic and short for structured tasks
 
@@ -146,14 +147,14 @@ Pin these exact starting components in the repo config:
 ```yaml
 generator:
   runtime: llama.cpp
-  model_path: models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+  model_ref: Qwen/Qwen3-0.6B-GGUF:Q8_0
   chat_format: qwen
   default_max_tokens: 256
   temperature: 0.2
 embeddings:
-  model_name: BAAI/bge-m3
+  model_name: Qwen/Qwen3-Embedding-0.6B
 reranker:
-  model_name: BAAI/bge-reranker-v2-m3
+  model_name: Qwen/Qwen3-Reranker-0.6B
 ```
 
 Do not replace these components during the initial build. Get the pipeline working first, then run ablations later.
@@ -162,23 +163,22 @@ Do not replace these components during the initial build. Get the pipeline worki
 
 ### For the MVP
 Use:
-- **SQLite**
-- **SQLite FTS5** for lexical retrieval
-- dense embeddings stored in tables
-- brute-force cosine similarity in Python
+- **SQLite** for chunk persistence and provenance
+- **FAISS HNSW** for dense ANN retrieval
+- dense embeddings stored in SQLite tables
+- reranking over dense ANN candidates
 
 Reason:
-- the corpus is small enough
-- avoids premature vector DB complexity
-- easy to explain in an academic report
+- the corpus is modest but large enough to justify a proper ANN layer
+- keeps persistence inspectable while avoiding fake vector-search abstractions
+- matches the Russian-first multilingual retrieval requirement
 
 ### Do not use initially
-- FAISS
 - Chroma
 - Pinecone
 - Qdrant
 
-These are not wrong. They are just unnecessary for the MVP.
+These are not wrong. They are just unnecessary for the MVP while FAISS HNSW already covers the ANN requirement.
 
 ---
 
@@ -410,21 +410,18 @@ At generation time, prefer tier 1 and tier 2 for explicit advice.
 
 ## 4. Retrieval design
 
-The assistant should use **hybrid retrieval**, not pure semantic search.
+The assistant should use **dense ANN retrieval plus reranking**, not lexical fusion.
 
 ## 4.1 Retrieval pipeline
 
 For each user query:
 
 1. classify query intent
-2. generate lexical query terms
-3. generate dense query embedding
-4. retrieve lexical candidates from SQLite FTS
-5. retrieve dense candidates by cosine similarity
-6. merge and deduplicate candidate set
-7. rerank with cross-encoder
-8. select final context chunks
-9. pass context to generator with citations
+2. generate dense query embedding
+3. retrieve dense ANN candidates with FAISS HNSW
+4. rerank candidates with the Qwen reranker
+5. select final context chunks
+6. pass context to generator with citations
 
 ---
 
@@ -459,27 +456,7 @@ Example:
 
 ---
 
-## 4.3 Lexical retrieval
-
-Use **SQLite FTS5** over:
-- title
-- section title
-- chunk text
-- tags
-
-Boost:
-- title matches
-- section heading matches
-- exact occupation/skill code matches
-
-Add manual query expansion:
-- if query mentions “developer”, expand to “software developer”, “software engineer”
-- if query mentions “promotion”, expand with “career progression”, “next level”, “responsibility”
-- if query mentions “burnout”, expand with “stress”, “workload”, “well-being”
-
----
-
-## 4.4 Dense retrieval
+## 4.3 Dense retrieval
 
 Compute embeddings for:
 - all chunks
@@ -487,21 +464,17 @@ Compute embeddings for:
 - incoming user queries
 
 Similarity:
-- cosine similarity
-
-For the corpus size here, brute-force matrix similarity is acceptable.
+- inner-product search over normalized vectors in **FAISS HNSW**
 
 Start with:
-- top 12 dense
-- top 12 lexical
-- merge to 20–24 unique candidates
+- top 20 dense ANN candidates
 
 ---
 
-## 4.5 Reranking
+## 4.4 Reranking
 
-Rerank merged candidates using:
-- `BAAI/bge-reranker-v2-m3`
+Rerank dense ANN candidates using:
+- `Qwen/Qwen3-Reranker-0.6B`
 
 Inputs:
 - `(query, candidate_chunk_text)`
@@ -514,19 +487,17 @@ Select:
 - trim to 4–6 final chunks based on token budget
 
 Log for evaluation:
-- lexical score
 - dense score
 - rerank score
 - final rank
 
 ---
 
-## 4.6 Retrieval debugging artifacts
+## 4.5 Retrieval debugging artifacts
 
 Every assistant run must store:
 - original query
 - intent label
-- lexical candidates
 - dense candidates
 - reranked list
 - final selected contexts
@@ -1026,22 +997,21 @@ Build the reference corpus and normalized storage.
 ## Stage 2 — Embeddings and retrieval index
 
 ### Goal
-Make the corpus searchable with hybrid retrieval.
+Make the corpus searchable with dense ANN retrieval plus reranking.
 
 ### Tasks
 1. create SQLite database schema:
    - `documents`
    - `chunks`
    - `chunk_embeddings`
-2. create FTS table on chunk text and headings
-3. embed all chunks with `bge-m3`
-4. implement cosine similarity retrieval
-5. implement lexical retrieval
-6. merge and deduplicate candidate lists
+2. embed all chunks with `Qwen/Qwen3-Embedding-0.6B`
+3. build a FAISS HNSW index over normalized vectors
+4. implement dense ANN retrieval
+5. persist chunk metadata and embedding payloads in SQLite
 
 ### Acceptance criteria
 - retrieval returns sensible candidates for 10 hand-written test queries
-- lexical and dense results can be inspected independently
+- dense ANN results can be inspected independently
 - embeddings can be rebuilt from scratch reproducibly
 
 ### Deliverables
@@ -1057,10 +1027,10 @@ Make the corpus searchable with hybrid retrieval.
 Create the baseline RAG assistant with structured output.
 
 ### Tasks
-1. add reranker with `BAAI/bge-reranker-v2-m3`
+1. add reranker with `Qwen/Qwen3-Reranker-0.6B`
 2. implement end-to-end retrieval pipeline
 3. add prompt templates
-4. add generator client for llama.cpp server using the pinned Qwen2.5-1.5B q4_k_m GGUF artifact
+4. add generator client for llama.cpp server using the pinned `Qwen/Qwen3-0.6B-GGUF:Q8_0` artifact
 5. add JSON schema enforcement for:
    - career plan
    - skills gap
@@ -1281,8 +1251,8 @@ project/
         retrieval/
           chunking.py
           embeddings.py
-          lexical_search.py
           dense_search.py
+          faiss_hnsw.py
           rerank.py
           rag_pipeline.py
         memory/
@@ -1325,7 +1295,7 @@ project/
 If time is limited, implement in this exact order:
 
 1. corpus ingestion
-2. hybrid retrieval
+2. dense ANN retrieval
 3. reranker
 4. baseline RAG structured outputs
 5. user profile memory

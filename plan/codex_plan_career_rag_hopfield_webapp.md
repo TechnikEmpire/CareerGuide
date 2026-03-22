@@ -1,13 +1,13 @@
-# Codex Build Plan: Web-Based Career Guidance Assistant with Hybrid RAG + Hopfield-Style Memory
+# Codex Build Plan: Web-Based Career Guidance Assistant with Dense ANN RAG + Hopfield-Style Memory
 
 ## 1. Project framing
 
-**Working title:** Career Guidance Assistant with Hybrid RAG and Associative Memory
+**Working title:** Career Guidance Assistant with Dense ANN RAG and Associative Memory
 
 **Research framing:**
 A web-based career guidance assistant that combines:
 - a **small open-weight LLM** for generation,
-- **hybrid RAG** over authoritative career and wellbeing corpora,
+- **dense ANN-backed RAG** over authoritative career and wellbeing corpora,
 - a **Hopfield-style associative memory layer** for persistent user preferences, goals, and constraints.
 
 This aligns with the high-level research document’s recommended scope: use a small open-weight model, authoritative RAG sources, structured outputs, privacy controls, and a modest personalization layer rather than training a large model from scratch. It also matches the implementation document’s advice not to oversell the memory component and to compare **RAG-only** against **RAG + associative memory**. 
@@ -29,7 +29,7 @@ Do **not** spend project time on these unless the core AI path is already workin
 
 The science here is not “can we build a CRUD web app.” The science is:
 1. Can a small local/server-side LLM answer career questions well when grounded in curated corpora?
-2. Does hybrid retrieval improve grounding enough to justify itself?
+2. Does dense ANN retrieval plus reranking improve grounding enough to justify itself?
 3. Does a Hopfield-style memory layer measurably improve personalization and constraint adherence?
 
 ---
@@ -42,11 +42,11 @@ The science here is not “can we build a CRUD web app.” The science is:
 
 ### 3.2 Generation model choice
 
-**Primary model:** `Qwen2.5-1.5B-Instruct-GGUF`
+**Primary model:** `Qwen/Qwen3-0.6B` via GGUF
 
-Use this as the default generation model because it is compact enough for modest student hardware while still being strong enough for grounded summarization, schema-following, memory extraction, and short conversational replies. The project should lean on retrieval quality and memory relevance, not a larger generator.
+Use this as the default generation model because it is compact enough for modest student hardware while still giving a stronger generation baseline than the older Qwen2.5 instruct choice. The project should lean on retrieval quality and memory relevance, not a larger generator.
 
-**Fallback option:** `Qwen2.5-0.5B-Instruct`
+**Fallback option:** another ultra-light instruct model only if hardware becomes extremely constrained
 
 Use this only if hardware is extremely constrained and accept that output quality will drop.
 
@@ -57,9 +57,9 @@ Use this only if your main requirement becomes **CPU inference first** and you w
 ### 3.3 Concrete model decision
 
 For the Codex plan, assume:
-- **Generator:** `Qwen2.5-1.5B-Instruct` via **llama.cpp** server using the pinned GGUF artifact `qwen2.5-1.5b-instruct-q4_k_m.gguf`
-- **Embedding model:** `BAAI/bge-m3`
-- **Reranker:** `BAAI/bge-reranker-v2-m3`
+- **Generator:** `Qwen/Qwen3-0.6B` via **llama.cpp** server using the pinned GGUF artifact `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- **Embedding model:** `Qwen/Qwen3-Embedding-0.6B`
+- **Reranker:** `Qwen/Qwen3-Reranker-0.6B`
 
 This is the simplest defensible trio:
 - small enough to run on modest hardware,
@@ -338,13 +338,13 @@ This gives retrieval text that is easier for the embedding model to use than raw
 
 ### 5.6 Embedding strategy
 
-Use `bge-m3` for:
+Use `Qwen/Qwen3-Embedding-0.6B` for:
 - document chunks
 - user queries
 - memory items
 
 Store embeddings as float arrays in SQLite for MVP.
-Brute-force cosine similarity is acceptable at this scale.
+Use FAISS HNSW over normalized vectors for ANN retrieval.
 
 ### 5.7 Retrieval metadata
 
@@ -382,8 +382,8 @@ Use:
 - Python backend calls local inference endpoint
 
 Recommended quantization starting point:
-- `qwen2.5-1.5b-instruct-q4_k_m.gguf`
-- stay on `Q4_K_M` or a similar practical 4-bit quantization tier unless evaluation shows a clear reason to change
+- `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- start with the official Q8_0 GGUF release and only deviate if evaluation shows a clear reason to change
 
 ### 6.3 Prompting mode
 
@@ -449,58 +449,32 @@ System prompt must explicitly require:
 
 ### 7.1 Core design
 
-Use **hybrid retrieval**:
-1. lexical retrieval
-2. dense retrieval
+Use **dense ANN retrieval**:
+1. dense query embedding
+2. FAISS HNSW candidate search
 3. reranking
 4. prompt assembly
 
-This matches both your attached documents and the current best-practice student-scale architecture.
+This matches the current implementation direction and keeps the retrieval stack honest about what is actually doing the search.
 
-### 7.2 Lexical retrieval
+### 7.2 Dense retrieval
 
-Use SQLite FTS5 over:
-- chunk text
-- titles
-- occupation names
-- skill names
-- metadata aliases
-
-Why lexical retrieval matters:
-- exact role names matter
-- exact skill names matter
-- user queries often contain title and acronym matches
-
-### 7.3 Dense retrieval
-
-Use cosine similarity over `bge-m3` embeddings.
+Use cosine-equivalent inner-product search over normalized `Qwen/Qwen3-Embedding-0.6B` vectors.
 
 For MVP:
-- compute similarity against all chunk embeddings
-- take top 30
+- compute and persist all chunk embeddings
+- build a FAISS HNSW index
+- take top 20–30 dense ANN candidates
 
-This is fine for a modest corpus.
+### 7.3 Reranking
 
-### 7.4 Rank fusion
+Rerank top 20–30 candidates using `Qwen/Qwen3-Reranker-0.6B`.
 
-Combine lexical and dense retrieval with a simple weighted fusion.
-
-Example:
-- normalize FTS score to [0,1]
-- normalize cosine score to [0,1]
-- final score = `0.45 * lexical + 0.55 * dense`
-
-Keep this explicit and tuneable.
-
-### 7.5 Reranking
-
-Rerank top 20–30 candidates using `BAAI/bge-reranker-v2-m3`.
-
-This reranker is small enough for practical use and is designed for passage ranking.
+This keeps the retrieval stack within the Qwen family and avoids treating lexical heuristics as a substitute for semantic search.
 
 Final prompt context should usually include **5–8 chunks** max.
 
-### 7.6 Retrieval profiles by task
+### 7.4 Retrieval profiles by task
 
 Do not use one retrieval mode for every user request.
 
@@ -757,10 +731,9 @@ backend/
     build_chunks.py
     build_embeddings.py
   retrieval/
-    lexical.py
     dense.py
     rerank.py
-    hybrid.py
+    faiss_hnsw.py
     query_router.py
   memory/
     extract.py
@@ -800,8 +773,9 @@ backend/
 - classify user query into task family
 - choose retrieval profile
 
-#### `hybrid.py`
-- run lexical + dense fusion + rerank
+#### `faiss_hnsw.py`
+- run dense ANN search over persisted embeddings
+- return top-k candidates for reranking
 
 #### `hopfield.py`
 - read relevant memory with softmax associative retrieval
@@ -828,9 +802,9 @@ A one-page scope memo fixing:
 - evaluation baselines.
 
 ### Decisions to lock
-- generator = `Qwen2.5-1.5B-Instruct-GGUF` via `qwen2.5-1.5b-instruct-q4_k_m.gguf`
-- embedder = `bge-m3`
-- reranker = `bge-reranker-v2-m3`
+- generator = `Qwen/Qwen3-0.6B` via `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- embedder = `Qwen/Qwen3-Embedding-0.6B`
+- reranker = `Qwen/Qwen3-Reranker-0.6B`
 - no fine-tuning in MVP
 - no browser-local LLM in MVP
 - no vector DB in MVP
@@ -838,7 +812,7 @@ A one-page scope memo fixing:
 ### Acceptance test
 You can state the exact research question in one sentence:
 
-> Does adding a Hopfield-style associative memory layer to a hybrid-RAG career guidance assistant improve personalization and constraint adherence compared with RAG-only generation?
+> Does adding a Hopfield-style associative memory layer to a dense-ANN-RAG career guidance assistant improve personalization and constraint adherence compared with RAG-only generation?
 
 ---
 
@@ -1094,7 +1068,7 @@ That is enough for the scientific core.
 4. ingest GitLab ladder corpus into `career_level`
 5. ingest wellbeing docs into tagged chunks
 6. build embeddings for all chunks
-7. implement FTS + dense + rerank hybrid retrieval
+7. implement FAISS HNSW + reranker retrieval
 8. implement answer pipeline returning JSON with citations
 9. implement memory extraction/upsert
 10. implement Hopfield-style read and integrate it
@@ -1127,9 +1101,9 @@ Codex should not spend cycles “designing a modern web architecture.” It shou
 
 For this project, the cleanest concrete plan is:
 
-- Build a **Python-first backend** around **Qwen2.5-1.5B-Instruct-GGUF + bge-m3 + bge-reranker-v2-m3**.
+- Build a **Python-first backend** around **Qwen/Qwen3-0.6B + Qwen/Qwen3-Embedding-0.6B + Qwen/Qwen3-Reranker-0.6B**.
 - Build a **curated authoritative corpus** from **O*NET + ESCO + OOH + GitLab ladder pages + WHO/NIOSH/CCOHS wellbeing guidance**.
-- Implement **hybrid retrieval** over both chunked text and normalized structured tables.
+- Implement **dense ANN retrieval plus reranking** over both chunked text and normalized structured tables.
 - Implement **Hopfield-style memory** as a softmax associative read over user memory embeddings.
 - Evaluate **RAG-only vs RAG + memory** as the actual scientific comparison.
 

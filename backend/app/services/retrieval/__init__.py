@@ -1,1 +1,1 @@
-"""Retrieval services used by the hybrid RAG pipeline."""
+"""Retrieval services used by the dense ANN RAG pipeline."""

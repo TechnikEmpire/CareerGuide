@@ -12,6 +12,14 @@ The repository now tracks the processed ESCO source layer needed to continue imp
 
 Репозиторий теперь отслеживает обработанный ESCO source layer, необходимый для продолжения реализации: нормализованные concept-артефакты, нормализованные relation-артефакты, двуязычный translated concept corpus и preprocessing manifests. Raw ESCO vendor downloads по-прежнему игнорируются.
 
+The current backend retrieval path uses SQLite for persisted ESCO chunks and metadata, FAISS HNSW for dense ANN retrieval, and `Qwen/Qwen3-Embedding-0.6B` plus `Qwen/Qwen3-Reranker-0.6B` as the production retrieval-model defaults.
+
+Текущий backend retrieval path использует SQLite для хранения persisted ESCO chunks и metadata, FAISS HNSW — для dense ANN-retrieval, а `Qwen/Qwen3-Embedding-0.6B` и `Qwen/Qwen3-Reranker-0.6B` являются production-default для retrieval-моделей.
+
+The planned generator default is now `Qwen/Qwen3-0.6B` via `llama.cpp`, using the official GGUF distribution `Qwen/Qwen3-0.6B-GGUF:Q8_0`.
+
+Планируемый generator-default теперь - `Qwen/Qwen3-0.6B` через `llama.cpp`, с использованием официального GGUF-дистрибутива `Qwen/Qwen3-0.6B-GGUF:Q8_0`.
+
 ## Authoritative Repository Docs
 
 - `AGENTS.md` - canonical working guide for AI coding agents

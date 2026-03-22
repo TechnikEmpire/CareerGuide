@@ -3,12 +3,15 @@
 # Heavier model and ingestion dependencies can be added once the core scaffold is stable.
 # One-time ESCO translation tooling has its own WSL2/GPU-oriented requirements under
 # `tooling/translation/requirements.txt`.
+faiss-cpu
 fastapi
 httpx
 numpy
 pydantic
 pydantic-settings
 pytest
+sentence-transformers>=2.7.0
 sqlalchemy
 tqdm
+transformers>=4.51.0
 uvicorn[standard]

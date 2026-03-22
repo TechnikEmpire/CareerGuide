@@ -122,7 +122,7 @@ After installation, verify the environment with:
 
 ```bash
 python --version
-python -m pip show fastapi numpy pydantic sqlalchemy uvicorn
+python -m pip show faiss-cpu fastapi numpy pydantic sentence-transformers sqlalchemy transformers uvicorn
 python -m pytest backend/tests -q
 ```
 

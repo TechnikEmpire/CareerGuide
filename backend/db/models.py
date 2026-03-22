@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, String, Text
+from sqlalchemy import DateTime, Float, LargeBinary, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -35,6 +35,23 @@ class Chunk(Base):
     text: Mapped[str] = mapped_column(Text())
     chunk_type: Mapped[str] = mapped_column(String(50), index=True)
     source_name: Mapped[str] = mapped_column(String(100), index=True)
+
+
+class RetrievalChunkRecord(Base):
+    """Persisted retrieval chunk and embedding payload for FAISS-backed search."""
+
+    __tablename__ = "retrieval_chunks_v2"
+
+    chunk_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    concept_uri: Mapped[str] = mapped_column(String(255), index=True)
+    concept_kind: Mapped[str] = mapped_column(String(64), index=True)
+    source_name: Mapped[str] = mapped_column(String(100), index=True)
+    source_url: Mapped[str] = mapped_column(String(500))
+    title: Mapped[str] = mapped_column(String(255))
+    text: Mapped[str] = mapped_column(Text())
+    chunk_type: Mapped[str] = mapped_column(String(64), index=True)
+    embedding_model: Mapped[str] = mapped_column(String(255), index=True)
+    embedding: Mapped[bytes] = mapped_column(LargeBinary())
 
 
 class MemoryItem(Base):

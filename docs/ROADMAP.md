@@ -28,8 +28,8 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | --- | --- | --- |
 | 0. Repo foundation and governance | completed | Bilingual repo guidance, setup docs, engineering standards, decisions log, and initial scaffold are in place. |
 | 1. Corpus acquisition and normalization | completed | ESCO English source ingestion, normalization, deduplication, and tracked bilingual preprocessing artifacts are now in place for the current first-source scope. |
-| 2. Embeddings and retrieval index | scaffolded | A transparent retrieval scaffold exists, but the real SQLite corpus index, multilingual embeddings, and rebuild flow are still pending. |
-| 3. Reranking and baseline RAG | scaffolded | API shape and stub generation exist, but real multilingual reranking and `llama.cpp` generation are not wired yet. |
+| 2. Embeddings and retrieval index | in_progress | The main retrieval path now uses SQLite-persisted ESCO chunks, FAISS HNSW dense ANN search, and Qwen3 retrieval-model defaults, but the explicit rebuild flow and runtime benchmarking are still pending. |
+| 3. Reranking and baseline RAG | in_progress | The codebase now targets `Qwen/Qwen3-Reranker-0.6B` for reranking and `Qwen/Qwen3-0.6B` for generation, but the full runtime path still needs benchmark validation and real `llama.cpp` generation. |
 | 4. User profile and artifact memory | scaffolded | Memory schemas and in-process storage exist, but editable persistent profile and artifact storage are not finished. |
 | 5. Memory extraction and consolidation | scaffolded | Basic extraction and consolidation modules exist, but the actual robust flow is still pending. |
 | 6. Hopfield-style memory read | scaffolded | The associative read module exists and is tested at a scaffold level, but it still needs production data flow and debug artifact logging. |
@@ -42,11 +42,10 @@ For the short-term snapshot, use `docs/STATUS.md`.
 
 The most important next implementation path remains:
 
-1. chunk generation from the tracked ESCO source layer
-2. real multilingual retrieval index
-3. real multilingual reranking
-4. real `llama.cpp` generator integration
-5. persistent memory and evaluation maturity
+1. add explicit FAISS/SQLite corpus build and refresh commands
+2. benchmark and tune the Qwen3 embedding/reranking path
+3. real `llama.cpp` generator integration with `Qwen/Qwen3-0.6B`
+4. persistent memory and evaluation maturity
 
 ## Русский
 
@@ -76,8 +75,8 @@ The most important next implementation path remains:
 | --- | --- | --- |
 | 0. Основа репозитория и governance | completed | Созданы двуязычные правила репозитория, setup-документация, engineering standards, decisions log и начальный scaffold. |
 | 1. Сбор корпуса и нормализация | completed | Для текущего scope первого источника уже реализованы загрузка ESCO English source, normalization, deduplication и отслеживаемые двуязычные preprocessing-артефакты. |
-| 2. Эмбеддинги и retrieval index | scaffolded | Прозрачный retrieval-scaffold уже есть, но настоящий SQLite-индекс корпуса, multilingual embeddings и воспроизводимая сборка еще не готовы. |
-| 3. Reranking и baseline RAG | scaffolded | Форма API и stub-generation уже есть, но настоящий multilingual reranking и генерация через `llama.cpp` еще не подключены. |
+| 2. Эмбеддинги и retrieval index | in_progress | Основной retrieval path теперь использует SQLite-persisted ESCO chunks, FAISS HNSW dense ANN index и Qwen3-default для retrieval-моделей, но явный rebuild flow и runtime-benchmarking еще не завершены. |
+| 3. Reranking и baseline RAG | in_progress | Кодовая база теперь ориентирована на `Qwen/Qwen3-Reranker-0.6B` для reranking и `Qwen/Qwen3-0.6B` для генерации, но полный runtime-path все еще требует benchmark-валидации и реальной интеграции через `llama.cpp`. |
 | 4. User profile и artifact memory | scaffolded | Схемы памяти и in-process storage уже есть, но редактируемый persistent profile и artifact storage еще не завершены. |
 | 5. Извлечение памяти и консолидация | scaffolded | Базовые модули extraction и consolidation уже есть, но полноценный надежный flow еще впереди. |
 | 6. Hopfield-style memory read | scaffolded | Модуль associative read уже существует и протестирован на уровне scaffold, но ему еще нужен production data flow и логирование debug-артефактов. |
@@ -90,8 +89,7 @@ The most important next implementation path remains:
 
 Наиболее важная следующая последовательность реализации остается такой:
 
-1. генерация chunk-ов из отслеживаемого ESCO source layer
-2. реальный multilingual retrieval index
-3. реальный multilingual reranking
-4. реальная интеграция генератора через `llama.cpp`
-5. развитие persistent memory и evaluation
+1. добавить явные команды corpus build и refresh для FAISS/SQLite
+2. замерить и настроить путь Qwen3 embeddings + reranking
+3. реальная интеграция генератора `Qwen/Qwen3-0.6B` через `llama.cpp`
+4. развитие persistent memory и evaluation

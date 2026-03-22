@@ -11,6 +11,8 @@ class RetrievedChunk(BaseModel):
     title: str
     text: str
     score: float
+    dense_score: float | None = None
+    rerank_score: float | None = None
 
 
 class AnswerRequest(BaseModel):

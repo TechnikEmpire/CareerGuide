@@ -16,7 +16,7 @@ The student’s strongest academic background is in recurrent neural networks, e
 
 The defensible claim of the project is:
 
-> A grounded career-guidance assistant can be improved by combining hybrid RAG with a lightweight Hopfield-style associative memory layer that stores stable user preferences, goals, and constraints.
+> A grounded career-guidance assistant can be improved by combining dense ANN-backed RAG with a lightweight Hopfield-style associative memory layer that stores stable user preferences, goals, and constraints.
 
 ### Product Scope
 
@@ -74,7 +74,7 @@ CareerGuide - это академическое proof-of-concept веб-прил
 
 Защищаемый тезис проекта звучит так:
 
-> Grounded career-guidance assistant может быть улучшен за счет сочетания hybrid RAG и облегченного Hopfield-style associative memory layer, который хранит устойчивые пользовательские предпочтения, цели и ограничения.
+> Grounded career-guidance assistant может быть улучшен за счет сочетания dense ANN-backed RAG и облегченного Hopfield-style associative memory layer, который хранит устойчивые пользовательские предпочтения, цели и ограничения.
 
 ### Границы продукта
 
