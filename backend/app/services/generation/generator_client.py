@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 from functools import lru_cache
 import json
 import re
@@ -22,7 +23,7 @@ from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 _THINK_TAG_PATTERN = re.compile(r"<think>.*?</think>\s*", flags=re.DOTALL)
 _JSON_FENCE_PATTERN = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", flags=re.DOTALL)
 _PARTIAL_ANSWER_PATTERN = re.compile(
-    r'"answer"\s*:\s*"(?P<answer>.*?)(?=",\s*"(?:cited_refs|cited_chunk_ids)"|\}\s*$|$)',
+    r'"(?P<field>direct_answer|answer)"\s*:\s*"(?P<answer>.*?)(?=",\s*"(?:cited_refs|cited_chunk_ids)"|\}\s*$|$)',
     flags=re.DOTALL,
 )
 _PARTIAL_REFS_PATTERN = re.compile(
@@ -30,6 +31,8 @@ _PARTIAL_REFS_PATTERN = re.compile(
     flags=re.DOTALL,
 )
 _INLINE_REF_PATTERN = re.compile(r"\[(\d+)\]")
+_LEADING_SENTENCE_PATTERN = re.compile(r"^\s*(?P<sentence>.+?(?:[.!?](?:\s|$)|$))", flags=re.DOTALL)
+_WORD_PATTERN = re.compile(r"\w+", flags=re.UNICODE)
 
 
 class GenerationClientError(RuntimeError):
@@ -140,11 +143,13 @@ class LlamaCppGeneratorClient:
         system_prompt = (
             "You are a grounded career guidance assistant. "
             "Answer only from the supplied evidence and memory summary. "
-            "Return only valid JSON with keys answer and cited_refs. "
+            "Return only valid JSON with keys direct_answer and cited_refs. "
             "If the evidence is insufficient, say so plainly. "
             "Do not reveal chain-of-thought or thinking tags. "
             "Follow the requested answer language exactly. "
             "Return a complete final answer and do not stop mid-sentence. "
+            "The direct_answer field must start immediately with the real answer or recommendation. "
+            "Do not repeat or paraphrase the user's request. "
             "Use cited_refs to name the numbered evidence items like 1 or 2. "
             "Cite only evidence references that directly support the final answer."
         )
@@ -153,7 +158,7 @@ class LlamaCppGeneratorClient:
             user_prompt=prompt,
             max_tokens=settings.generation_answer_max_tokens,
         )
-        answer_text, citations = _extract_answer_payload(raw_text, retrieval_context)
+        answer_text, citations = _extract_answer_payload(raw_text, retrieval_context, question)
         return AnswerResponse(
             answer=answer_text,
             citations=citations,
@@ -283,6 +288,7 @@ def _extract_json_object(text: str) -> dict[str, Any]:
 def _extract_answer_payload(
     text: str,
     retrieval_context: RetrievalContext,
+    question: str,
 ) -> tuple[str, list[RetrievedChunk]]:
     """Extract a grounded answer plus explicit cited chunk IDs.
 
@@ -299,11 +305,11 @@ def _extract_answer_payload(
         partial_answer, partial_refs = _extract_partial_answer_fields(cleaned)
         if partial_answer is not None:
             citations = _resolve_citation_refs(partial_refs, retrieval_context)
-            return partial_answer, citations
+            return _strip_question_restatement(partial_answer, question), citations
         citations = _resolve_citation_refs(_INLINE_REF_PATTERN.findall(cleaned), retrieval_context)
-        return cleaned, citations
+        return _strip_question_restatement(cleaned, question), citations
 
-    answer = str(payload.get("answer", "")).strip()
+    answer = str(payload.get("direct_answer") or payload.get("answer") or "").strip()
     if not answer:
         raise GenerationClientError("The generation server returned an empty answer payload.")
 
@@ -314,7 +320,7 @@ def _extract_answer_payload(
         raise GenerationClientError("The generation server returned invalid cited_refs.")
 
     citations = _resolve_citation_refs(cited_refs_raw, retrieval_context)
-    return answer, citations
+    return _strip_question_restatement(answer, question), citations
 
 
 def _extract_partial_answer_fields(text: str) -> tuple[str | None, list[str]]:
@@ -350,6 +356,48 @@ def _extract_ref_tokens(refs_blob: str) -> list[str]:
         if numeric not in tokens:
             tokens.append(numeric)
     return tokens
+
+
+def _normalize_for_similarity(text: str) -> str:
+    """Normalize text for conservative paraphrase detection."""
+
+    return " ".join(_WORD_PATTERN.findall(text.casefold()))
+
+
+def _strip_question_restatement(answer: str, question: str) -> str:
+    """Remove a leading sentence that merely restates the user's question."""
+
+    cleaned_answer = answer.strip()
+    if not cleaned_answer:
+        return cleaned_answer
+
+    match = _LEADING_SENTENCE_PATTERN.match(cleaned_answer)
+    if match is None:
+        return cleaned_answer
+
+    first_sentence = match.group("sentence").strip()
+    normalized_question = _normalize_for_similarity(question)
+    normalized_sentence = _normalize_for_similarity(first_sentence)
+    if not normalized_question or not normalized_sentence:
+        return cleaned_answer
+
+    question_tokens = set(normalized_question.split())
+    sentence_tokens = set(normalized_sentence.split())
+    if len(question_tokens) < 4 or len(sentence_tokens) < 4:
+        return cleaned_answer
+
+    overlap_ratio = len(question_tokens & sentence_tokens) / max(len(question_tokens), 1)
+    similarity_ratio = SequenceMatcher(
+        None,
+        normalized_question,
+        normalized_sentence,
+    ).ratio()
+
+    if overlap_ratio < 0.7 and similarity_ratio < 0.82:
+        return cleaned_answer
+
+    stripped = cleaned_answer[match.end():].lstrip(" \n\t-:;,.")
+    return stripped or cleaned_answer
 
 
 def _resolve_citation_refs(

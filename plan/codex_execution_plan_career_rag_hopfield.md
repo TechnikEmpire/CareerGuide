@@ -26,6 +26,14 @@ The claim is:
 
 > A grounded career-guidance assistant can be improved by combining standard RAG with a lightweight Hopfield-style associative memory layer that stores stable user preferences, goals, and constraints.
 
+### Current repo checkpoint
+
+- `Baseline RAG v1 Complete` is already closed for the current scope.
+- The active milestone is now `Memory Layer v1 Integrated`.
+- The repo now has SQLite-backed persistent memory storage for `memory_items`.
+- The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before retrieval and prompt assembly.
+- The next real comparison is no longer dense-only versus reranker; it is `RAG-only` versus `RAG + memory`.
+
 ---
 
 ## 1. Final technical decisions

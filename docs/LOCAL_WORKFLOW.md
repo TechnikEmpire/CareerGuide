@@ -44,6 +44,37 @@ The active baseline is now:
 The active dense-only runtime default is now `top_k=10`, based on the current
 tracked tuning curve.
 
+### How Memory Works In The Current App
+
+The local app is no longer using fake in-process-only memory.
+
+At the current stage:
+
+- user memory is persisted in the local SQLite `memory_items` table
+- `/chat/answer` now extracts simple memory candidates from the user question
+- the persisted memory set is read back immediately and summarized for prompt assembly
+- duplicate memory text is collapsed by normalized text per user
+
+This is still a narrow first slice, not the final memory system. The current
+heuristic mainly captures explicit preference or constraint phrasing such as
+`prefer`, `want`, `need`, `cannot`, or `can't`.
+
+### Как память работает в текущем приложении
+
+Локальное приложение больше не использует фальшивую память только внутри
+процесса.
+
+На текущем этапе:
+
+- user memory сохраняется в локальной SQLite-таблице `memory_items`
+- `/chat/answer` теперь извлекает простые memory-candidates из вопроса пользователя
+- persisted memory сразу читается обратно и суммируется для prompt assembly
+- дублирующийся memory-text схлопывается по normalized-text отдельно для каждого пользователя
+
+Это все еще узкий первый slice, а не финальная memory-system. Текущая
+эвристика в основном ловит явные формулировки preference или constraint, такие
+как `prefer`, `want`, `need`, `cannot` и `can't`.
+
 ### Why Local Models Are Still Needed
 
 Even though the retrieval index is already built, answer generation still needs:
@@ -71,6 +102,16 @@ Start the full local app stack with one command:
 ```bash
 python -m backend.scripts.run_local_app_stack --reload
 ```
+
+When `--reload` is enabled, the backend now watches the `backend/` source tree
+instead of mutable runtime artifacts like the local SQLite database, model
+cache, or eval outputs. That avoids pointless backend restarts after normal app
+requests mutate local state.
+
+Когда включен `--reload`, backend теперь следит за деревом исходников
+`backend/`, а не за изменяемыми runtime-артефактами вроде локальной SQLite-базы,
+model-cache или eval-output. Это предотвращает бессмысленные перезапуски
+backend после обычных app-запросов, которые меняют локальное состояние.
 
 If you want to control the two processes manually, the advanced commands are:
 
@@ -120,6 +161,7 @@ The current workflow is not:
 - rebuilding the ESCO translation layer
 - rebuilding the FAISS index on every run; it only refreshes retrieval artifacts when they are stale
 - using the reranker in the active path
+- shipping the final memory-comparison experiment yet
 
 The reranker was already tested and kept only as a negative ablation record.
 

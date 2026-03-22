@@ -224,3 +224,33 @@ def test_retrieval_preview_accepts_russian_queries() -> None:
         or "software developer" in chunk["title"].lower()
         for chunk in payload["chunks"][:3]
     )
+
+
+def test_answer_flow_extracts_and_persists_memory() -> None:
+    """The live answer flow should persist extracted memory across requests."""
+
+    client = TestClient(create_app())
+    question = "I prefer remote work and async collaboration."
+
+    first_response = client.post(
+        "/chat/answer",
+        json={"user_id": "memory-user", "question": question},
+    )
+    assert first_response.status_code == 200
+    first_payload = first_response.json()
+    assert "remote work" in first_payload["memory_summary"].lower()
+
+    listed_memory = client.get("/memory/list", params={"user_id": "memory-user"})
+    assert listed_memory.status_code == 200
+    listed_payload = listed_memory.json()
+    assert len(listed_payload) == 1
+    assert "remote work" in listed_payload[0]["text"].lower()
+
+    second_response = client.post(
+        "/chat/answer",
+        json={"user_id": "memory-user", "question": question},
+    )
+    assert second_response.status_code == 200
+    listed_again = client.get("/memory/list", params={"user_id": "memory-user"})
+    assert listed_again.status_code == 200
+    assert len(listed_again.json()) == 1

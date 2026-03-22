@@ -187,6 +187,21 @@ python -m backend.scripts.run_local_app_stack --reload
 The single stack command starts the model runtime and the FastAPI app together.
 If the local generation server is already running, it reuses it.
 
+`Baseline RAG v1 Complete` is now the closed baseline boundary for the current
+scope. The active milestone is `Memory Layer v1 Integrated`: user memory now
+persists in SQLite across requests, and the live `/chat/answer` flow
+automatically extracts simple user-constraint memory candidates before building
+retrieval context. What is still missing is the real `RAG-only` versus
+`RAG + memory` evaluation loop plus richer editable profile/artifact memory.
+
+`Baseline RAG v1 Complete` теперь является закрытой baseline-границей для
+текущего scope. Активная веха теперь называется `Memory Layer v1 Integrated`:
+user memory теперь сохраняется в SQLite между запросами, а live-flow
+`/chat/answer` автоматически извлекает простые memory-candidates для
+user-constraints до построения retrieval-context. Еще не хватает реального
+evaluation-цикла `RAG-only` против `RAG + memory`, а также более богатой
+редактируемой profile/artifact memory.
+
 Canonical persisted retrieval-eval outputs now live under:
 
 - `eval/out/retrieval_predictions_dense.json`

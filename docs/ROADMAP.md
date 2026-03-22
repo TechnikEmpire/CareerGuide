@@ -31,10 +31,10 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | 2. Embeddings and retrieval index | completed | The active retrieval path now uses SQLite-persisted ESCO chunks, FAISS HNSW dense ANN search, Qwen3 embedding defaults, an explicit build command, and tracked FAISS cache artifacts. |
 | 3. Baseline RAG retrieval | completed | The repo now has canonical CPU-only HNSW benchmarking, tracked qrels, scored dense-versus-reranker outputs, and a measured decision to keep dense-only retrieval as the active baseline. |
 | 4. LLM grounding and structured generation | completed | Retrieval-backed prompt assembly, the real OpenAI-compatible local generator client, explicit citation export, and baseline answer validation are now in place. The dense-only default is locked at `top_k=10`, and `Baseline RAG v1 Complete` is now closed for the current scope. |
-| 5. User profile and artifact memory | scaffolded | Memory schemas and in-process storage exist, but editable persistent profile and artifact storage are not finished. |
-| 6. Memory extraction and consolidation | scaffolded | Basic extraction and consolidation modules exist, but the robust flow is still pending. |
-| 7. Hopfield-style memory read | scaffolded | The associative read module exists and is tested at a scaffold level, but it still needs production data flow and debug artifact logging. |
-| 8. Joint RAG + memory generation | scaffolded | Prompt assembly already includes retrieval and memory summary structure, but the full comparison modes and evidence-priority behavior are still pending. |
+| 5. User profile and artifact memory | in_progress | The active memory store now persists into the SQLite `memory_items` table instead of an in-process dict, but editable profile and artifact storage are not finished. |
+| 6. Memory extraction and consolidation | in_progress | Heuristic extraction and normalized-text consolidation now write into the live answer flow, but confirmation, archive, and richer extraction logic are still pending. |
+| 7. Hopfield-style memory read | in_progress | The associative read helper now consumes persisted memory in the live prompt path, but it still needs debug artifact logging and explicit scenario-based evaluation. |
+| 8. Joint RAG + memory generation | in_progress | The production answer path now merges dense retrieval with persisted memory summary, but `RAG-only` versus `RAG + memory` comparison outputs and evidence-priority tuning are still pending. |
 | 9. Safety and refusal behavior | scaffolded | There is a minimal scope guard, but the real risk-policy layer is not complete. |
 | 10. Evaluation harness | in_progress | Canonical retrieval qrels, answer-evaluation cases, score utilities, dense-only tuning export, and answer-export tooling now exist. The dense-only elbow is locked at `top_k=10`, explicit citation export is now working, and the next work is extending the harness to `RAG-only` versus `RAG + memory` comparison. |
 | 11. Optional browser inference experiment | optional | Explicitly deferred until the backend-first system is stable. |
@@ -43,10 +43,10 @@ For the short-term snapshot, use `docs/STATUS.md`.
 
 The most important next implementation path is now:
 
-1. validate the wired local generation server against the active API and answer-export flow
-2. refresh and review generated answers under the locked dense-only default `top_k=10`
-3. improve prompt/citation behavior from the scored answer outputs, now that answer-evidence scoring is based on explicit cited chunk IDs
-4. persistent memory and evaluation maturity
+1. extend the evaluation harness to produce tracked `RAG-only` versus `RAG + memory` comparison outputs
+2. broaden the current heuristic memory extraction path into a stronger consolidation flow
+3. add explicit profile/artifact memory lifecycle operations
+4. make memory-read behavior inspectable enough for report-quality analysis
 
 ### Next Clean Boundary
 
@@ -97,10 +97,10 @@ active runtime baseline.
 | 2. Эмбеддинги и retrieval index | completed | Активный retrieval-path теперь использует SQLite-persisted ESCO chunks, FAISS HNSW dense ANN search, Qwen3-default для embeddings, явную команду сборки и отслеживаемые FAISS cache-артефакты. |
 | 3. Baseline RAG retrieval | completed | В репозитории теперь есть канонический CPU-only HNSW benchmark, отслеживаемые qrels, scored dense-versus-reranker outputs и уже измеренное решение оставить dense-only retrieval активным baseline. |
 | 4. LLM grounding и structured generation | completed | Retrieval-backed prompt assembly, реальный локальный OpenAI-compatible generator client, explicit citation export и baseline validation ответов уже реализованы. Dense-only default зафиксирован на `top_k=10`, а `Baseline RAG v1 Complete` теперь закрыт в рамках текущего scope. |
-| 5. User profile и artifact memory | scaffolded | Схемы памяти и in-process storage уже есть, но редактируемый persistent profile и artifact storage еще не завершены. |
-| 6. Извлечение памяти и консолидация | scaffolded | Базовые модули extraction и consolidation уже есть, но полноценный надежный flow еще впереди. |
-| 7. Hopfield-style memory read | scaffolded | Модуль associative read уже существует и протестирован на уровне scaffold, но ему еще нужен production data flow и логирование debug-артефактов. |
-| 8. Совместная генерация RAG + memory | scaffolded | Prompt assembly уже включает структуру retrieval и memory summary, но полноценные режимы сравнения и приоритет evidence над unsupported claims еще впереди. |
+| 5. User profile и artifact memory | in_progress | Активный memory-store теперь сохраняется в SQLite-таблицу `memory_items`, а не в in-process dict, но редактируемый profile/artifact storage еще не завершен. |
+| 6. Извлечение памяти и консолидация | in_progress | Heuristic extraction и normalized-text consolidation теперь пишут в live answer-flow, но confirmation, archive и более богатая логика extraction все еще впереди. |
+| 7. Hopfield-style memory read | in_progress | Associative-read helper теперь потребляет persisted memory в live prompt-path, но ему все еще нужны debug-артефакты и явная scenario-based evaluation. |
+| 8. Совместная генерация RAG + memory | in_progress | Production answer-path теперь объединяет dense retrieval и persisted memory summary, но outputs для сравнения `RAG-only` и `RAG + memory`, а также тюнинг приоритета evidence еще впереди. |
 | 9. Safety и refusal behavior | scaffolded | Есть минимальная scope-защита, но полноценный risk-policy layer еще не завершен. |
 | 10. Evaluation harness | in_progress | Канонические retrieval qrels, answer-evaluation cases, scoring-утилиты, dense-only tuning export и answer-export tooling уже существуют. Dense-only elbow зафиксирован на `top_k=10`, explicit citation export теперь работает, и следующая работа — расширить harness до сравнения `RAG-only` и `RAG + memory`. |
 | 11. Optional browser inference experiment | optional | Явно отложено до тех пор, пока backend-first система не станет стабильной. |
@@ -109,10 +109,10 @@ active runtime baseline.
 
 Наиболее важная следующая последовательность реализации теперь такая:
 
-1. провалидировать уже подключенный локальный generation-server через активный API и answer-export flow
-2. обновить и разобрать generated-answer outputs уже под зафиксированным dense-only default `top_k=10`
-3. улучшить prompt/citation behavior на основе scored answer-output, где answer-evidence теперь считается по явным cited chunk IDs
-4. развитие persistent memory и evaluation
+1. расширить evaluation-harness так, чтобы он выпускал отслеживаемые outputs для сравнения `RAG-only` и `RAG + memory`
+2. расширить текущий heuristic memory-path до более сильного flow extraction/consolidation
+3. добавить явные lifecycle-операции для profile/artifact memory
+4. сделать поведение memory-read достаточно inspectable для report-quality анализа
 
 ### Следующая чистая граница
 

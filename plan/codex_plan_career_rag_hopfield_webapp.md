@@ -14,6 +14,14 @@ This aligns with the high-level research document’s recommended scope: use a s
 
 The end-user product experience should be treated as **Russian-first**. English documentation and English support remain useful for collaboration and review, but they are not the primary product target.
 
+### Current repo checkpoint
+
+- `Baseline RAG v1 Complete` is already closed for the current scope.
+- The active milestone is now `Memory Layer v1 Integrated`.
+- The repo now persists user memory through the SQLite `memory_items` table.
+- The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before prompt assembly.
+- The next hard comparison is `RAG-only` versus `RAG + memory`, not another reranker pass.
+
 ---
 
 ## 2. Non-goals

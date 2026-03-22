@@ -378,6 +378,20 @@ Last updated: 2026-03-22
 - Решение: Канонический score для answer-evidence должен опираться на явные `cited_chunk_ids`, выбранные моделью. Система не должна score-ить весь retrieved-context так, как будто каждая извлеченная запись была процитирована.
 - Обоснование: Если считать цитатами весь retrieval-context, precision для answer-evidence разрушается по мере роста `top_k`, и метрика превращается в прокси ширины context, а не качества атрибуции. Поэтому канонический export ответов обязан сохранять явный выбор citation-ID.
 
+## D-027 Persistent Memory Store And Write Path
+
+**English**
+
+- Status: active
+- Decision: The active memory store should be SQLite-backed through the `memory_items` table, and the live `/chat/answer` path should extract heuristic user-constraint memory candidates before retrieval/prompt assembly.
+- Rationale: The project is past the point where an in-process dictionary is a defensible personalization layer. Persisting memory through SQLite gives the repo an inspectable, durable state boundary, and wiring extraction into the live answer path creates the minimum viable basis for later `RAG-only` versus `RAG + memory` evaluation.
+
+**Русский**
+
+- Статус: активно
+- Решение: Активный memory-store должен быть SQLite-backed через таблицу `memory_items`, а live-path `/chat/answer` должен извлекать heuristic memory-candidates для user-constraints до retrieval/prompt assembly.
+- Обоснование: Проект уже вышел за пределы точки, где in-process dictionary можно считать защищаемым personalization-layer. Сохранение памяти через SQLite дает репозиторию inspectable и долговечную границу состояния, а подключение extraction в live answer-path создает минимально жизнеспособную основу для последующего сравнения `RAG-only` и `RAG + memory`.
+
 ## Decision Maintenance Rule
 
 **English**

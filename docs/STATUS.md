@@ -10,8 +10,7 @@ Last updated: 2026-03-22
 
 Foundational scaffold plus tracked ESCO source artifacts, a Qwen3-targeted
 FAISS-backed dense retrieval stack, a validated end-to-end baseline RAG path,
-and canonical retrieval evaluation with a measured dense-versus-reranker
-outcome.
+and the first real persistent-memory slice now wired into the live answer flow.
 
 ### What Is Already Done
 
@@ -43,56 +42,57 @@ outcome.
 - The canonical local evaluation workflow now auto-refreshes retrieval artifacts before generation when local SQLite rows or FAISS metadata are stale.
 - A canonical dense-only tuning script now exists at `python -m backend.scripts.tune_dense_retrieval`.
 - A canonical answer-export script now exists at `python -m backend.scripts.export_answer_predictions`.
+- The default memory store is now backed by the local SQLite `memory_items` table rather than an in-process dictionary.
+- The live `/chat/answer` flow now extracts heuristic user-constraint memory candidates and persists them before retrieval and prompt assembly.
+- The current memory dedupe rule is normalized-text uniqueness per user, so repeated stable phrasing does not create duplicate rows.
 
 ### Current Completion Boundary
 
 The next clean project boundary is:
 
-- `Baseline RAG v1 Complete`
+- `Memory Layer v1 Integrated`
 
 That boundary should only be considered closed when all of these are true:
 
-1. the local app stack starts cleanly through the canonical helper workflow
-2. dense-only retrieval remains stable at the locked default `top_k=10`
-3. answer export produces valid grounded answers in the requested language
-4. answer export produces explicit model-selected `cited_chunk_ids`
-5. `answer_scores.json` is non-degenerate and no longer collapses to zero because of citation-path failure
-6. the persisted eval outputs and repo docs reflect that stable state
+1. persistent memory storage is stable and inspectable through the active local app flow
+2. the live answer path writes extracted memory before retrieval/prompt assembly
+3. Hopfield-style memory summary uses persisted memory in the production path
+4. `RAG-only` versus `RAG + memory` comparison outputs exist and are tracked
+5. the memory-enabled evaluation outputs and repo docs reflect that stable state
 
 Current status against that boundary:
 
-- `1` true
+- `1` true for the current SQLite-backed scope
 - `2` true
-- `3` true for the current baseline scope
-- `4` true
-- `5` true
-- `6` true
+- `3` true for the current heuristic memory scope
+- `4` false
+- `5` false
 
 Boundary result:
 
-- `Baseline RAG v1 Complete` is now closed for the current scope.
+- `Memory Layer v1 Integrated` is not closed yet.
 
 ### What Is In Progress
 
-- Moving from the closed baseline RAG milestone into persistent memory implementation.
+- Persistent memory implementation beyond the old in-process scaffold.
 - Extending the evaluation harness from baseline RAG validation into `RAG-only` versus `RAG + memory` comparison.
+- Broadening memory extraction and consolidation beyond the current first-pass heuristic.
 
 ### What Is Not Done Yet
 
-- Persistent memory storage
 - Editable user profile and artifact memory persistence
-- Memory extraction and consolidation in the real flow
-- Hopfield-style memory read in the production path
+- Confirmation, archive, and supersede flow for uncertain or outdated memory
+- Richer memory extraction and consolidation beyond the current first-pass heuristic
 - Joint `RAG-only` versus `RAG + memory` evaluation
 - Full safety-policy implementation
 - Full experiment harness and report-ready result exports
 
 ### Immediate Next Steps
 
-1. Implement persistent memory storage beyond the current in-process scaffold.
-2. Wire memory extraction and consolidation into the live answer flow.
-3. Connect Hopfield-style associative read to the production prompt path.
-4. Extend the evaluation harness to compare `Baseline RAG v1` against `RAG + memory`.
+1. Add canonical `RAG-only` versus `RAG + memory` evaluation outputs.
+2. Promote the current heuristic memory write path into a richer extraction/consolidation flow.
+3. Add explicit profile/artifact memory editing and lifecycle controls.
+4. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
 
 ### Current Risks and Notes
 
@@ -100,6 +100,7 @@ Boundary result:
 - The current dense baseline is good enough to move forward. The measured retrieval elbow is locked at `top_k=10`, explicit citations are now working, and the baseline answer-eval export is no longer degenerate.
 - Answer quality is baseline-acceptable, not polished. Some responses are still terse or stylistically rough, so future prompt work should be evidence-driven rather than assumed complete.
 - The current local workflow now assumes repo-local model caching for both the generator and the retrieval query embedder. If those local artifacts are missing, the runtime may fall back to Hugging Face resolution and surprise the operator.
+- The memory layer is now real but still narrow. It persists stable heuristic user constraints, but it does not yet have confirmation flow, archival semantics, or a proper comparison report against the RAG-only baseline.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
 - Smoke tests still force deterministic retrieval providers so they remain fast and independent of model downloads. Production defaults point at Qwen3.
 - The real generation path is now wired, but the prompt design and scored answer behavior are still early-stage and need empirical iteration.
@@ -122,6 +123,11 @@ Boundary result:
   - model=`Qwen/Qwen3-0.6B`
   - artifact=`Qwen/Qwen3-0.6B-GGUF:Q8_0`
   - client wired to `/v1/chat/completions`
+- Memory backend:
+  - store=`SQLite memory_items table`
+  - live write path=`/chat/answer` extracts and upserts heuristic user-constraint memory
+  - dedupe rule=`normalized text per user`
+  - prompt path=`persisted memory is summarized through the existing Hopfield-style read helper`
 - Retrieval cache artifacts tracked in git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`
@@ -158,8 +164,8 @@ Boundary result:
 
 Базовый scaffold плюс отслеживаемые ESCO source-артефакты, dense retrieval
 stack на базе FAISS для Qwen3, валидированный end-to-end baseline RAG path и
-каноническая evaluation retrieval с уже полученным измеренным результатом
-dense-versus-reranker.
+теперь уже первый реальный slice persistent-memory, подключенный к live answer
+flow.
 
 ### Что уже сделано
 
@@ -191,56 +197,57 @@ dense-versus-reranker.
 - Канонический local evaluation-workflow теперь автоматически обновляет retrieval-артефакты перед generation, если локальные SQLite-rows или FAISS-metadata устарели.
 - Теперь существует канонический dense-only tuning-скрипт: `python -m backend.scripts.tune_dense_retrieval`.
 - Теперь существует канонический answer-export скрипт: `python -m backend.scripts.export_answer_predictions`.
+- Default memory store теперь работает через локальную SQLite-таблицу `memory_items`, а не через in-process dictionary.
+- Live-flow `/chat/answer` теперь извлекает heuristic memory-candidates для user-constraints и сохраняет их до retrieval и prompt assembly.
+- Текущее правило дедупликации memory — уникальность normalized-text отдельно для каждого пользователя.
 
 ### Текущая граница завершения
 
 Следующая чистая граница проекта называется:
 
-- `Baseline RAG v1 Complete`
+- `Memory Layer v1 Integrated`
 
 Эту границу можно считать закрытой только тогда, когда одновременно выполнены все условия:
 
-1. локальный app-stack стабильно стартует через канонический helper-workflow
-2. dense-only retrieval остается стабильным при зафиксированном default `top_k=10`
-3. answer-export выдает валидные grounded-ответы на запрошенном языке
-4. answer-export выдает явные `cited_chunk_ids`, выбранные моделью
-5. `answer_scores.json` перестает быть вырожденным и больше не схлопывается в нули из-за поломки citation-path
-6. persisted eval-output и документация репозитория отражают это стабильное состояние
+1. persistent-memory storage стабилен и inspectable через активный локальный app-flow
+2. live answer-path записывает extracted memory до retrieval/prompt assembly
+3. Hopfield-style memory summary использует persisted memory в production-path
+4. существуют и отслеживаются outputs для сравнения `RAG-only` и `RAG + memory`
+5. memory-enabled evaluation-output и документация репозитория отражают это состояние
 
 Текущий статус относительно этой границы:
 
-- `1` выполнен
+- `1` выполнен для текущего SQLite-backed scope
 - `2` выполнен
-- `3` выполнен для текущего baseline-scope
-- `4` выполнен
-- `5` выполнен
-- `6` выполнен
+- `3` выполнен для текущего heuristic memory-scope
+- `4` не выполнен
+- `5` не выполнен
 
 Результат по границе:
 
-- `Baseline RAG v1 Complete` теперь закрыт в рамках текущего scope.
+- `Memory Layer v1 Integrated` пока не закрыт.
 
 ### Что сейчас в работе
 
-- Переход от закрытого baseline RAG milestone к реализации persistent memory.
+- Реализация persistent memory поверх прежнего in-process scaffold.
 - Расширение evaluation harness от baseline RAG validation к сравнению `RAG-only` и `RAG + memory`.
+- Расширение extraction и consolidation памяти за пределы текущей первой эвристики.
 
 ### Что еще не сделано
 
-- Persistent storage для памяти
 - Редактируемое persistent storage для user profile и artifact memory
-- Extraction и consolidation памяти в реальном flow
-- Hopfield-style memory read в production path
+- Confirmation/archive/supersede flow для uncertain или устаревшей memory
+- Более богатые extraction и consolidation памяти за пределами текущей первой эвристики
 - Совместная evaluation `RAG-only` против `RAG + memory`
 - Полноценная реализация safety policy
 - Полноценный experiment harness и report-ready экспорт результатов
 
 ### Ближайшие шаги
 
-1. Реализовать persistent storage для памяти за пределами текущего in-process scaffold.
-2. Подключить extraction и consolidation памяти к живому answer-flow.
-3. Подключить Hopfield-style associative read к production prompt-path.
-4. Расширить evaluation harness до сравнения `Baseline RAG v1` и `RAG + memory`.
+1. Добавить канонические outputs для сравнения `RAG-only` и `RAG + memory`.
+2. Развить текущий heuristic memory write-path в более богатый flow extraction/consolidation.
+3. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
+4. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
 
 ### Текущие риски и заметки
 
@@ -248,6 +255,7 @@ dense-versus-reranker.
 - Текущий dense baseline уже достаточно хорош, чтобы двигаться дальше. Retrieval-elbow зафиксирован на `top_k=10`, explicit citations работают, а baseline answer-eval export больше не является вырожденным.
 - Качество ответов уже приемлемо для baseline, но еще не отполировано. Некоторые ответы все еще слишком краткие или стилистически грубые, поэтому будущая prompt-доработка должна быть опираться на evidence, а не на ощущения.
 - Текущий локальный workflow теперь предполагает repo-local model caching и для generator, и для retrieval query-embedder. Если эти локальные артефакты отсутствуют, runtime может неожиданно обратиться к Hugging Face.
+- Memory-layer теперь уже реален, но все еще узок. Он сохраняет стабильные heuristic user-constraints, но у него пока нет confirmation-flow, archival semantics и полноценного comparison-report против RAG-only baseline.
 - ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.
 - Smoke-тесты по-прежнему принудительно используют deterministic retrieval providers, чтобы оставаться быстрыми и независимыми от загрузки моделей. Production-default уже указывает на Qwen3.
 - Реальный generation-path уже подключен, но prompt design и scored-поведение ответов все еще находятся на ранней стадии и требуют эмпирической доработки.
@@ -270,6 +278,11 @@ dense-versus-reranker.
   - model=`Qwen/Qwen3-0.6B`
   - artifact=`Qwen/Qwen3-0.6B-GGUF:Q8_0`
   - client подключен к `/v1/chat/completions`
+- Memory backend:
+  - store=`SQLite memory_items table`
+  - live write path=`/chat/answer` извлекает и upsert-ит heuristic user-constraint memory
+  - dedupe rule=`normalized text per user`
+  - prompt path=`persisted memory суммируется через существующий Hopfield-style read helper`
 - Retrieval cache-артефакты, отслеживаемые в git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`

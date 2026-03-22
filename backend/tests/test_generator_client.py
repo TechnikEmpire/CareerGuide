@@ -56,8 +56,9 @@ def test_extract_answer_payload_uses_explicit_cited_chunk_ids() -> None:
     )
 
     answer, citations = _extract_answer_payload(
-        '{"answer":"Grounded answer","cited_chunk_ids":["chunk-2","chunk-1","chunk-2"]}',
+        '{"direct_answer":"Grounded answer","cited_chunk_ids":["chunk-2","chunk-1","chunk-2"]}',
         retrieval_context,
+        "What should I do next?",
     )
 
     assert answer == "Grounded answer"
@@ -88,8 +89,9 @@ def test_extract_answer_payload_resolves_numeric_evidence_refs() -> None:
     )
 
     answer, citations = _extract_answer_payload(
-        '{"answer":"Grounded answer","cited_refs":[2,1,2]}',
+        '{"direct_answer":"Grounded answer","cited_refs":[2,1,2]}',
         retrieval_context,
+        "What should I do next?",
     )
 
     assert answer == "Grounded answer"
@@ -120,8 +122,9 @@ def test_extract_answer_payload_salvages_partial_json_and_refs() -> None:
     )
 
     answer, citations = _extract_answer_payload(
-        '{"answer":"Grounded answer","cited_refs":[2,1',
+        '{"direct_answer":"Grounded answer","cited_refs":[2,1',
         retrieval_context,
+        "What should I do next?",
     )
 
     assert answer == "Grounded answer"
@@ -143,7 +146,40 @@ def test_extract_answer_payload_falls_back_to_plain_text_without_fake_citations(
         memory_summary="No memory.",
     )
 
-    answer, citations = _extract_answer_payload("Plain text answer", retrieval_context)
+    answer, citations = _extract_answer_payload(
+        "Plain text answer",
+        retrieval_context,
+        "What should I do next?",
+    )
 
     assert answer == "Plain text answer"
     assert citations == []
+
+
+def test_extract_answer_payload_strips_leading_question_restatement() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Chunk 1",
+                text="First chunk",
+                score=0.9,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        (
+            '{"direct_answer":"Я предпочитаю удаленную работу и мне нужен низкострессовый переход '
+            'в аналитику данных. Сфокусируйтесь на ролях аналитика данных с удаленным форматом '
+            'и начинайте с небольших SQL-задач.","cited_refs":[1]}'
+        ),
+        retrieval_context,
+        "Я предпочитаю удаленную работу и мне нужен низкострессовый переход в аналитику данных.",
+    )
+
+    assert answer.startswith("Сфокусируйтесь на ролях аналитика данных")
+    assert [chunk.chunk_id for chunk in citations] == ["chunk-1"]

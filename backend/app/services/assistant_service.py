@@ -13,9 +13,19 @@ from backend.app.services.generation.schemas import (
     CareerPlanRequest,
     CareerPlanResponse,
 )
+from backend.app.services.memory.memory_consolidate import consolidate_memory_items
+from backend.app.services.memory.memory_extract import extract_candidate_memory_items
 from backend.app.services.memory.memory_store import default_memory_store
 from backend.app.services.retrieval.rag_pipeline import build_retrieval_context
 from backend.app.services.safety.safety import ensure_request_is_in_scope
+
+
+def _persist_request_memory(user_id: str, text: str) -> None:
+    """Extract and persist new memory candidates from a user request."""
+
+    candidates = consolidate_memory_items(extract_candidate_memory_items(user_id=user_id, text=text))
+    for candidate in candidates:
+        default_memory_store.upsert_item(candidate)
 
 
 def answer_question(
@@ -28,7 +38,11 @@ def answer_question(
     """Run the full grounded answer flow for a user question."""
 
     ensure_request_is_in_scope(request.question)
-    memory_items = default_memory_store.list_items(user_id=request.user_id) if include_memory else []
+    if include_memory:
+        _persist_request_memory(user_id=request.user_id, text=request.question)
+        memory_items = default_memory_store.list_items(user_id=request.user_id)
+    else:
+        memory_items = []
     retrieval_context = build_retrieval_context(
         question=request.question,
         memory_items=memory_items,

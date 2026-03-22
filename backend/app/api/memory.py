@@ -12,13 +12,13 @@ router = APIRouter(prefix="/memory", tags=["memory"])
 
 @router.post("/upsert", response_model=MemoryItemPayload)
 def upsert_memory(request: MemoryUpsertRequest) -> MemoryItemPayload:
-    """Insert or update a user memory item in the current store."""
+    """Insert or update a user memory item in the persistent store."""
 
     return default_memory_store.upsert_item(request.item)
 
 
 @router.get("/list", response_model=list[MemoryItemPayload])
 def list_memory(user_id: str = "demo-user") -> list[MemoryItemPayload]:
-    """List stored memory items for one user."""
+    """List persisted memory items for one user."""
 
     return default_memory_store.list_items(user_id=user_id)

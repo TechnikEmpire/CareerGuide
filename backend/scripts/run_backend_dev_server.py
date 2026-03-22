@@ -55,7 +55,23 @@ def main() -> None:
         str(args.port),
     ]
     if args.reload:
-        command.append("--reload")
+        command.extend(
+            [
+                "--reload",
+                "--reload-dir",
+                str(REPO_ROOT / "backend"),
+                "--reload-exclude",
+                str(REPO_ROOT / "data" / "processed" / "*"),
+                "--reload-exclude",
+                str(REPO_ROOT / "models" / "*"),
+                "--reload-exclude",
+                str(REPO_ROOT / "eval" / "out" / "*"),
+                "--reload-exclude",
+                str(REPO_ROOT / "config" / "*.local.json"),
+                "--reload-exclude",
+                str(REPO_ROOT / ".env.local"),
+            ]
+        )
     os.execvpe(command[0], command, env)
 
 

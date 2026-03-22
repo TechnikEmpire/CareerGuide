@@ -56,9 +56,11 @@ def build_answer_prompt(question: str, retrieval_context: RetrievalContext) -> s
         f"{_format_evidence_block(retrieval_context)}\n\n"
         "Instructions:\n"
         f"- Answer only in {language_name} ({language_code}). Do not switch languages.\n"
-        '- Return valid JSON only using exactly this shape: {"answer": "...", "cited_refs": [1, 2]}.\n'
+        '- Return valid JSON only using exactly this shape: {"direct_answer": "...", "cited_refs": [1, 2]}.\n'
         "- Use only the retrieved evidence and the memory summary.\n"
         "- If the evidence is incomplete, say so explicitly.\n"
+        "- Do not repeat, paraphrase, or restate the user's question at the start of the answer.\n"
+        "- Start with the actual answer or recommendation, not with a reformulation of the request.\n"
         "- Keep the answer concise, practical, and grounded.\n"
         "- Keep the answer under 140 words.\n"
         "- Finish the answer cleanly. Do not stop mid-sentence.\n"
