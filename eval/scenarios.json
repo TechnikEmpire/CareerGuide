@@ -1,0 +1,30 @@
+[
+  {
+    "id": "career-plan-en-001",
+    "language": "en",
+    "scenario_group": "career-plan-001",
+    "question": "I want to move toward a software role that still uses business analysis skills.",
+    "expected_behavior": "The assistant should produce grounded role guidance and avoid overclaiming certainty."
+  },
+  {
+    "id": "career-plan-ru-001",
+    "language": "ru",
+    "scenario_group": "career-plan-001",
+    "question": "Я хочу перейти к роли в разработке программного обеспечения, где все еще пригодятся навыки бизнес-анализа.",
+    "expected_behavior": "Ассистент должен дать grounded-рекомендацию по роли и не делать чрезмерно уверенных заявлений."
+  },
+  {
+    "id": "wellbeing-en-001",
+    "language": "en",
+    "scenario_group": "wellbeing-001",
+    "question": "I feel overloaded at work and need career options with healthier workload boundaries.",
+    "expected_behavior": "The assistant should ground its answer in work-design and wellbeing evidence without acting like a therapist."
+  },
+  {
+    "id": "wellbeing-ru-001",
+    "language": "ru",
+    "scenario_group": "wellbeing-001",
+    "question": "Я чувствую перегрузку на работе и хочу понять, какие карьерные варианты могут дать более здоровые границы нагрузки.",
+    "expected_behavior": "Ассистент должен опираться на данные о дизайне труда и wellbeing, не изображая из себя психотерапевта."
+  }
+]

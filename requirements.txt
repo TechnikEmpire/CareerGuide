@@ -1,0 +1,11 @@
+# Initial Python environment for the first implementation slice.
+# We are keeping this small on purpose so the local environment stays easy to create.
+# Heavier model and ingestion dependencies can be added once the core scaffold is stable.
+fastapi
+httpx
+numpy
+pydantic
+pydantic-settings
+pytest
+sqlalchemy
+uvicorn[standard]

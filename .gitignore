@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# CareerGuide local data artifacts
+data/processed/*.db
+data/processed/*.sqlite
+data/processed/*.sqlite3
