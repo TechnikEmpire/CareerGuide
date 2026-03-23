@@ -1,0 +1,92 @@
+{
+  "example_count": 250,
+  "accuracy": 0.976,
+  "macro_f1": 0.9613242574257426,
+  "per_label": {
+    "NO_MEMORY": {
+      "precision": 0.9782608695652174,
+      "recall": 0.9,
+      "f1": 0.9375,
+      "support": 50.0
+    },
+    "MEMORY": {
+      "precision": 0.9754901960784313,
+      "recall": 0.995,
+      "f1": 0.9851485148514851,
+      "support": 200.0
+    }
+  },
+  "confusion": {
+    "NO_MEMORY": {
+      "NO_MEMORY": 45,
+      "MEMORY": 5
+    },
+    "MEMORY": {
+      "NO_MEMORY": 1,
+      "MEMORY": 199
+    }
+  },
+  "per_language": {
+    "en": {
+      "example_count": 125,
+      "accuracy": 0.984,
+      "macro_f1": 0.975,
+      "per_label": {
+        "NO_MEMORY": {
+          "precision": 0.96,
+          "recall": 0.96,
+          "f1": 0.96,
+          "support": 25.0
+        },
+        "MEMORY": {
+          "precision": 0.99,
+          "recall": 0.99,
+          "f1": 0.99,
+          "support": 100.0
+        }
+      },
+      "confusion": {
+        "NO_MEMORY": {
+          "NO_MEMORY": 24,
+          "MEMORY": 1
+        },
+        "MEMORY": {
+          "NO_MEMORY": 1,
+          "MEMORY": 99
+        }
+      }
+    },
+    "ru": {
+      "example_count": 125,
+      "accuracy": 0.968,
+      "macro_f1": 0.9467178175618074,
+      "per_label": {
+        "NO_MEMORY": {
+          "precision": 1.0,
+          "recall": 0.84,
+          "f1": 0.9130434782608696,
+          "support": 25.0
+        },
+        "MEMORY": {
+          "precision": 0.9615384615384616,
+          "recall": 1.0,
+          "f1": 0.9803921568627451,
+          "support": 100.0
+        }
+      },
+      "confusion": {
+        "NO_MEMORY": {
+          "NO_MEMORY": 21,
+          "MEMORY": 4
+        },
+        "MEMORY": {
+          "NO_MEMORY": 0,
+          "MEMORY": 100
+        }
+      }
+    }
+  },
+  "task": "binary",
+  "model_bundle": "tooling/memory_extraction/models/bilstm_memory_classifier_binary_seed31.pt",
+  "input_jsonl": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/tooling/memory_extraction/data/splits/binary/test.jsonl"
+}

@@ -1,8 +1,8 @@
 # Active Decisions
 
-Last updated: 2026-03-22
+Last updated: 2026-03-23
 
-Последнее обновление: 2026-03-22
+Последнее обновление: 2026-03-23
 
 ## D-001 Product Direction
 
@@ -81,16 +81,18 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The project's main personalization novelty is a real learned Hopfield-style associative memory module with explicit `top1` max-energy recall and `topk` superposed recall modes. The current repo scaffold must not be presented as if it already satisfies that target.
-- Rationale: This connects the student's recurrent-network background, especially LSTM-focused study, to a defensible modern associative-memory contribution. The actual claim is not "softmax over memory rows"; it is that the project evaluates explicit Hopfield-like recall regimes as the personalization mechanism.
-- Constraint: Documentation must distinguish clearly between the current scaffold and the intended defended end-state. The repo may call the current helper a scaffold or transitional associative-read utility, but it must not present it as a completed Hopfield contribution.
+- Decision: The project's main personalization novelty is a real embedding-space Hopfield memory mechanism with explicit `top1` max-energy recall and `topk` superposed recall modes. The current repo state already includes a basic non-trainable implementation of that mechanism, but it must not be presented as if it already covers the optional learned-projection and differentiable-`ksoftmax` phase.
+- Rationale: This connects the student's recurrent-network background, especially LSTM-focused study, to a defensible associative-memory contribution grounded in modern Hopfield literature. The actual claim is not "softmax over memory rows"; it is that the project evaluates explicit Hopfield-like recall regimes as the personalization mechanism over stored embedding vectors.
+- Basis: Davydov, Jaffe, Singh, and Bullo, "Retrieving k-Nearest Memories with Modern Hopfield Networks", committed in the repo at `docs/papers/33_Retrieving_k_Nearest_Memori.pdf` and `docs/papers/hopfield_memory.txt`.
+- Constraint: Documentation must distinguish clearly between the current non-trainable phase and any later learned-projection phase. The repo may call the current helper a basic Hopfield implementation, but it must not claim differentiable `ksoftmax` or learned memory projections that are not yet built.
 
 **Русский**
 
 - Статус: активно
-- Решение: Главная personalization-новизна проекта — это реальный learned Hopfield-style associative-memory module с явными режимами `top1` max-energy recall и `topk` superposed recall. Текущий scaffold репозитория нельзя представлять так, будто он уже удовлетворяет этой цели.
-- Обоснование: Это в защищаемой форме связывает бэкграунд студентки в recurrent networks, особенно обучение с акцентом на LSTM, с defensible modern associative-memory contribution. Реальное утверждение здесь не про «softmax по memory rows», а про оценку явных Hopfield-like recall regimes как механизма персонализации.
-- Ограничение: Документация должна четко различать текущий scaffold и intended defended end-state. Репозиторий может называть текущий helper scaffold-ом или transitional associative-read utility, но не должен представлять его как завершенный Hopfield-вклад.
+- Решение: Главная personalization-новизна проекта — это реальный Hopfield-механизм памяти в embedding-space с явными режимами `top1` max-energy recall и `topk` superposed recall. Текущее состояние репозитория уже включает базовую нетренируемую реализацию этого механизма, но его нельзя представлять так, будто он уже покрывает optional learned-projection и differentiable-`ksoftmax` фазу.
+- Обоснование: Это в защищаемой форме связывает бэкграунд студентки в recurrent networks, особенно обучение с акцентом на LSTM, с defensible associative-memory contribution, опирающимся на modern Hopfield literature. Реальное утверждение здесь не про «softmax по memory rows», а про оценку явных Hopfield-like recall regimes как механизма персонализации поверх сохраненных embedding-векторов.
+- Основание: Davydov, Jaffe, Singh и Bullo, "Retrieving k-Nearest Memories with Modern Hopfield Networks"; работа зафиксирована в репозитории как `docs/papers/33_Retrieving_k_Nearest_Memori.pdf` и `docs/papers/hopfield_memory.txt`.
+- Ограничение: Документация должна четко различать текущую нетренируемую фазу и возможную будущую learned-projection фазу. Репозиторий может называть текущий helper базовой реализацией Hopfield, но не должен утверждать наличие differentiable `ksoftmax` или learned memory projections, если они еще не построены.
 
 ## D-007 Evaluation Baseline
 
@@ -397,14 +399,14 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The intended memory read/write vector basis must use the real semantic embedding stack, not the deterministic hash placeholder.
-- Rationale: The current hash-based vector path is acceptable only as a scaffolding mechanism. It proves the associative-read pipeline shape, but it is not strong enough to support the scientific claim that the Hopfield-style memory layer adds meaningful personalization value.
+- Decision: The active memory read/write vector basis must use the real semantic embedding stack, not the deterministic hash placeholder.
+- Rationale: Hopfield-style recall in this project is performed over stored text embeddings. The current implementation therefore reuses the active retrieval embedder for query and memory vectors. A hash-based vector path is acceptable only as a temporary test scaffold and is not strong enough to support the scientific claim that the Hopfield layer adds meaningful personalization value.
 
 **Русский**
 
 - Статус: активно
-- Решение: Intended vector-basis для memory read/write должен использовать реальный semantic embedding stack, а не deterministic hash placeholder.
-- Обоснование: Текущий hash-based vector-path допустим только как scaffold-механизм. Он доказывает форму associative-read pipeline, но недостаточно силен, чтобы поддерживать научное утверждение о meaningful personalization value от Hopfield-style memory layer.
+- Решение: Активный vector-basis для memory read/write должен использовать реальный semantic embedding stack, а не deterministic hash placeholder.
+- Обоснование: Hopfield-style recall в этом проекте выполняется поверх сохраненных text-embeddings. Поэтому текущая реализация повторно использует active retrieval-embedder для query- и memory-векторов. Hash-based vector-path допустим только как временный test-scaffold и недостаточно силен, чтобы поддерживать научное утверждение о meaningful personalization value от Hopfield-layer.
 
 ## D-029 Russian-First Memory Behavior
 
@@ -433,6 +435,84 @@ Last updated: 2026-03-22
 - Статус: активно
 - Решение: Grounded answering — это закрытый baseline, но не полный structured-generation end-state. Persisted structured artifacts, такие как career plans, skills-gap outputs и wellbeing-oriented plans, по-прежнему остаются обязательными deliverables.
 - Обоснование: И project plan, и academic framing предполагают больше, чем просто вопросно-ответный ассистент. Репозиторий не должен позволять текущему answer-first baseline притворяться завершенным structured-output scope.
+
+## D-031 Current Hopfield Implementation Phase
+
+**English**
+
+- Status: active
+- Decision: The current shipped Hopfield phase is a basic non-trainable implementation over stored embedding vectors. `top1` recall is implemented as sharp single-memory selection, and `topk` recall is implemented as exact top-k masking plus renormalization over softmax weights.
+- Rationale: This is the simplest academically defensible implementation that still matches the modern Hopfield retrieval story in the committed paper. It keeps the mechanism explicit and inspectable before any optional learned-projection or differentiable `ksoftmax` phase.
+- Basis: The committed paper defines the one-step modern Hopfield update `x+ = Ξ softmax(βΞᵀ x)` and the k-Hopfield layer `X = Ξ ksoftmax(βΞᵀ x0)`. See `docs/papers/33_Retrieving_k_Nearest_Memori.pdf` and `docs/papers/hopfield_memory.txt`.
+
+**Русский**
+
+- Статус: активно
+- Решение: Текущая поставляемая Hopfield-фаза — это базовая нетренируемая реализация поверх сохраненных embedding-векторов. Recall `top1` реализован как резкий выбор одной лучшей memory, а `topk` реализован как exact top-k masking с последующей перенормировкой softmax-весов.
+- Обоснование: Это самое простое академически защищаемое решение, которое все еще соответствует modern Hopfield retrieval-story из зафиксированной в репозитории статьи. Оно сохраняет механизм явным и inspectable до любой optional learned-projection или differentiable `ksoftmax` фазы.
+- Основание: В зафиксированной статье one-step modern Hopfield update задается как `x+ = Ξ softmax(βΞᵀ x)`, а k-Hopfield layer — как `X = Ξ ksoftmax(βΞᵀ x0)`. См. `docs/papers/33_Retrieving_k_Nearest_Memori.pdf` и `docs/papers/hopfield_memory.txt`.
+
+## D-032 Memory Extraction Classifier Baseline
+
+**English**
+
+- Status: active
+- Decision: The next memory-extraction baseline is a lightweight bilingual sentence classifier implemented as a BiLSTM, trained separately under `tooling/memory_extraction/`.
+- Rationale: This keeps extraction small, inspectable, and academically aligned with the student's recurrent-network background. It also keeps extraction logically separate from Hopfield recall: the classifier decides whether a sentence should become memory, while later type classification and Hopfield recall remain separate concerns.
+- Implementation note: Synthetic corpus generation for this classifier should run as direct standalone GPU tooling with explicit local model control, not through the app's OpenAI-compatible runtime server.
+- Implementation note: The first supervised task is now binary `MEMORY` versus `NO_MEMORY`. Fine-grained labels remain in the raw synthetic corpus for later type-classification work, but the first BiLSTM baseline should not be forced to solve full type assignment on day one.
+- Artifact note: The resulting synthetic corpora, split manifests, trained model bundles, and evaluation reports may be persisted in git when reproducibility of the extraction baseline matters.
+- Constraint: The live backend may keep using heuristic extraction until the BiLSTM classifier is trained, evaluated, and integrated. Tooling can ship before runtime integration.
+
+**Русский**
+
+- Статус: активно
+- Решение: Следующий baseline для memory extraction — это легкий двуязычный sentence-classifier на базе BiLSTM, обучаемый отдельно в `tooling/memory_extraction/`.
+- Обоснование: Это сохраняет extraction небольшим, inspectable и академически согласованным с бэкграундом студентки в recurrent networks. Также это сохраняет логическое разделение extraction и Hopfield recall: классификатор решает, должна ли фраза стать memory, а более поздняя type-classification и Hopfield recall остаются отдельными задачами.
+- Замечание по реализации: Генерация synthetic corpus для этого classifier должна выполняться как direct standalone GPU tooling с явным локальным контролем модели, а не через OpenAI-compatible runtime-server приложения.
+- Замечание по реализации: Первая supervised-задача теперь бинарная: `MEMORY` против `NO_MEMORY`. Fine-grained labels сохраняются в raw synthetic corpus для более поздней type-classification фазы, но первый BiLSTM-baseline не должен сразу решать полную типизацию.
+- Замечание по артефактам: Получающиеся synthetic corpora, split manifests, trained model bundles и evaluation reports могут сохраняться в git, когда важна воспроизводимость extraction-baseline.
+- Ограничение: Live-backend может пока продолжать использовать heuristic extraction, пока BiLSTM-classifier не будет обучен, оценен и интегрирован. Tooling может поставляться раньше runtime-integration.
+
+## D-033 Memory Extraction Label Schema
+
+**English**
+
+- Status: active
+- Decision: The v1 sentence label schema for memory extraction is fixed to `NO_MEMORY`, `PREFERENCE`, `CONSTRAINT`, `GOAL`, and `AVAILABILITY`.
+- Rationale: This gives the repo a small, defensible raw label space that is directly useful for personalization and later memory lifecycle work. `NO_MEMORY` provides the negative class, while the four positive labels map cleanly to later memory category and downstream policy.
+- Constraint: The raw label schema does not imply that the first trained classifier must be five-way multiclass. The repo now uses those labels as raw supervision while deriving a first binary `MEMORY` vs `NO_MEMORY` task for the initial BiLSTM baseline.
+- Constraint: v1 synthetic corpus generation targets only `ru` and `en`. Mixed-language handling is deferred until the bilingual baseline is trained and measured.
+
+**Русский**
+
+- Статус: активно
+- Решение: Sentence label schema v1 для memory extraction фиксируется как `NO_MEMORY`, `PREFERENCE`, `CONSTRAINT`, `GOAL` и `AVAILABILITY`.
+- Обоснование: Это дает репозиторию небольшой и защищаемый raw-набор меток, напрямую полезный для personalization и последующей memory-lifecycle логики. `NO_MEMORY` дает negative-class, а четыре positive-label cleanly отображаются на более поздние memory category и downstream policy.
+- Ограничение: Raw label schema не означает, что первый обучаемый classifier обязан быть пяти-классовым multiclass. Репозиторий теперь использует эти метки как raw supervision, но выводит из них первую бинарную задачу `MEMORY` vs `NO_MEMORY` для начального BiLSTM-baseline.
+- Ограничение: Synthetic corpus generation в v1 нацелено только на `ru` и `en`. Mixed-language handling откладывается до тех пор, пока bilingual baseline не будет обучен и измерен.
+
+## D-034 Runtime Sentence Segmentation and Binary Memory Write Integration
+
+**English**
+
+- Status: active
+- Decision: The first runtime integration of the trained BiLSTM extractor should operate on deterministic sentence-like segments, not on whole user turns and not through another LLM extraction pass.
+- Decision: One incoming user message should be normalized, split by newlines and sentence-ending punctuation into short sentence-like segments, and each segment should be classified independently as `MEMORY` or `NO_MEMORY`.
+- Decision: Accepted segments should be converted into one `MemoryItemPayload` each, deduplicated first within the request via `consolidate_memory_items(...)`, then persisted through `SqliteMemoryStore.upsert_item(...)`, which remains the canonical normalized-text-per-user dedupe layer.
+- Decision: In the binary-only phase, accepted classifier outputs should use a coarse runtime category such as `user_memory`, store classifier probability as `confidence`, and keep a stable default `importance` until a separate type-classification phase exists.
+- Decision: The Hopfield layer should not implement a second bespoke dedupe path. It should keep reading the already persisted and normalized `memory_items` set and perform recall over that list.
+- Rationale: The classifier is sentence-level by design, so whole-turn classification would mix unrelated facts and questions into one decision. A deterministic splitter is faster, inspectable, and more appropriate for a rapid prototype than introducing a heavier external NLP dependency or another model call. Reusing the existing store-level dedupe keeps one canonical persistence policy instead of fragmenting memory-write logic across multiple modules.
+
+**Русский**
+
+- Статус: активно
+- Решение: Первая runtime-интеграция обученного BiLSTM-extractor должна работать на детерминированных sentence-like segments, а не на whole user turn и не через еще один LLM extraction-pass.
+- Решение: Одно входное сообщение пользователя должно нормализоваться, разбиваться по newline и sentence-ending punctuation на короткие sentence-like segments, и каждый segment должен независимо классифицироваться как `MEMORY` или `NO_MEMORY`.
+- Решение: Принятые segments должны превращаться в отдельные `MemoryItemPayload`, сначала дедуплицироваться внутри запроса через `consolidate_memory_items(...)`, а затем сохраняться через `SqliteMemoryStore.upsert_item(...)`, который остается каноническим normalized-text-per-user слоем дедупликации.
+- Решение: В binary-only фазе принятые classifier outputs должны использовать coarse runtime-category вроде `user_memory`, сохранять вероятность classifier как `confidence` и держать стабильный default `importance`, пока не появится отдельная phase type-classification.
+- Решение: Hopfield-layer не должен реализовывать второй отдельный dedupe-path. Он должен по-прежнему читать уже сохраненный и нормализованный набор `memory_items` и выполнять recall поверх этого списка.
+- Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. Детерминированный splitter быстрее, inspectable и лучше подходит для rapid prototype, чем добавление тяжелой внешней NLP-зависимости или еще одного model-call. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям.
 
 ## Decision Maintenance Rule
 

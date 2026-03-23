@@ -431,6 +431,40 @@ The detailed process is documented in:
 
 - `docs/ESCO_PREPROCESSING.md`
 
+### Standalone Memory-Extraction Tooling
+
+The bilingual sentence-classification workflow for memory extraction now also
+uses a standalone tooling module with separate requirements:
+
+- `tooling/memory_extraction/requirements.txt`
+- `tooling/memory_extraction/README.md`
+
+Recommended installation flow in the same standalone Conda environment:
+
+```bash
+conda activate careerguide-tools
+python -m pip install -r tooling/memory_extraction/requirements.txt
+```
+
+Canonical workflow:
+
+```bash
+python -m tooling.memory_extraction.generate_synthetic_dataset --model-source Qwen/Qwen3-0.6B --device cuda
+python -m tooling.memory_extraction.prepare_dataset --task binary
+python -m tooling.memory_extraction.train_bilstm_classifier --task binary
+python -m tooling.memory_extraction.evaluate_classifier --task binary
+```
+
+Important notes:
+
+- v1 targets only `ru` and `en`
+- the classifier is a lightweight BiLSTM; the standalone binary baseline is now trained and evaluated, but it is not part of the current live backend yet
+- the raw synthetic corpus keeps fine-grained labels, but the first supervised extractor baseline is binary `MEMORY` vs `NO_MEMORY`
+- synthetic corpus generation loads the chosen model directly inside the tooling process and is intended to use the workstation GPU
+- the live backend keeps using the heuristic extractor until the trained classifier is integrated into the sentence-level memory write path
+- generated corpora and trained model bundles under `tooling/memory_extraction/` may be persisted in git when you want the dataset, checkpoint, and reports tracked for reproducibility
+- the currently tracked supervised artifacts are the `memory_extraction_synthetic_v4` corpus plus the binary BiLSTM bundles and reports under `tooling/memory_extraction/models/`
+
 ## Русский
 
 ### Назначение
@@ -866,3 +900,37 @@ python -m tooling.translation.translate_esco_to_russian \
 Подробный процесс описан в:
 
 - `docs/ESCO_PREPROCESSING.md`
+
+### Standalone tooling для memory extraction
+
+Workflow двуязычной sentence-classification для memory extraction теперь тоже
+использует отдельный standalone tooling-модуль со своими requirements:
+
+- `tooling/memory_extraction/requirements.txt`
+- `tooling/memory_extraction/README.md`
+
+Рекомендуемый install-flow в том же standalone Conda-окружении:
+
+```bash
+conda activate careerguide-tools
+python -m pip install -r tooling/memory_extraction/requirements.txt
+```
+
+Канонический workflow:
+
+```bash
+python -m tooling.memory_extraction.generate_synthetic_dataset --model-source Qwen/Qwen3-0.6B --device cuda
+python -m tooling.memory_extraction.prepare_dataset --task binary
+python -m tooling.memory_extraction.train_bilstm_classifier --task binary
+python -m tooling.memory_extraction.evaluate_classifier --task binary
+```
+
+Важные замечания:
+
+- генерация synthetic corpus напрямую загружает выбранную модель внутри tooling-процесса и рассчитана на использование workstation GPU
+- v1 нацелен только на `ru` и `en`
+- classifier является легким BiLSTM; standalone binary baseline уже обучен и оценен, но пока не входит в current live-backend
+- raw synthetic corpus сохраняет fine-grained labels, но первый supervised extractor baseline является бинарным: `MEMORY` vs `NO_MEMORY`
+- live-backend продолжает использовать heuristic extractor, пока обученный classifier не будет интегрирован в sentence-level memory write-path
+- generated corpora и trained model-bundles в `tooling/memory_extraction/` могут сохраняться в git, если вам нужна воспроизводимость dataset, checkpoint и reports
+- текущие отслеживаемые supervised-артефакты — это corpus `memory_extraction_synthetic_v4` и binary BiLSTM bundles/reports в `tooling/memory_extraction/models/`

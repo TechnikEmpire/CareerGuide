@@ -1,8 +1,8 @@
 # Local Workflow
 
-Last updated: 2026-03-22
+Last updated: 2026-03-23
 
-Последнее обновление: 2026-03-22
+Последнее обновление: 2026-03-23
 
 ## English
 
@@ -54,10 +54,31 @@ At the current stage:
 - `/chat/answer` now extracts simple memory candidates from the user question
 - the persisted memory set is read back immediately and summarized for prompt assembly
 - duplicate memory text is collapsed by normalized text per user
+- a trained standalone binary BiLSTM extractor now exists under `tooling/memory_extraction/`, but it is not yet wired into the live write path
 
 This is still a narrow first slice, not the final memory system. The current
 heuristic mainly captures explicit preference or constraint phrasing such as
 `prefer`, `want`, `need`, `cannot`, or `can't`.
+
+The planned runtime integration shape for the trained classifier is now:
+
+1. normalize one incoming user turn
+2. split it into deterministic sentence-like segments
+3. run the binary `MEMORY` vs `NO_MEMORY` classifier on each segment
+4. convert positive segments into `MemoryItemPayload` records
+5. dedupe them within the request and upsert them into `memory_items`
+6. let Hopfield recall read the already deduplicated persistent store
+
+The current memory read is no longer only a vague scaffold. It now performs a
+basic non-trainable Hopfield recall over real embedding-space memory vectors:
+
+- `top1` = sharp single-memory max-energy recall
+- `topk` = exact top-k masking plus renormalization over softmax weights
+
+This phase is based on Davydov, Jaffe, Singh, and Bullo, "Retrieving
+k-Nearest Memories with Modern Hopfield Networks"; see
+`docs/papers/33_Retrieving_k_Nearest_Memori.pdf` and
+`docs/papers/hopfield_memory.txt`.
 
 ### Как память работает в текущем приложении
 
@@ -70,10 +91,32 @@ heuristic mainly captures explicit preference or constraint phrasing such as
 - `/chat/answer` теперь извлекает простые memory-candidates из вопроса пользователя
 - persisted memory сразу читается обратно и суммируется для prompt assembly
 - дублирующийся memory-text схлопывается по normalized-text отдельно для каждого пользователя
+- обученный standalone binary BiLSTM-extractor теперь уже существует в `tooling/memory_extraction/`, но пока не подключен к live write-path
 
 Это все еще узкий первый slice, а не финальная memory-system. Текущая
 эвристика в основном ловит явные формулировки preference или constraint, такие
 как `prefer`, `want`, `need`, `cannot` и `can't`.
+
+Предполагаемая runtime-схема интеграции обученного classifier теперь такая:
+
+1. нормализовать один входной user turn
+2. разбить его на детерминированные sentence-like segments
+3. прогнать binary-classifier `MEMORY` vs `NO_MEMORY` по каждому segment
+4. превратить positive segments в записи `MemoryItemPayload`
+5. дедуплицировать их внутри запроса и upsert-ить в `memory_items`
+6. позволить Hopfield-recall читать уже дедуплицированный persistent store
+
+Текущий memory-read больше не является только расплывчатым scaffold-ом. Он
+теперь выполняет базовый нетренируемый Hopfield recall поверх memory-векторов
+в реальном embedding-space:
+
+- `top1` = резкий single-memory max-energy recall
+- `topk` = exact top-k masking с перенормировкой softmax-весов
+
+Этот этап опирается на работу Davydov, Jaffe, Singh и Bullo, "Retrieving
+k-Nearest Memories with Modern Hopfield Networks"; см.
+`docs/papers/33_Retrieving_k_Nearest_Memori.pdf` и
+`docs/papers/hopfield_memory.txt`.
 
 ### Why Local Models Are Still Needed
 
@@ -130,6 +173,31 @@ If the local generation server is already running, the evaluation wrapper will
 reuse it instead of starting a duplicate process.
 If the persisted retrieval artifacts are stale, the wrapper refreshes them
 before it starts generation.
+
+### Canonical Hopfield Tests To Run
+
+Targeted unit and smoke-level tests for the current Hopfield-memory slice:
+
+```bash
+python -m pytest backend/tests/test_hopfield_memory.py -q
+python -m pytest backend/tests/test_memory_store.py -q
+python -m pytest backend/tests/test_app.py -q
+python -m pytest backend/tests/test_dev_server_scripts.py -q
+```
+
+These automated tests cover the Hopfield recall helpers, the app-level memory
+path, and the reload-command construction without requiring multiple consoles.
+
+Manual mode smoke for the live app:
+
+```bash
+CAREERGUIDE_MEMORY_HOPFIELD_MODE=top1 python -m backend.scripts.run_local_app_stack --reload
+CAREERGUIDE_MEMORY_HOPFIELD_MODE=topk CAREERGUIDE_MEMORY_HOPFIELD_TOP_K=3 python -m backend.scripts.run_local_app_stack --reload
+```
+
+These manual runs should then be exercised with repeated `/chat/answer`
+requests for the same user so you can inspect `/memory/list` and verify that
+the prompt path reuses persisted memory under both recall modes.
 
 ### What The Evaluation Workflow Produces
 
@@ -250,6 +318,32 @@ python -m backend.scripts.run_local_eval_workflow
 использует его вместо запуска дублирующего процесса.
 Если persisted retrieval-артефакты устарели, wrapper обновит их до старта
 generation.
+
+### Канонические Hopfield-тесты для запуска
+
+Целевые unit- и smoke-level тесты для текущего Hopfield-memory slice:
+
+```bash
+python -m pytest backend/tests/test_hopfield_memory.py -q
+python -m pytest backend/tests/test_memory_store.py -q
+python -m pytest backend/tests/test_app.py -q
+python -m pytest backend/tests/test_dev_server_scripts.py -q
+```
+
+Эти автоматизированные тесты покрывают Hopfield recall helpers, app-level
+memory-path и сборку reload-команды без необходимости поднимать несколько
+консолей.
+
+Ручной smoke для live-app по режимам:
+
+```bash
+CAREERGUIDE_MEMORY_HOPFIELD_MODE=top1 python -m backend.scripts.run_local_app_stack --reload
+CAREERGUIDE_MEMORY_HOPFIELD_MODE=topk CAREERGUIDE_MEMORY_HOPFIELD_TOP_K=3 python -m backend.scripts.run_local_app_stack --reload
+```
+
+После этого стоит сделать несколько повторных запросов к `/chat/answer` для
+одного и того же пользователя, затем проверить `/memory/list` и убедиться, что
+prompt-path повторно использует persisted memory в обоих режимах recall.
 
 ### Что производит evaluation-workflow
 

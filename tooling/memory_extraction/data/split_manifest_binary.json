@@ -1,0 +1,35 @@
+{
+  "task": "binary",
+  "seed": 17,
+  "train_ratio": 0.8,
+  "dev_ratio": 0.1,
+  "split_stats": {
+    "train": {
+      "count": 2000,
+      "buckets": {
+        "en:MEMORY": 800,
+        "en:NO_MEMORY": 200,
+        "ru:MEMORY": 800,
+        "ru:NO_MEMORY": 200
+      }
+    },
+    "dev": {
+      "count": 250,
+      "buckets": {
+        "en:MEMORY": 100,
+        "en:NO_MEMORY": 25,
+        "ru:MEMORY": 100,
+        "ru:NO_MEMORY": 25
+      }
+    },
+    "test": {
+      "count": 250,
+      "buckets": {
+        "en:MEMORY": 100,
+        "en:NO_MEMORY": 25,
+        "ru:MEMORY": 100,
+        "ru:NO_MEMORY": 25
+      }
+    }
+  }
+}

@@ -32,6 +32,7 @@ The claim is:
 - The active milestone is now `Memory Layer v1 Integrated`.
 - The repo now has SQLite-backed persistent memory storage for `memory_items`.
 - The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before retrieval and prompt assembly.
+- The repo now also has a trained and evaluated standalone binary BiLSTM memory-extraction baseline under `tooling/memory_extraction/`.
 - The next real comparison is no longer dense-only versus reranker; it is `RAG-only` versus `RAG + memory`.
 
 ### Current alignment and active gaps
@@ -40,18 +41,18 @@ The claim is:
 - Hybrid retrieval is intentionally simplified in the live path. Dense-only FAISS HNSW is the active baseline, while lexical retrieval is currently absent and should be treated as optional drift rather than the critical path.
 - Structured artifact generation is behind plan. Grounded answer generation is real, but the intended structured outputs like career plans, skills-gap artifacts, and wellbeing-note artifacts are not yet first-class persisted deliverables.
 - Memory persistence is real, but memory extraction is still weak and English-biased, which is a direct mismatch with the Russian-first product target.
-- The current memory scaffold is in the live prompt path, but it is not yet the real learned Hopfield module: it still relies on a deterministic hash embedder and does not yet expose explicit `top1`/`topk` recall modes.
+- The current memory read is now a real non-trainable Hopfield-style recall over the active embedding stack with explicit `top1`/`topk` modes, but the runtime write path still uses a whole-turn heuristic instead of the trained sentence-level classifier.
 - Safety/refusal behavior and artifact/profile lifecycle work remain materially behind the intended end-state.
 
 ### Immediate critical-path sequence
 
-1. replace the current hash-based scaffold with a real Hopfield memory module over the Qwen embedding stack
+1. integrate deterministic sentence splitting plus the trained binary BiLSTM extractor into the live memory write path
 2. add tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
-3. make memory extraction minimally bilingual and type-aware
-4. add memory lifecycle controls: confirmed, inferred, archived, superseded
-5. export memory debug artifacts for report-quality inspection
-6. revalidate the recent runtime fixes around answer contract and reload behavior
-7. add a minimal safety/refusal layer for wellness-sensitive inputs
+3. add memory lifecycle controls: confirmed, inferred, archived, superseded
+4. export memory debug artifacts for report-quality inspection
+5. revalidate the recent runtime fixes around answer contract and reload behavior
+6. add a minimal safety/refusal layer for wellness-sensitive inputs
+7. add later fine-grained memory type classification only after the binary runtime path is stable
 
 ---
 

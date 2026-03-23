@@ -1,0 +1,92 @@
+{
+  "example_count": 250,
+  "accuracy": 0.968,
+  "macro_f1": 0.9484323432343233,
+  "per_label": {
+    "NO_MEMORY": {
+      "precision": 0.9565217391304348,
+      "recall": 0.88,
+      "f1": 0.9166666666666666,
+      "support": 50.0
+    },
+    "MEMORY": {
+      "precision": 0.9705882352941176,
+      "recall": 0.99,
+      "f1": 0.9801980198019802,
+      "support": 200.0
+    }
+  },
+  "confusion": {
+    "NO_MEMORY": {
+      "NO_MEMORY": 44,
+      "MEMORY": 6
+    },
+    "MEMORY": {
+      "NO_MEMORY": 2,
+      "MEMORY": 198
+    }
+  },
+  "per_language": {
+    "en": {
+      "example_count": 125,
+      "accuracy": 0.968,
+      "macro_f1": 0.95,
+      "per_label": {
+        "NO_MEMORY": {
+          "precision": 0.92,
+          "recall": 0.92,
+          "f1": 0.92,
+          "support": 25.0
+        },
+        "MEMORY": {
+          "precision": 0.98,
+          "recall": 0.98,
+          "f1": 0.98,
+          "support": 100.0
+        }
+      },
+      "confusion": {
+        "NO_MEMORY": {
+          "NO_MEMORY": 23,
+          "MEMORY": 2
+        },
+        "MEMORY": {
+          "NO_MEMORY": 2,
+          "MEMORY": 98
+        }
+      }
+    },
+    "ru": {
+      "example_count": 125,
+      "accuracy": 0.968,
+      "macro_f1": 0.9467178175618074,
+      "per_label": {
+        "NO_MEMORY": {
+          "precision": 1.0,
+          "recall": 0.84,
+          "f1": 0.9130434782608696,
+          "support": 25.0
+        },
+        "MEMORY": {
+          "precision": 0.9615384615384616,
+          "recall": 1.0,
+          "f1": 0.9803921568627451,
+          "support": 100.0
+        }
+      },
+      "confusion": {
+        "NO_MEMORY": {
+          "NO_MEMORY": 21,
+          "MEMORY": 4
+        },
+        "MEMORY": {
+          "NO_MEMORY": 0,
+          "MEMORY": 100
+        }
+      }
+    }
+  },
+  "task": "binary",
+  "model_bundle": "tooling/memory_extraction/models/bilstm_memory_classifier_binary_seed23.pt",
+  "input_jsonl": "/mnt/e/Work-Repos-SiftVPN/CareerGuide/tooling/memory_extraction/data/splits/binary/test.jsonl"
+}

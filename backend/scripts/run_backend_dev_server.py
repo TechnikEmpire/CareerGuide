@@ -8,6 +8,14 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+RELOAD_DIRS = ("backend",)
+RELOAD_EXCLUDES = (
+    "data/processed/*",
+    "models/*",
+    "eval/out/*",
+    "config/*.local.json",
+    ".env.local",
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,6 +37,32 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def build_uvicorn_command(args: argparse.Namespace) -> list[str]:
+    """Build the Uvicorn command for the local backend dev server.
+
+    Uvicorn reload globs must stay relative to the current working directory.
+    Absolute patterns crash under pathlib glob handling.
+    """
+
+    command = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "backend.app.main:app",
+        "--host",
+        args.host,
+        "--port",
+        str(args.port),
+    ]
+    if args.reload:
+        command.append("--reload")
+        for reload_dir in RELOAD_DIRS:
+            command.extend(["--reload-dir", reload_dir])
+        for pattern in RELOAD_EXCLUDES:
+            command.extend(["--reload-exclude", pattern])
+    return command
+
+
 def main() -> None:
     args = parse_args()
     env_local_path = REPO_ROOT / ".env.local"
@@ -44,34 +78,7 @@ def main() -> None:
         env.setdefault("HF_HUB_OFFLINE", "1")
         env.setdefault("TRANSFORMERS_OFFLINE", "1")
 
-    command = [
-        sys.executable,
-        "-m",
-        "uvicorn",
-        "backend.app.main:app",
-        "--host",
-        args.host,
-        "--port",
-        str(args.port),
-    ]
-    if args.reload:
-        command.extend(
-            [
-                "--reload",
-                "--reload-dir",
-                str(REPO_ROOT / "backend"),
-                "--reload-exclude",
-                str(REPO_ROOT / "data" / "processed" / "*"),
-                "--reload-exclude",
-                str(REPO_ROOT / "models" / "*"),
-                "--reload-exclude",
-                str(REPO_ROOT / "eval" / "out" / "*"),
-                "--reload-exclude",
-                str(REPO_ROOT / "config" / "*.local.json"),
-                "--reload-exclude",
-                str(REPO_ROOT / ".env.local"),
-            ]
-        )
+    command = build_uvicorn_command(args)
     os.execvpe(command[0], command, env)
 
 

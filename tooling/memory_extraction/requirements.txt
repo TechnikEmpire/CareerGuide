@@ -1,0 +1,17 @@
+# Standalone requirements for synthetic bilingual memory-extraction data
+# generation and BiLSTM classifier training.
+#
+# This matches the repo's existing standalone-tooling pattern: keep heavier
+# training/runtime dependencies out of the main app environment.
+#
+# Baseline choice:
+# - PyTorch 2.6.0
+# - CUDA 12.4 wheel index
+# - Python 3.11 recommended
+--extra-index-url https://download.pytorch.org/whl/cu124
+torch==2.6.0
+accelerate>=1.2,<2
+numpy>=1.26,<3
+safetensors>=0.4,<1
+transformers>=4.51,<5
+tqdm>=4.66,<5

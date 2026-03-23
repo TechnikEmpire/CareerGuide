@@ -1,8 +1,8 @@
 # Project Status
 
-Last updated: 2026-03-22
+Last updated: 2026-03-23
 
-Последнее обновление: 2026-03-22
+Последнее обновление: 2026-03-23
 
 ## English
 
@@ -10,7 +10,8 @@ Last updated: 2026-03-22
 
 Foundational scaffold plus tracked ESCO source artifacts, a Qwen3-targeted
 FAISS-backed dense retrieval stack, a validated end-to-end baseline RAG path,
-and the first real persistent-memory slice now wired into the live answer flow.
+and the first real embedding-based Hopfield memory slice now wired into the
+live answer flow.
 
 ### What Is Already Done
 
@@ -18,8 +19,12 @@ and the first real persistent-memory slice now wired into the live answer flow.
 - Canonical decision tracking is in place.
 - Local setup instructions exist for WSL, Windows, and macOS.
 - A Python-first backend scaffold exists with FastAPI routing and explicit service boundaries.
-- The initial Hopfield-memory scaffold exists, but it is not yet the real learned `top1`/`topk` memory module.
+- A basic non-trainable Hopfield memory read now exists over the real semantic embedding stack with explicit `top1` and `topk` recall modes.
 - Standalone ESCO preprocessing and translation tooling exists under `tooling/translation/`.
+- Standalone ru/en synthetic-data and BiLSTM training tooling for memory extraction now exists under `tooling/memory_extraction/`, using direct local-model GPU generation instead of app-server generation.
+- The synthetic-data generator now rotates prompt variants, rejects repeated openings plus token-set near-duplicates, and stops collapsed buckets on consecutive no-progress attempts instead of silently stalling.
+- The raw extraction corpus keeps fine-grained labels, but the first supervised extractor baseline is now binary `MEMORY` versus `NO_MEMORY` rather than five-way multiclass from the start.
+- The standalone binary BiLSTM extraction baseline is now trained and evaluated on the tracked `memory_extraction_synthetic_v4` corpus, but it is still not integrated into the live backend write path.
 - The ESCO English CSV classification dump has been normalized into the repo's common concept and relation format.
 - The one-time ESCO English-to-Russian translation run has been completed and written to the tracked bilingual corpus.
 - ESCO artifact tracking policy is defined: raw vendor data stays ignored, while normalized concepts, normalized relations, the bilingual translated corpus, and preprocessing manifests are tracked.
@@ -45,6 +50,9 @@ and the first real persistent-memory slice now wired into the live answer flow.
 - The default memory store is now backed by the local SQLite `memory_items` table rather than an in-process dictionary.
 - The live `/chat/answer` flow now extracts heuristic user-constraint memory candidates and persists them before retrieval and prompt assembly.
 - The current memory dedupe rule is normalized-text uniqueness per user, so repeated stable phrasing does not create duplicate rows.
+- The live prompt path now summarizes persisted memory through a basic non-trainable Hopfield recall step over real embedding vectors.
+- Unit tests now cover the current Hopfield recall modes in `backend/tests/test_hopfield_memory.py`.
+- The backend dev-server wrapper now builds reload globs as relative patterns, and that behavior is covered by `backend/tests/test_dev_server_scripts.py`.
 
 ### Current Completion Boundary
 
@@ -56,7 +64,7 @@ That boundary should only be considered closed when all of these are true:
 
 1. persistent memory storage is stable and inspectable through the active local app flow
 2. the live answer path writes extracted memory before retrieval/prompt assembly
-3. the memory read uses a real learned Hopfield module over the real semantic embedding stack rather than a placeholder hash scaffold
+3. the memory read uses a real embedding-based Hopfield mechanism with explicit `top1` and `topk` recall modes rather than a placeholder hash scaffold
 4. tracked outputs exist for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`
 5. memory extraction behaves acceptably for Russian-first usage rather than only English-triggered usage
 6. the memory-enabled evaluation outputs and repo docs reflect that stable state
@@ -65,7 +73,7 @@ Current status against that boundary:
 
 - `1` true for the current SQLite-backed scope
 - `2` true
-- `3` false
+- `3` true
 - `4` false
 - `5` false
 - `6` false
@@ -76,30 +84,34 @@ Boundary result:
 
 ### What Is In Progress
 
-- Persistent memory implementation beyond the old in-process scaffold.
-- Replacing the current scaffold with a real learned Hopfield memory module.
+- Profile and artifact memory implementation beyond the current `memory_items` slice.
 - Extending the evaluation harness from baseline RAG validation into `RAG-only` versus naive-memory versus Hopfield-memory comparison.
 - Broadening memory extraction and consolidation beyond the current first-pass heuristic.
+- Adding memory-debug artifacts and comparison traces so the current Hopfield read is inspectable.
+- Integrating the trained binary BiLSTM extractor into the live sentence-level memory write path.
 
 ### What Is Not Done Yet
 
 - Editable user profile and artifact memory persistence
 - Confirmation, archive, and supersede flow for uncertain or outdated memory
 - Richer memory extraction and consolidation beyond the current first-pass heuristic
-- Real semantic embeddings plus learned projections for the memory read/write path
-- Explicit `top1` and `topk` Hopfield recall modes
+- Tracked `RAG-only` versus naive-memory versus Hopfield-memory evaluation
+- Bilingual memory detection that behaves acceptably on real chat rather than only on synthetic data
+- Integrated binary BiLSTM memory-extraction classifier for `ru` and `en`
+- Later fine-grained type classification for `PREFERENCE`, `CONSTRAINT`, `GOAL`, and `AVAILABILITY`
+- Memory-debug exports, comparison traces, and report-ready artifacts
+- Learned projections and differentiable `ksoftmax` as a future Hopfield phase
 - Structured career/wellbeing artifact generation and artifact reuse
-- Joint `RAG-only` versus naive-memory versus Hopfield-memory evaluation
 - Full safety-policy implementation
-- Full experiment harness and report-ready result exports
+- Full experiment harness for memory contribution and report-ready result exports
 
 ### Immediate Next Steps
 
-1. Replace the current hash-based scaffold with a real Hopfield memory module over the Qwen embedding stack.
+1. Integrate deterministic sentence splitting plus the trained binary BiLSTM extractor into the live memory write path and retire the current whole-turn heuristic.
 2. Add canonical outputs for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`.
-3. Make memory extraction minimally bilingual and type-aware for Russian-first usage.
+3. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
 4. Add explicit profile/artifact memory editing plus lifecycle controls.
-5. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
+5. Add later fine-grained type classification only after the binary runtime path is stable.
 
 ### Current Risks and Notes
 
@@ -107,7 +119,9 @@ Boundary result:
 - The current dense baseline is good enough to move forward. The measured retrieval elbow is locked at `top_k=10`, explicit citations are now working, and the baseline answer-eval export is no longer degenerate.
 - Answer quality is baseline-acceptable, not polished. Some responses are still terse or stylistically rough, so future prompt work should be evidence-driven rather than assumed complete.
 - The current local workflow now assumes repo-local model caching for both the generator and the retrieval query embedder. If those local artifacts are missing, the runtime may fall back to Hugging Face resolution and surprise the operator.
-- The memory layer is partially real but still not the defended novelty. It persists stable heuristic user constraints, but the live read path is still a temporary associative scaffold rather than the intended learned Hopfield module, it does not yet behave well enough for Russian-first extraction, and it does not yet have the right multi-arm comparison report.
+- The memory layer is materially more real now: it persists stable heuristic user constraints and performs a non-trainable Hopfield recall over real embedding vectors. What is still missing is the measured multi-arm comparison, Russian-first extraction quality, and the optional learned-projection phase.
+- The repo now has standalone tooling plus a trained ru/en binary BiLSTM memory-extraction baseline, but the live backend still uses the heuristic extractor until sentence-level runtime integration is done.
+- The binary extractor metrics are encouraging on the tracked synthetic split, but the corpus still contains some noisy sentences. Synthetic held-out scores therefore overstate real-chat readiness.
 - The current repo is still answer-first rather than artifact-first. That is acceptable for the baseline RAG milestone, but the planned structured outputs and artifact reuse remain open work.
 - The latest `direct_answer` contract tightening and the dev-server reload-watch exclusions are implemented in code but should still be treated as pending smoke revalidation.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
@@ -136,9 +150,16 @@ Boundary result:
   - store=`SQLite memory_items table`
   - live write path=`/chat/answer` extracts and upserts heuristic user-constraint memory
   - dedupe rule=`normalized text per user`
-  - prompt path=`persisted memory is summarized through a temporary associative-read scaffold`
-  - current vector basis=`deterministic hash embedder placeholder, not yet the real Qwen embedding stack`
-  - missing defended modes=`Hopfield top1 recall and Hopfield topk superposed recall`
+  - prompt path=`persisted memory is summarized through a non-trainable Hopfield recall step`
+  - current vector basis=`active real semantic embedding stack via the retrieval embedder`
+  - active recall modes=`Hopfield top1 recall and Hopfield topk superposed recall`
+  - current top-k implementation=`exact top-k masking plus renormalization, not differentiable ksoftmax`
+- Memory-extraction tooling:
+  - tracked raw corpus=`tooling/memory_extraction/data/synthetic_memory_sentences_v4.jsonl`
+  - corpus size=`2500` sentence-level examples
+  - binary split sizes=`train 2000 / dev 250 / test 250`
+  - best tracked binary eval=`accuracy 0.976`, `macro_f1 0.9619`
+  - main weakness=`ru:NO_MEMORY recall 0.84` on the tracked synthetic test split
 - Retrieval cache artifacts tracked in git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`
@@ -175,8 +196,8 @@ Boundary result:
 
 Базовый scaffold плюс отслеживаемые ESCO source-артефакты, dense retrieval
 stack на базе FAISS для Qwen3, валидированный end-to-end baseline RAG path и
-теперь уже первый реальный slice persistent-memory, подключенный к live answer
-flow.
+теперь уже первый реальный embedding-based Hopfield slice для memory,
+подключенный к live answer-flow.
 
 ### Что уже сделано
 
@@ -184,8 +205,12 @@ flow.
 - Каноническое отслеживание решений уже работает.
 - Есть инструкции локальной настройки для WSL, Windows и macOS.
 - Существует Python-first backend scaffold с FastAPI routing и явными service boundaries.
-- Есть начальный scaffold для Hopfield-memory, но это еще не реальный learned `top1`/`topk` memory-module.
+- Уже существует базовый нетренируемый Hopfield memory-read поверх реального semantic embedding stack с явными режимами `top1` и `topk`.
 - Существует standalone tooling для preprocessing и перевода ESCO в `tooling/translation/`.
+- Теперь также существует standalone tooling для synthetic-data и BiLSTM-training memory extraction в `tooling/memory_extraction/`.
+- Synthetic-data generator теперь ротирует prompt variants, отбрасывает повторяющиеся openings и token-set near-duplicates и останавливает collapsed buckets по последовательным no-progress attempts вместо тихого зависания.
+- Raw extraction-corpus сохраняет fine-grained labels, но первый supervised extractor baseline теперь бинарный: `MEMORY` против `NO_MEMORY`, а не сразу пяти-классовый multiclass.
+- Standalone binary BiLSTM extraction-baseline теперь уже обучен и оценен на отслеживаемом corpus `memory_extraction_synthetic_v4`, но пока еще не интегрирован в live backend write-path.
 - English CSV classification dump ESCO уже нормализован в общий формат concepts и relations репозитория.
 - One-time перевод ESCO с английского на русский уже выполнен и записан в отслеживаемый bilingual corpus.
 - Политика отслеживания ESCO-артефактов определена: raw vendor data игнорируется, а normalized concepts, normalized relations, bilingual translated corpus и preprocessing manifests отслеживаются.
@@ -211,6 +236,9 @@ flow.
 - Default memory store теперь работает через локальную SQLite-таблицу `memory_items`, а не через in-process dictionary.
 - Live-flow `/chat/answer` теперь извлекает heuristic memory-candidates для user-constraints и сохраняет их до retrieval и prompt assembly.
 - Текущее правило дедупликации memory — уникальность normalized-text отдельно для каждого пользователя.
+- Live prompt-path теперь суммирует persisted memory через базовый нетренируемый Hopfield recall-step поверх реальных embedding-векторов.
+- Unit-тесты теперь покрывают текущие режимы Hopfield recall в `backend/tests/test_hopfield_memory.py`.
+- Wrapper backend dev-server теперь собирает reload-glob как relative patterns, и это поведение покрыто `backend/tests/test_dev_server_scripts.py`.
 
 ### Текущая граница завершения
 
@@ -222,7 +250,7 @@ flow.
 
 1. persistent-memory storage стабилен и inspectable через активный локальный app-flow
 2. live answer-path записывает extracted memory до retrieval/prompt assembly
-3. memory-read использует реальный learned Hopfield-module поверх semantic embedding stack, а не placeholder hash-scaffold
+3. memory-read использует реальный embedding-based Hopfield-механизм с явными режимами `top1` и `topk`, а не placeholder hash-scaffold
 4. существуют и отслеживаются outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`
 5. extraction памяти работает приемлемо для Russian-first usage, а не только через английские trigger-phrases
 6. memory-enabled evaluation-output и документация репозитория отражают это состояние
@@ -231,7 +259,7 @@ flow.
 
 - `1` выполнен для текущего SQLite-backed scope
 - `2` выполнен
-- `3` не выполнен
+- `3` выполнен
 - `4` не выполнен
 - `5` не выполнен
 - `6` не выполнен
@@ -242,30 +270,34 @@ flow.
 
 ### Что сейчас в работе
 
-- Реализация persistent memory поверх прежнего in-process scaffold.
-- Замена текущего scaffold на реальный learned Hopfield memory-module.
+- Реализация profile- и artifact-memory поверх текущего slice `memory_items`.
 - Расширение evaluation harness от baseline RAG validation к сравнению naive-memory и Hopfield-memory поверх `RAG-only`.
 - Расширение extraction и consolidation памяти за пределы текущей первой эвристики.
+- Добавление memory-debug артефактов и comparison traces, чтобы текущий Hopfield-read был inspectable.
+- Интеграция обученного бинарного BiLSTM-extractor в live sentence-level memory write-path.
 
 ### Что еще не сделано
 
 - Редактируемое persistent storage для user profile и artifact memory
 - Confirmation/archive/supersede flow для uncertain или устаревшей memory
 - Более богатые extraction и consolidation памяти за пределами текущей первой эвристики
-- Реальные semantic embeddings и learned projections для memory read/write path
-- Явные режимы Hopfield `top1` и `topk`
+- Отслеживаемая evaluation `RAG-only` против naive-memory и Hopfield-memory
+- Bilingual memory detection, которая приемлемо ведет себя на реальном чате, а не только на synthetic-data
+- Интегрированный бинарный BiLSTM-classifier для memory extraction на `ru` и `en`
+- Более поздняя fine-grained type-classification для `PREFERENCE`, `CONSTRAINT`, `GOAL` и `AVAILABILITY`
+- Memory-debug exports, comparison traces и report-ready артефакты
+- Learned projections и differentiable `ksoftmax` как будущая фаза Hopfield-слоя
 - Структурированная генерация career/wellbeing artifacts и их повторное использование
-- Совместная evaluation `RAG-only` против naive-memory и Hopfield-memory
 - Полноценная реализация safety policy
-- Полноценный experiment harness и report-ready экспорт результатов
+- Полноценный experiment harness для вклада memory и report-ready экспорт результатов
 
 ### Ближайшие шаги
 
-1. Заменить текущий hash-based scaffold на реальный Hopfield memory-module поверх Qwen embedding stack.
+1. Интегрировать детерминированный sentence-splitting и обученный binary BiLSTM-extractor в live memory write-path и убрать текущую whole-turn heuristic.
 2. Добавить канонические outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`.
-3. Сделать extraction памяти как минимум bilingual и type-aware для Russian-first usage.
+3. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
 4. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
-5. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
+5. Добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path.
 
 ### Текущие риски и заметки
 
@@ -273,7 +305,9 @@ flow.
 - Текущий dense baseline уже достаточно хорош, чтобы двигаться дальше. Retrieval-elbow зафиксирован на `top_k=10`, explicit citations работают, а baseline answer-eval export больше не является вырожденным.
 - Качество ответов уже приемлемо для baseline, но еще не отполировано. Некоторые ответы все еще слишком краткие или стилистически грубые, поэтому будущая prompt-доработка должна быть опираться на evidence, а не на ощущения.
 - Текущий локальный workflow теперь предполагает repo-local model caching и для generator, и для retrieval query-embedder. Если эти локальные артефакты отсутствуют, runtime может неожиданно обратиться к Hugging Face.
-- Memory-layer уже частично реален, но все еще не является защищаемой novelty-частью. Он сохраняет стабильные heuristic user-constraints, но live read-path пока остается временным associative scaffold вместо intended learned Hopfield-module, пока слабо согласован с Russian-first extraction и пока не имеет правильного многорукавного comparison-report.
+- Memory-layer теперь существенно более реален: он сохраняет стабильные heuristic user-constraints и выполняет нетренируемый Hopfield recall поверх реальных embedding-векторов. Все еще не хватает измеряемого многорукавного comparison-report, качества Russian-first extraction и, при необходимости, learned-projection фазы.
+- В репозитории теперь есть standalone tooling и уже обученный ru/en binary BiLSTM-baseline для memory extraction, но live-backend все еще использует heuristic extractor, пока не будет сделана sentence-level runtime-интеграция.
+- Метрики binary extractor выглядят обнадеживающе на отслеживаемом synthetic split, но corpus все еще содержит некоторый шум. Поэтому synthetic held-out scores завышают готовность к реальному чату.
 - Текущий repo все еще answer-first, а не artifact-first. Для baseline RAG это допустимо, но planned structured outputs и artifact reuse все еще остаются открытой работой.
 - Последние изменения с `direct_answer` contract и исключениями для reload-watch реализованы в коде, но их все еще нужно считать ожидающими smoke-подтверждения.
 - ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.
@@ -302,9 +336,16 @@ flow.
   - store=`SQLite memory_items table`
   - live write path=`/chat/answer` извлекает и upsert-ит heuristic user-constraint memory
   - dedupe rule=`normalized text per user`
-  - prompt path=`persisted memory суммируется через временный associative-read scaffold`
-  - current vector basis=`deterministic hash embedder placeholder, а не реальный Qwen embedding stack`
-  - missing defended modes=`Hopfield top1 recall и Hopfield topk superposed recall`
+  - prompt path=`persisted memory суммируется через нетренируемый Hopfield recall-step`
+  - current vector basis=`активный real semantic embedding stack через retrieval-embedder`
+  - active recall modes=`Hopfield top1 recall и Hopfield topk superposed recall`
+  - current top-k implementation=`exact top-k masking plus renormalization, а не differentiable ksoftmax`
+- Memory-extraction tooling:
+  - tracked raw corpus=`tooling/memory_extraction/data/synthetic_memory_sentences_v4.jsonl`
+  - размер corpus=`2500` sentence-level примеров
+  - размеры binary-split=`train 2000 / dev 250 / test 250`
+  - лучшая отслеживаемая binary-eval=`accuracy 0.976`, `macro_f1 0.9619`
+  - основная слабость=`ru:NO_MEMORY recall 0.84` на отслеживаемом synthetic test split
 - Retrieval cache-артефакты, отслеживаемые в git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`

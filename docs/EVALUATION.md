@@ -1,8 +1,8 @@
 # Evaluation
 
-Last updated: 2026-03-22
+Last updated: 2026-03-23
 
-Последнее обновление: 2026-03-22
+Последнее обновление: 2026-03-23
 
 ## English
 
@@ -88,6 +88,30 @@ The answer-evidence score is only meaningful if `cited_chunk_ids` reflect
 explicit model-selected citations. Treating the entire retrieved context as if
 all chunks were cited is not canonical, because it turns evidence precision
 into a proxy for context width rather than attribution quality.
+
+### Canonical Memory Evaluation
+
+The core memory comparison for this repo is:
+
+1. `RAG-only`
+2. `RAG + naive memory retrieval`
+3. `RAG + Hopfield top1 recall`
+4. `RAG + Hopfield topk recall`
+
+The current implementation already supports the Hopfield recall modes needed
+for arms 3 and 4, but the tracked comparison outputs are still pending.
+
+The active shipped Hopfield phase is intentionally the simplest defensible one:
+
+- real embedding-space memory vectors
+- non-trainable one-step Hopfield recall
+- `top1` sharp single-memory selection
+- `topk` exact top-k masking plus renormalization over softmax weights
+
+This is grounded in Davydov, Jaffe, Singh, and Bullo, "Retrieving k-Nearest
+Memories with Modern Hopfield Networks", committed in the repo at
+`docs/papers/33_Retrieving_k_Nearest_Memori.pdf` and
+`docs/papers/hopfield_memory.txt`.
 
 ### Current Canonical Eval Fixtures
 
@@ -210,6 +234,7 @@ This evaluation policy is grounded in:
 - the original RAG formulation by Lewis et al. (retrieval followed by generation): `https://arxiv.org/abs/2005.11401`
 - BEIR for retrieval-style metrics such as `nDCG`, `Recall`, and `MRR`: `https://arxiv.org/abs/2104.08663`
 - RAGAS for automated RAG evaluation dimensions and workflow ideas: `https://arxiv.org/abs/2309.15217`
+- Davydov, Jaffe, Singh, and Bullo for modern Hopfield `top1` versus `topk` memory retrieval framing: `docs/papers/33_Retrieving_k_Nearest_Memori.pdf`
 
 ## Русский
 
@@ -297,6 +322,31 @@ Score для answer-evidence имеет смысл только тогда, ко
 отражают явные citation-ID, выбранные моделью. Считать цитатами весь
 retrieved-context некорректно, потому что тогда precision перестает измерять
 качество атрибуции и превращается в косвенную метрику ширины context.
+
+### Каноническая evaluation memory
+
+Основное сравнение memory для этого репозитория такое:
+
+1. `RAG-only`
+2. `RAG + naive memory retrieval`
+3. `RAG + Hopfield top1 recall`
+4. `RAG + Hopfield topk recall`
+
+Текущая реализация уже поддерживает Hopfield-режимы recall, необходимые для
+веток 3 и 4, но отслеживаемые comparison-output для них еще впереди.
+
+Текущая поставляемая Hopfield-фаза намеренно является самым простым
+защищаемым вариантом:
+
+- реальные memory-векторы в embedding-space
+- нетренируемый one-step Hopfield recall
+- `top1` как sharp single-memory selection
+- `topk` как exact top-k masking с перенормировкой softmax-весов
+
+Этот этап опирается на работу Davydov, Jaffe, Singh и Bullo, "Retrieving
+k-Nearest Memories with Modern Hopfield Networks", зафиксированную в
+репозитории как `docs/papers/33_Retrieving_k_Nearest_Memori.pdf` и
+`docs/papers/hopfield_memory.txt`.
 
 ### Текущие канонические evaluation-fixtures
 
@@ -422,3 +472,4 @@ python -m backend.scripts.setup_local_models
 - исходной формулировке RAG у Lewis et al. (retrieval, а затем generation): `https://arxiv.org/abs/2005.11401`
 - BEIR для retrieval-метрик вроде `nDCG`, `Recall` и `MRR`: `https://arxiv.org/abs/2104.08663`
 - RAGAS для dimensions автоматической оценки RAG и идей workflow: `https://arxiv.org/abs/2309.15217`
+- Davydov, Jaffe, Singh и Bullo для framing memory-retrieval в режимах modern Hopfield `top1` и `topk`: `docs/papers/33_Retrieving_k_Nearest_Memori.pdf`

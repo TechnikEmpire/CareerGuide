@@ -254,3 +254,105 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
     listed_again = client.get("/memory/list", params={"user_id": "memory-user"})
     assert listed_again.status_code == 200
     assert len(listed_again.json()) == 1
+
+
+def test_answer_flow_supports_hopfield_top1_mode() -> None:
+    """The live answer path should expose Hopfield top-1 recall through pytest."""
+
+    previous_mode = settings.memory_hopfield_mode
+    previous_top_k = settings.memory_hopfield_top_k
+    settings.memory_hopfield_mode = "top1"
+    settings.memory_hopfield_top_k = 2
+    try:
+        client = TestClient(create_app())
+        user_id = "hopfield-top1-user"
+
+        first_memory = client.post(
+            "/memory/upsert",
+            json={
+                "item": {
+                    "id": "memory-top1-1",
+                    "user_id": user_id,
+                    "text": "I prefer remote work and async collaboration.",
+                    "category": "user_constraint",
+                    "importance": 0.9,
+                    "confidence": 0.8,
+                }
+            },
+        )
+        assert first_memory.status_code == 200
+
+        second_memory = client.post(
+            "/memory/upsert",
+            json={
+                "item": {
+                    "id": "memory-top1-2",
+                    "user_id": user_id,
+                    "text": "I enjoy marine biology documentaries.",
+                    "category": "user_constraint",
+                    "importance": 0.3,
+                    "confidence": 0.7,
+                }
+            },
+        )
+        assert second_memory.status_code == 200
+
+        response = client.post(
+            "/chat/answer",
+            json={"user_id": user_id, "question": "Which roles fit remote async collaboration?"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert "mode=top1" in payload["memory_summary"]
+        assert "remote work" in payload["memory_summary"].lower()
+        assert "rank=2" not in payload["memory_summary"]
+    finally:
+        settings.memory_hopfield_mode = previous_mode
+        settings.memory_hopfield_top_k = previous_top_k
+
+
+def test_answer_flow_supports_hopfield_topk_mode() -> None:
+    """The live answer path should expose Hopfield top-k recall through pytest."""
+
+    previous_mode = settings.memory_hopfield_mode
+    previous_top_k = settings.memory_hopfield_top_k
+    settings.memory_hopfield_mode = "topk"
+    settings.memory_hopfield_top_k = 2
+    try:
+        client = TestClient(create_app())
+        user_id = "hopfield-topk-user"
+
+        for memory_id, text in [
+            ("memory-topk-1", "I prefer remote work."),
+            ("memory-topk-2", "I need a low-stress transition into data work."),
+            ("memory-topk-3", "I enjoy marine biology documentaries."),
+        ]:
+            upserted = client.post(
+                "/memory/upsert",
+                json={
+                    "item": {
+                        "id": memory_id,
+                        "user_id": user_id,
+                        "text": text,
+                        "category": "user_constraint",
+                        "importance": 0.8,
+                        "confidence": 0.8,
+                    }
+                },
+            )
+            assert upserted.status_code == 200
+
+        response = client.post(
+            "/chat/answer",
+            json={"user_id": user_id, "question": "Which role fits remote low-stress data work?"},
+        )
+        assert response.status_code == 200
+        payload = response.json()
+        assert "mode=topk" in payload["memory_summary"]
+        assert "rank=1" in payload["memory_summary"]
+        assert "rank=2" in payload["memory_summary"]
+        assert "remote work" in payload["memory_summary"].lower()
+        assert "low-stress transition" in payload["memory_summary"].lower()
+    finally:
+        settings.memory_hopfield_mode = previous_mode
+        settings.memory_hopfield_top_k = previous_top_k

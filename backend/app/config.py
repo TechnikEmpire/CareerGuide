@@ -54,6 +54,9 @@ class AppSettings(BaseSettings):
     database_url: str = Field(default_factory=_default_database_url)
     default_top_k: int = 10
     memory_vector_size: int = 32
+    memory_hopfield_mode: str = "topk"
+    memory_hopfield_top_k: int = 3
+    memory_hopfield_beta: float = 8.0
     esco_concepts_path: Path = Field(default_factory=_default_esco_concepts_path)
     esco_relations_path: Path = Field(default_factory=_default_esco_relations_path)
     esco_bilingual_concepts_path: Path = Field(default_factory=_default_esco_bilingual_path)
