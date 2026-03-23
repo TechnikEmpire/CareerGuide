@@ -1,9 +1,18 @@
-"""Hopfield-style associative read helpers.
+"""Temporary scaffold for the real Hopfield memory module.
 
-This module is intentionally small and transparent. The point of the project is
-not to hide the memory mechanism behind marketing language. It is to show a clear
-associative read over user memory vectors that can later be evaluated against a
-RAG-only baseline.
+Current state:
+- explicit one-step associative read over stored memory vectors
+- prompt-facing weighted summary for inspection
+- deterministic hash embeddings only
+
+Target state:
+- real semantic base embeddings
+- learned projection(s) into a Hopfield memory space
+- explicit `top1` max-energy recall and `topk` superposed recall modes
+- debug exports for scores, weights, selected memory ids, and recalled state
+
+Do not oversell this file. The current implementation is a readable scaffold for
+the intended energy-based memory module, not the final defended novelty claim.
 """
 
 from __future__ import annotations

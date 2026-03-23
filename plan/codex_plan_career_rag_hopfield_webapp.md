@@ -8,9 +8,9 @@
 A web-based career guidance assistant that combines:
 - a **small open-weight LLM** for generation,
 - **dense ANN-backed RAG** over authoritative career and wellbeing corpora,
-- a **Hopfield-style associative memory layer** for persistent user preferences, goals, and constraints.
+- a **small learned Hopfield-style memory module** for persistent user preferences, goals, and constraints.
 
-This aligns with the high-level research document’s recommended scope: use a small open-weight model, authoritative RAG sources, structured outputs, privacy controls, and a modest personalization layer rather than training a large model from scratch. It also matches the implementation document’s advice not to oversell the memory component and to compare **RAG-only** against **RAG + associative memory**. 
+This aligns with the high-level research document’s recommended scope: use a small open-weight model, authoritative RAG sources, structured outputs, privacy controls, and a modest personalization layer rather than training a large model from scratch. It also matches the implementation document’s advice not to oversell the memory component and to compare **RAG-only** against naive memory lookup and explicit Hopfield recall modes.
 
 The end-user product experience should be treated as **Russian-first**. English documentation and English support remain useful for collaboration and review, but they are not the primary product target.
 
@@ -20,7 +20,28 @@ The end-user product experience should be treated as **Russian-first**. English 
 - The active milestone is now `Memory Layer v1 Integrated`.
 - The repo now persists user memory through the SQLite `memory_items` table.
 - The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before prompt assembly.
-- The next hard comparison is `RAG-only` versus `RAG + memory`, not another reranker pass.
+- The next hard comparison is `RAG-only` versus naive-memory versus Hopfield-memory, not another reranker pass.
+
+### Current alignment and active gaps
+
+- Baseline dense retrieval plus local Qwen3 generation is aligned and already defensible.
+- The repo has intentionally drifted from the older hybrid-retrieval idea into dense-only live retrieval because measured qrels do not justify reranking right now. Treat lexical retrieval as optional future work, not the critical path.
+- The biggest current mismatch is memory quality, not retrieval quality:
+  - memory persistence exists
+  - memory write path exists
+  - but memory extraction is still weak and not Russian-first in practice
+- The second major mismatch is structured artifacts. The plan expects persisted career/wellbeing artifacts, while the repo is still mainly grounded-answer oriented.
+- The most important scientific gap is still the missing tracked comparison outputs for naive-memory, Hopfield-`top1`, and Hopfield-`topk` against `RAG-only`.
+
+### Immediate critical-path sequence
+
+1. replace the current hash-based scaffold with a real Hopfield memory module over the Qwen embedding stack
+2. add tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison artifacts
+3. make memory extraction minimally bilingual and type-aware
+4. add memory lifecycle controls and artifact/profile memory
+5. export memory debug artifacts for evaluation and report work
+6. revalidate the recent runtime fixes
+7. add the missing safety/refusal layer
 
 ---
 
@@ -38,7 +59,7 @@ Do **not** spend project time on these unless the core AI path is already workin
 The science here is not “can we build a CRUD web app.” The science is:
 1. Can a small local/server-side LLM answer career questions well when grounded in curated corpora?
 2. Does dense ANN retrieval ground answers well enough on its own?
-3. Does a Hopfield-style memory layer measurably improve personalization and constraint adherence?
+3. Does a real Hopfield memory layer with explicit `top1`/`topk` recall measurably improve personalization and constraint adherence?
 
 ---
 
@@ -918,6 +939,15 @@ For a set of scripted queries:
 - no free-floating uncited claims in structured sections,
 - model does not invent unsupported policy/career facts.
 
+### Current repo state
+
+- Grounded answer generation and citation export are real.
+- The main remaining drift is that structured artifacts are still behind plan:
+  - `career_plan`
+  - `skills_gap_report`
+  - `wellbeing_guidance_note`
+  are not yet first-class persisted outputs in the way the plan intended.
+
 ---
 
 ## Stage 4 — Memory schema and extraction
@@ -945,6 +975,16 @@ Given a synthetic conversation, the system correctly stores:
 
 And it should **not** store noisy one-off chat filler.
 
+### Current repo state
+
+- The `memory_items` table and SQLite-backed persistence are now real.
+- The live answer path already writes extracted memory before prompt assembly.
+- What is still missing is plan-aligned memory quality:
+  - bilingual extraction
+  - richer typing
+  - lifecycle semantics
+  - profile/artifact memory beyond the simple constraint path
+
 ---
 
 ## Stage 5 — Hopfield-style associative read
@@ -965,6 +1005,12 @@ A deterministic `memory.retrieve(query_text, context)` component.
 ### Acceptance tests
 For relevant personalized queries, the top memory items are appropriate.
 For non-personalized queries, memory injection is minimal or absent.
+
+### Current repo state
+
+- A temporary associative-read scaffold is live.
+- The main mismatches are that memory read still uses a deterministic hash embedder instead of the real Qwen embedding model, and the module does not yet expose explicit `top1` and `topk` recall modes.
+- That means this stage is only partially aligned until the memory vector space and retrieval policy are upgraded and evaluated.
 
 ---
 
@@ -991,6 +1037,16 @@ Compared with RAG-only:
 - plans better reflect long-term goals,
 - irrelevant personalization remains low.
 
+### Current repo state
+
+- The live answer path already injects both retrieval evidence and memory summary.
+- The missing part is the actual tracked comparison:
+  - `RAG-only`
+  - `RAG + naive memory`
+  - `RAG + Hopfield top1`
+  - `RAG + Hopfield topk`
+- Until those outputs exist in the eval workflow, this stage should be treated as active but not closed.
+
 ---
 
 ## Stage 7 — Safety and governance layer
@@ -1009,6 +1065,11 @@ A small but explicit safety pipeline.
 
 ### Acceptance tests
 Queries implying crisis, diagnosis, or legal/employment adjudication are redirected or bounded appropriately.
+
+### Current repo state
+
+- This stage is still materially behind the intended end-state.
+- The repo has a small scope guard, but not the fuller safety/refusal behavior expected by the plan.
 
 ---
 

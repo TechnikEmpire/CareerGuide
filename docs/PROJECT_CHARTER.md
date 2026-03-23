@@ -10,13 +10,13 @@ CareerGuide is an academic proof-of-concept web application that helps users exp
 
 The project should reflect the student’s education in artificial intelligence and business. The implementation and documentation should be strong enough to serve as a final academic demonstration of both technical competence and practical product reasoning.
 
-The student’s strongest academic background is in recurrent neural networks, especially LSTM. The Hopfield-style memory system is therefore not an arbitrary add-on. It is the project’s main novelty mechanism and the conceptual bridge from the student’s recurrent-network background into a modern personalized RAG system.
+The student's strongest academic background is in recurrent neural networks, especially LSTM. The Hopfield memory system is therefore not an arbitrary add-on. It is the project's main novelty mechanism and the conceptual bridge from the student's recurrent-network background into a modern personalized RAG system. The defended target is a real learned Hopfield-style memory module with explicit `top1` and `topk` recall modes, not merely a similarity-ranking helper.
 
 ### Core Thesis Claim
 
 The defensible claim of the project is:
 
-> A grounded career-guidance assistant can be improved by combining dense ANN-backed RAG with a lightweight Hopfield-style associative memory layer that stores stable user preferences, goals, and constraints.
+> A grounded career-guidance assistant can be improved by combining dense ANN-backed RAG with a small learned Hopfield-style memory module that stores stable user preferences, goals, and constraints and supports both `top1` and `topk` recall regimes.
 
 ### Product Scope
 
@@ -55,7 +55,7 @@ The project is successful when it demonstrates:
 - grounded answers from authoritative career and wellbeing sources
 - understandable architecture and readable code
 - measurable personalization improvement from the memory layer
-- academically honest framing of the Hopfield-style contribution
+- academically honest framing of the Hopfield contribution as a real learned memory-retrieval mechanism rather than a naming trick
 - clear documentation that supports student learning and project defense
 
 ## Русский
@@ -68,13 +68,13 @@ CareerGuide - это академическое proof-of-concept веб-прил
 
 Проект должен отражать образование студентки в областях искусственного интеллекта и бизнеса. Реализация и документация должны быть достаточно сильными, чтобы выступать итоговой академической демонстрацией как технической компетентности, так и практического продуктового мышления.
 
-Самая сильная академическая база студентки связана с рекуррентными нейронными сетями, особенно с LSTM. Поэтому Hopfield-style memory system не является случайным дополнением. Это главный механизм новизны проекта и концептуальный мост от ее бэкграунда в recurrent networks к современной персонализированной RAG-системе.
+Самая сильная академическая база студентки связана с рекуррентными нейронными сетями, особенно с LSTM. Поэтому Hopfield memory system не является случайным дополнением. Это главный механизм новизны проекта и концептуальный мост от ее бэкграунда в recurrent networks к современной персонализированной RAG-системе. Защищаемая цель — это реальный learned Hopfield-style memory-module с явными режимами `top1` и `topk`, а не просто similarity-ranking helper.
 
 ### Основной тезис работы
 
 Защищаемый тезис проекта звучит так:
 
-> Grounded career-guidance assistant может быть улучшен за счет сочетания dense ANN-backed RAG и облегченного Hopfield-style associative memory layer, который хранит устойчивые пользовательские предпочтения, цели и ограничения.
+> Grounded career-guidance assistant может быть улучшен за счет сочетания dense ANN-backed RAG и небольшого learned Hopfield-style memory-module, который хранит устойчивые пользовательские предпочтения, цели и ограничения и поддерживает оба режима recall: `top1` и `topk`.
 
 ### Границы продукта
 
@@ -113,5 +113,5 @@ MVP не должен уходить в:
 - grounded-ответы на основе авторитетных карьерных и wellbeing-источников
 - понятную архитектуру и читаемый код
 - измеримое улучшение персонализации за счет memory layer
-- академически корректное позиционирование Hopfield-style вклада
+- академически корректное позиционирование Hopfield-вклада как реального learned memory-retrieval mechanism, а не naming-трюка
 - ясную документацию, поддерживающую обучение студентки и защиту проекта

@@ -18,7 +18,7 @@ and the first real persistent-memory slice now wired into the live answer flow.
 - Canonical decision tracking is in place.
 - Local setup instructions exist for WSL, Windows, and macOS.
 - A Python-first backend scaffold exists with FastAPI routing and explicit service boundaries.
-- The initial Hopfield-style associative-read scaffold exists.
+- The initial Hopfield-memory scaffold exists, but it is not yet the real learned `top1`/`topk` memory module.
 - Standalone ESCO preprocessing and translation tooling exists under `tooling/translation/`.
 - The ESCO English CSV classification dump has been normalized into the repo's common concept and relation format.
 - The one-time ESCO English-to-Russian translation run has been completed and written to the tracked bilingual corpus.
@@ -56,17 +56,19 @@ That boundary should only be considered closed when all of these are true:
 
 1. persistent memory storage is stable and inspectable through the active local app flow
 2. the live answer path writes extracted memory before retrieval/prompt assembly
-3. Hopfield-style memory summary uses persisted memory in the production path
-4. `RAG-only` versus `RAG + memory` comparison outputs exist and are tracked
-5. the memory-enabled evaluation outputs and repo docs reflect that stable state
+3. the memory read uses a real learned Hopfield module over the real semantic embedding stack rather than a placeholder hash scaffold
+4. tracked outputs exist for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`
+5. memory extraction behaves acceptably for Russian-first usage rather than only English-triggered usage
+6. the memory-enabled evaluation outputs and repo docs reflect that stable state
 
 Current status against that boundary:
 
 - `1` true for the current SQLite-backed scope
 - `2` true
-- `3` true for the current heuristic memory scope
+- `3` false
 - `4` false
 - `5` false
+- `6` false
 
 Boundary result:
 
@@ -75,7 +77,8 @@ Boundary result:
 ### What Is In Progress
 
 - Persistent memory implementation beyond the old in-process scaffold.
-- Extending the evaluation harness from baseline RAG validation into `RAG-only` versus `RAG + memory` comparison.
+- Replacing the current scaffold with a real learned Hopfield memory module.
+- Extending the evaluation harness from baseline RAG validation into `RAG-only` versus naive-memory versus Hopfield-memory comparison.
 - Broadening memory extraction and consolidation beyond the current first-pass heuristic.
 
 ### What Is Not Done Yet
@@ -83,16 +86,20 @@ Boundary result:
 - Editable user profile and artifact memory persistence
 - Confirmation, archive, and supersede flow for uncertain or outdated memory
 - Richer memory extraction and consolidation beyond the current first-pass heuristic
-- Joint `RAG-only` versus `RAG + memory` evaluation
+- Real semantic embeddings plus learned projections for the memory read/write path
+- Explicit `top1` and `topk` Hopfield recall modes
+- Structured career/wellbeing artifact generation and artifact reuse
+- Joint `RAG-only` versus naive-memory versus Hopfield-memory evaluation
 - Full safety-policy implementation
 - Full experiment harness and report-ready result exports
 
 ### Immediate Next Steps
 
-1. Add canonical `RAG-only` versus `RAG + memory` evaluation outputs.
-2. Promote the current heuristic memory write path into a richer extraction/consolidation flow.
-3. Add explicit profile/artifact memory editing and lifecycle controls.
-4. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
+1. Replace the current hash-based scaffold with a real Hopfield memory module over the Qwen embedding stack.
+2. Add canonical outputs for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`.
+3. Make memory extraction minimally bilingual and type-aware for Russian-first usage.
+4. Add explicit profile/artifact memory editing plus lifecycle controls.
+5. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
 
 ### Current Risks and Notes
 
@@ -100,7 +107,9 @@ Boundary result:
 - The current dense baseline is good enough to move forward. The measured retrieval elbow is locked at `top_k=10`, explicit citations are now working, and the baseline answer-eval export is no longer degenerate.
 - Answer quality is baseline-acceptable, not polished. Some responses are still terse or stylistically rough, so future prompt work should be evidence-driven rather than assumed complete.
 - The current local workflow now assumes repo-local model caching for both the generator and the retrieval query embedder. If those local artifacts are missing, the runtime may fall back to Hugging Face resolution and surprise the operator.
-- The memory layer is now real but still narrow. It persists stable heuristic user constraints, but it does not yet have confirmation flow, archival semantics, or a proper comparison report against the RAG-only baseline.
+- The memory layer is partially real but still not the defended novelty. It persists stable heuristic user constraints, but the live read path is still a temporary associative scaffold rather than the intended learned Hopfield module, it does not yet behave well enough for Russian-first extraction, and it does not yet have the right multi-arm comparison report.
+- The current repo is still answer-first rather than artifact-first. That is acceptable for the baseline RAG milestone, but the planned structured outputs and artifact reuse remain open work.
+- The latest `direct_answer` contract tightening and the dev-server reload-watch exclusions are implemented in code but should still be treated as pending smoke revalidation.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
 - Smoke tests still force deterministic retrieval providers so they remain fast and independent of model downloads. Production defaults point at Qwen3.
 - The real generation path is now wired, but the prompt design and scored answer behavior are still early-stage and need empirical iteration.
@@ -127,7 +136,9 @@ Boundary result:
   - store=`SQLite memory_items table`
   - live write path=`/chat/answer` extracts and upserts heuristic user-constraint memory
   - dedupe rule=`normalized text per user`
-  - prompt path=`persisted memory is summarized through the existing Hopfield-style read helper`
+  - prompt path=`persisted memory is summarized through a temporary associative-read scaffold`
+  - current vector basis=`deterministic hash embedder placeholder, not yet the real Qwen embedding stack`
+  - missing defended modes=`Hopfield top1 recall and Hopfield topk superposed recall`
 - Retrieval cache artifacts tracked in git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`
@@ -173,7 +184,7 @@ flow.
 - Каноническое отслеживание решений уже работает.
 - Есть инструкции локальной настройки для WSL, Windows и macOS.
 - Существует Python-first backend scaffold с FastAPI routing и явными service boundaries.
-- Есть начальный scaffold для Hopfield-style associative read.
+- Есть начальный scaffold для Hopfield-memory, но это еще не реальный learned `top1`/`topk` memory-module.
 - Существует standalone tooling для preprocessing и перевода ESCO в `tooling/translation/`.
 - English CSV classification dump ESCO уже нормализован в общий формат concepts и relations репозитория.
 - One-time перевод ESCO с английского на русский уже выполнен и записан в отслеживаемый bilingual corpus.
@@ -211,17 +222,19 @@ flow.
 
 1. persistent-memory storage стабилен и inspectable через активный локальный app-flow
 2. live answer-path записывает extracted memory до retrieval/prompt assembly
-3. Hopfield-style memory summary использует persisted memory в production-path
-4. существуют и отслеживаются outputs для сравнения `RAG-only` и `RAG + memory`
-5. memory-enabled evaluation-output и документация репозитория отражают это состояние
+3. memory-read использует реальный learned Hopfield-module поверх semantic embedding stack, а не placeholder hash-scaffold
+4. существуют и отслеживаются outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`
+5. extraction памяти работает приемлемо для Russian-first usage, а не только через английские trigger-phrases
+6. memory-enabled evaluation-output и документация репозитория отражают это состояние
 
 Текущий статус относительно этой границы:
 
 - `1` выполнен для текущего SQLite-backed scope
 - `2` выполнен
-- `3` выполнен для текущего heuristic memory-scope
+- `3` не выполнен
 - `4` не выполнен
 - `5` не выполнен
+- `6` не выполнен
 
 Результат по границе:
 
@@ -230,7 +243,8 @@ flow.
 ### Что сейчас в работе
 
 - Реализация persistent memory поверх прежнего in-process scaffold.
-- Расширение evaluation harness от baseline RAG validation к сравнению `RAG-only` и `RAG + memory`.
+- Замена текущего scaffold на реальный learned Hopfield memory-module.
+- Расширение evaluation harness от baseline RAG validation к сравнению naive-memory и Hopfield-memory поверх `RAG-only`.
 - Расширение extraction и consolidation памяти за пределы текущей первой эвристики.
 
 ### Что еще не сделано
@@ -238,16 +252,20 @@ flow.
 - Редактируемое persistent storage для user profile и artifact memory
 - Confirmation/archive/supersede flow для uncertain или устаревшей memory
 - Более богатые extraction и consolidation памяти за пределами текущей первой эвристики
-- Совместная evaluation `RAG-only` против `RAG + memory`
+- Реальные semantic embeddings и learned projections для memory read/write path
+- Явные режимы Hopfield `top1` и `topk`
+- Структурированная генерация career/wellbeing artifacts и их повторное использование
+- Совместная evaluation `RAG-only` против naive-memory и Hopfield-memory
 - Полноценная реализация safety policy
 - Полноценный experiment harness и report-ready экспорт результатов
 
 ### Ближайшие шаги
 
-1. Добавить канонические outputs для сравнения `RAG-only` и `RAG + memory`.
-2. Развить текущий heuristic memory write-path в более богатый flow extraction/consolidation.
-3. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
-4. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
+1. Заменить текущий hash-based scaffold на реальный Hopfield memory-module поверх Qwen embedding stack.
+2. Добавить канонические outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`.
+3. Сделать extraction памяти как минимум bilingual и type-aware для Russian-first usage.
+4. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
+5. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
 
 ### Текущие риски и заметки
 
@@ -255,7 +273,9 @@ flow.
 - Текущий dense baseline уже достаточно хорош, чтобы двигаться дальше. Retrieval-elbow зафиксирован на `top_k=10`, explicit citations работают, а baseline answer-eval export больше не является вырожденным.
 - Качество ответов уже приемлемо для baseline, но еще не отполировано. Некоторые ответы все еще слишком краткие или стилистически грубые, поэтому будущая prompt-доработка должна быть опираться на evidence, а не на ощущения.
 - Текущий локальный workflow теперь предполагает repo-local model caching и для generator, и для retrieval query-embedder. Если эти локальные артефакты отсутствуют, runtime может неожиданно обратиться к Hugging Face.
-- Memory-layer теперь уже реален, но все еще узок. Он сохраняет стабильные heuristic user-constraints, но у него пока нет confirmation-flow, archival semantics и полноценного comparison-report против RAG-only baseline.
+- Memory-layer уже частично реален, но все еще не является защищаемой novelty-частью. Он сохраняет стабильные heuristic user-constraints, но live read-path пока остается временным associative scaffold вместо intended learned Hopfield-module, пока слабо согласован с Russian-first extraction и пока не имеет правильного многорукавного comparison-report.
+- Текущий repo все еще answer-first, а не artifact-first. Для baseline RAG это допустимо, но planned structured outputs и artifact reuse все еще остаются открытой работой.
+- Последние изменения с `direct_answer` contract и исключениями для reload-watch реализованы в коде, но их все еще нужно считать ожидающими smoke-подтверждения.
 - ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.
 - Smoke-тесты по-прежнему принудительно используют deterministic retrieval providers, чтобы оставаться быстрыми и независимыми от загрузки моделей. Production-default уже указывает на Qwen3.
 - Реальный generation-path уже подключен, но prompt design и scored-поведение ответов все еще находятся на ранней стадии и требуют эмпирической доработки.
@@ -282,7 +302,9 @@ flow.
   - store=`SQLite memory_items table`
   - live write path=`/chat/answer` извлекает и upsert-ит heuristic user-constraint memory
   - dedupe rule=`normalized text per user`
-  - prompt path=`persisted memory суммируется через существующий Hopfield-style read helper`
+  - prompt path=`persisted memory суммируется через временный associative-read scaffold`
+  - current vector basis=`deterministic hash embedder placeholder, а не реальный Qwen embedding stack`
+  - missing defended modes=`Hopfield top1 recall и Hopfield topk superposed recall`
 - Retrieval cache-артефакты, отслеживаемые в git:
   - `data/processed/retrieval/faiss_hnsw.index`
   - `data/processed/retrieval/faiss_hnsw_manifest.json`

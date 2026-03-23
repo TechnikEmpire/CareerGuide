@@ -9,7 +9,7 @@ This document is a build plan for Codex. It is intentionally centered on the par
 - retrieval and retrieval ablation results
 - LLM inference choices
 - structured generation
-- associative memory using a Hopfield-style read
+- associative memory using a real learned Hopfield module
 - evaluation against baselines
 
 It deliberately avoids wasting space on generic web infrastructure details.
@@ -24,7 +24,7 @@ The end-user experience should be treated as **Russian-first**. English support 
 The thesis claim is not “we invented a new LLM.”  
 The claim is:
 
-> A grounded career-guidance assistant can be improved by combining standard RAG with a lightweight Hopfield-style associative memory layer that stores stable user preferences, goals, and constraints.
+> A grounded career-guidance assistant can be improved by combining standard RAG with a small learned Hopfield-style memory module that stores stable user preferences, goals, and constraints and supports explicit `top1` and `topk` recall regimes.
 
 ### Current repo checkpoint
 
@@ -33,6 +33,25 @@ The claim is:
 - The repo now has SQLite-backed persistent memory storage for `memory_items`.
 - The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before retrieval and prompt assembly.
 - The next real comparison is no longer dense-only versus reranker; it is `RAG-only` versus `RAG + memory`.
+
+### Current alignment and active gaps
+
+- Retrieval, baseline grounding, and retrieval evaluation are ahead of the original generic plan because the repo now has tracked qrels, tracked eval outputs, and an explicit negative reranker result.
+- Hybrid retrieval is intentionally simplified in the live path. Dense-only FAISS HNSW is the active baseline, while lexical retrieval is currently absent and should be treated as optional drift rather than the critical path.
+- Structured artifact generation is behind plan. Grounded answer generation is real, but the intended structured outputs like career plans, skills-gap artifacts, and wellbeing-note artifacts are not yet first-class persisted deliverables.
+- Memory persistence is real, but memory extraction is still weak and English-biased, which is a direct mismatch with the Russian-first product target.
+- The current memory scaffold is in the live prompt path, but it is not yet the real learned Hopfield module: it still relies on a deterministic hash embedder and does not yet expose explicit `top1`/`topk` recall modes.
+- Safety/refusal behavior and artifact/profile lifecycle work remain materially behind the intended end-state.
+
+### Immediate critical-path sequence
+
+1. replace the current hash-based scaffold with a real Hopfield memory module over the Qwen embedding stack
+2. add tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
+3. make memory extraction minimally bilingual and type-aware
+4. add memory lifecycle controls: confirmed, inferred, archived, superseded
+5. export memory debug artifacts for report-quality inspection
+6. revalidate the recent runtime fixes around answer contract and reload behavior
+7. add a minimal safety/refusal layer for wellness-sensitive inputs
 
 ---
 
@@ -714,9 +733,9 @@ These should become one canonical memory:
 
 ---
 
-## 6.5 Hopfield-style read mechanism
+## 6.5 Learned Hopfield read mechanism
 
-This should be implemented as a **modern-Hopfield-style associative read**, not as a theatrical claim about building a giant differentiable memory network.
+This should be implemented as a **small learned Hopfield-style memory module**, not as a theatrical claim about building a giant differentiable memory network and not as a vague "attention-like" helper mislabeled as Hopfield.
 
 ### Definitions
 
@@ -1071,6 +1090,11 @@ retrieval path.
 - `schemas.py`
 - tracked retrieval qrels and answer-evaluation cases
 
+### Current repo state
+
+- This stage is effectively complete for grounded answer generation.
+- The main remaining drift is structured artifact generation: the repo is still answer-first, while full plan-aligned structured outputs like persisted career-plan artifacts and skills-gap artifacts are not yet finished.
+
 ---
 
 ## Stage 4 — User profile and artifact memory
@@ -1099,6 +1123,11 @@ Add stable user profile storage before full associative memory.
 - `artifact_store.py`
 - `tests/test_profile_injection.py`
 
+### Current repo state
+
+- SQLite-backed `memory_items` persistence is now real and in the live path.
+- What is still missing from this stage is the actual profile/artifact layer: editable profile fields, saved accepted plans, and prompt injection from profile/artifact state.
+
 ---
 
 ## Stage 5 — Memory extraction and consolidation
@@ -1122,6 +1151,14 @@ Automatically create clean memory items from user interactions.
 - `memory_extract.py`
 - `memory_consolidate.py`
 - `tests/test_memory_consolidation.py`
+
+### Current repo state
+
+- First-pass extraction and consolidation are now live, but they are still weak:
+  - extraction is heuristic and currently English-triggered
+  - consolidation is normalized-text dedupe, not semantic consolidation
+  - lifecycle behavior like confirm/archive/supersede does not exist yet
+- This stage should not be considered complete until the memory path behaves plausibly for Russian-first usage and repeated stable constraints.
 
 ---
 
@@ -1148,6 +1185,15 @@ Implement the associative memory module.
 - `hopfield_memory.py`
 - `tests/test_hopfield_read.py`
 - `notebooks/memory_read_debug.ipynb`
+
+### Current repo state
+
+- A temporary associative-read scaffold exists and is already used in the live prompt path.
+- The main scientific gaps are:
+  - memory read currently operates over deterministic hash embeddings instead of the real `Qwen/Qwen3-Embedding-0.6B` stack
+  - the module does not yet expose explicit `top1` and `topk` recall modes
+  - the module does not yet learn or adapt its memory-space projection
+- Until those are fixed and debug artifacts are exported, this stage is only partially aligned with the intended claim.
 
 ---
 
@@ -1177,12 +1223,25 @@ Use both retrieved evidence and associative memory in the final assistant.
 - `prompt_builder.py`
 - `tests/test_joint_context.py`
 
+### Current repo state
+
+- The repo already merges dense retrieval and memory summary in the production answer path.
+- The missing deliverable is the real comparison harness:
+  - tracked `RAG-only` vs `RAG + naive memory` vs `RAG + Hopfield top1` vs `RAG + Hopfield topk` outputs
+  - memory debug exports showing selected memory items, scores, and prompt impact
+- This stage is therefore active but not yet experimentally closed.
+
 ---
 
 ## Stage 8 — Safety and refusal behavior
 
 ### Goal
 Make the assistant safe enough for the domain.
+
+### Current repo state
+
+- The repo still only has a minimal scope guard.
+- This remains behind plan and should be treated as a real gap before the app leans harder into wellbeing-adjacent memory and guidance.
 
 ### Tasks
 1. add risk classifier for:

@@ -81,30 +81,30 @@ Last updated: 2026-03-22
 **English**
 
 - Status: active
-- Decision: The project uses a Hopfield-style associative memory layer as the main personalization novelty.
-- Rationale: This connects the student’s recurrent-network background, especially LSTM-focused study, to a practical modern memory mechanism in a defensible way.
-- Constraint: Documentation must describe this honestly as a practical associative-memory component, not as a claim that the project invented a new neural architecture or universally state-of-the-art system.
+- Decision: The project's main personalization novelty is a real learned Hopfield-style associative memory module with explicit `top1` max-energy recall and `topk` superposed recall modes. The current repo scaffold must not be presented as if it already satisfies that target.
+- Rationale: This connects the student's recurrent-network background, especially LSTM-focused study, to a defensible modern associative-memory contribution. The actual claim is not "softmax over memory rows"; it is that the project evaluates explicit Hopfield-like recall regimes as the personalization mechanism.
+- Constraint: Documentation must distinguish clearly between the current scaffold and the intended defended end-state. The repo may call the current helper a scaffold or transitional associative-read utility, but it must not present it as a completed Hopfield contribution.
 
 **Русский**
 
 - Статус: активно
-- Решение: Проект использует Hopfield-style associative memory layer как главный компонент новизны в персонализации.
-- Обоснование: Это в защищаемой форме связывает бэкграунд студентки в recurrent networks, особенно обучение с акцентом на LSTM, с практическим современным memory mechanism.
-- Ограничение: Документация должна описывать это честно как практический associative-memory компонент, а не как утверждение о создании новой нейросетевой архитектуры или универсально state-of-the-art системы.
+- Решение: Главная personalization-новизна проекта — это реальный learned Hopfield-style associative-memory module с явными режимами `top1` max-energy recall и `topk` superposed recall. Текущий scaffold репозитория нельзя представлять так, будто он уже удовлетворяет этой цели.
+- Обоснование: Это в защищаемой форме связывает бэкграунд студентки в recurrent networks, особенно обучение с акцентом на LSTM, с defensible modern associative-memory contribution. Реальное утверждение здесь не про «softmax по memory rows», а про оценку явных Hopfield-like recall regimes как механизма персонализации.
+- Ограничение: Документация должна четко различать текущий scaffold и intended defended end-state. Репозиторий может называть текущий helper scaffold-ом или transitional associative-read utility, но не должен представлять его как завершенный Hopfield-вклад.
 
 ## D-007 Evaluation Baseline
 
 **English**
 
 - Status: active
-- Decision: The core experiment must compare `RAG-only` against `RAG + Hopfield-style memory`.
-- Rationale: This is the cleanest way to test whether the memory layer produces measurable personalization value.
+- Decision: The core memory experiment must compare `RAG-only`, `RAG + naive memory retrieval`, `RAG + Hopfield top1 recall`, and `RAG + Hopfield topk recall`.
+- Rationale: This isolates whether the specific memory-retrieval policy adds measurable personalization value beyond baseline RAG and beyond a simpler memory lookup. It turns the novelty claim into an actual ablation rather than a naming exercise.
 
 **Русский**
 
 - Статус: активно
-- Решение: Основной эксперимент должен сравнивать `RAG-only` и `RAG + Hopfield-style memory`.
-- Обоснование: Это самый чистый способ проверить, дает ли memory layer измеримую ценность в персонализации.
+- Решение: Основной memory-эксперимент должен сравнивать `RAG-only`, `RAG + naive memory retrieval`, `RAG + Hopfield top1 recall` и `RAG + Hopfield topk recall`.
+- Обоснование: Это позволяет изолировать, дает ли конкретная memory-retrieval policy измеримую personalization-ценность сверх baseline RAG и сверх более простого memory lookup. Так novelty-claim превращается в реальную ablation-схему, а не в упражнение по именованию.
 
 ## D-008 Documentation Policy
 
@@ -391,6 +391,48 @@ Last updated: 2026-03-22
 - Статус: активно
 - Решение: Активный memory-store должен быть SQLite-backed через таблицу `memory_items`, а live-path `/chat/answer` должен извлекать heuristic memory-candidates для user-constraints до retrieval/prompt assembly.
 - Обоснование: Проект уже вышел за пределы точки, где in-process dictionary можно считать защищаемым personalization-layer. Сохранение памяти через SQLite дает репозиторию inspectable и долговечную границу состояния, а подключение extraction в live answer-path создает минимально жизнеспособную основу для последующего сравнения `RAG-only` и `RAG + memory`.
+
+## D-028 Memory Vector Basis
+
+**English**
+
+- Status: active
+- Decision: The intended memory read/write vector basis must use the real semantic embedding stack, not the deterministic hash placeholder.
+- Rationale: The current hash-based vector path is acceptable only as a scaffolding mechanism. It proves the associative-read pipeline shape, but it is not strong enough to support the scientific claim that the Hopfield-style memory layer adds meaningful personalization value.
+
+**Русский**
+
+- Статус: активно
+- Решение: Intended vector-basis для memory read/write должен использовать реальный semantic embedding stack, а не deterministic hash placeholder.
+- Обоснование: Текущий hash-based vector-path допустим только как scaffold-механизм. Он доказывает форму associative-read pipeline, но недостаточно силен, чтобы поддерживать научное утверждение о meaningful personalization value от Hopfield-style memory layer.
+
+## D-029 Russian-First Memory Behavior
+
+**English**
+
+- Status: active
+- Decision: Russian-first behavior applies to the memory layer as well as retrieval and generation. Memory extraction and consolidation should not remain English-triggered in the active end-state.
+- Rationale: A bilingual retrieval layer plus an English-biased memory layer would create a misleading product behavior gap. The app must not appear multilingual in evidence retrieval while silently underperforming on personalization for Russian users.
+
+**Русский**
+
+- Статус: активно
+- Решение: Russian-first behavior относится и к memory-layer, а не только к retrieval и generation. Memory extraction и consolidation не должны оставаться English-triggered в активном end-state.
+- Обоснование: Bilingual retrieval-layer в сочетании с English-biased memory-layer создал бы вводящий в заблуждение product-behavior gap. Приложение не должно выглядеть multilingual в evidence retrieval и при этом молча уступать в personalization для русскоязычных пользователей.
+
+## D-030 Structured Artifact End-State
+
+**English**
+
+- Status: active
+- Decision: Grounded answering is the closed baseline, but it is not the full structured-generation end-state. Persisted structured artifacts such as career plans, skills-gap outputs, and wellbeing-oriented plans remain required deliverables.
+- Rationale: The project plan and academic framing both assume more than a question-answering assistant. The repo should not let the current answer-first baseline masquerade as the completed structured-output scope.
+
+**Русский**
+
+- Статус: активно
+- Решение: Grounded answering — это закрытый baseline, но не полный structured-generation end-state. Persisted structured artifacts, такие как career plans, skills-gap outputs и wellbeing-oriented plans, по-прежнему остаются обязательными deliverables.
+- Обоснование: И project plan, и academic framing предполагают больше, чем просто вопросно-ответный ассистент. Репозиторий не должен позволять текущему answer-first baseline притворяться завершенным structured-output scope.
 
 ## Decision Maintenance Rule
 
