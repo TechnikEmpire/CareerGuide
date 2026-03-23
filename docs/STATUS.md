@@ -24,7 +24,7 @@ live answer flow.
 - Standalone ru/en synthetic-data and BiLSTM training tooling for memory extraction now exists under `tooling/memory_extraction/`, using direct local-model GPU generation instead of app-server generation.
 - The synthetic-data generator now rotates prompt variants, rejects repeated openings plus token-set near-duplicates, and stops collapsed buckets on consecutive no-progress attempts instead of silently stalling.
 - The raw extraction corpus keeps fine-grained labels, but the first supervised extractor baseline is now binary `MEMORY` versus `NO_MEMORY` rather than five-way multiclass from the start.
-- The standalone binary BiLSTM extraction baseline is now trained and evaluated on the tracked `memory_extraction_synthetic_v4` corpus, but it is still not integrated into the live backend write path.
+- The standalone binary BiLSTM extraction baseline is now trained, evaluated, and wired into the live backend write path through sentence-level extraction.
 - The ESCO English CSV classification dump has been normalized into the repo's common concept and relation format.
 - The one-time ESCO English-to-Russian translation run has been completed and written to the tracked bilingual corpus.
 - ESCO artifact tracking policy is defined: raw vendor data stays ignored, while normalized concepts, normalized relations, the bilingual translated corpus, and preprocessing manifests are tracked.
@@ -48,7 +48,8 @@ live answer flow.
 - A canonical dense-only tuning script now exists at `python -m backend.scripts.tune_dense_retrieval`.
 - A canonical answer-export script now exists at `python -m backend.scripts.export_answer_predictions`.
 - The default memory store is now backed by the local SQLite `memory_items` table rather than an in-process dictionary.
-- The live `/chat/answer` flow now extracts heuristic user-constraint memory candidates and persists them before retrieval and prompt assembly.
+- The live `/chat/answer` flow now extracts sentence-level memory candidates through the tracked binary BiLSTM bundle and persists them before retrieval and prompt assembly.
+- Runtime sentence segmentation now prefers `pySBD` and falls back to regex splitting if `pysbd` is not yet installed in the app environment.
 - The current memory dedupe rule is normalized-text uniqueness per user, so repeated stable phrasing does not create duplicate rows.
 - The live prompt path now summarizes persisted memory through a basic non-trainable Hopfield recall step over real embedding vectors.
 - Unit tests now cover the current Hopfield recall modes in `backend/tests/test_hopfield_memory.py`.
@@ -86,18 +87,23 @@ Boundary result:
 
 - Profile and artifact memory implementation beyond the current `memory_items` slice.
 - Extending the evaluation harness from baseline RAG validation into `RAG-only` versus naive-memory versus Hopfield-memory comparison.
-- Broadening memory extraction and consolidation beyond the current first-pass heuristic.
+- Measuring and calibrating the live sentence-level extractor beyond the current synthetic-only evidence.
 - Adding memory-debug artifacts and comparison traces so the current Hopfield read is inspectable.
-- Integrating the trained binary BiLSTM extractor into the live sentence-level memory write path.
+- Verifying the preferred `pySBD` runtime path in refreshed local app environments and measuring real-chat extraction quality.
 
 ### What Is Not Done Yet
 
+These items are now explicitly **post-first-version refinements**. They are
+important for later evaluation quality, thesis defensibility, and product
+polish, but they are not blockers for the current first working backend plus
+web-UI version.
+
 - Editable user profile and artifact memory persistence
 - Confirmation, archive, and supersede flow for uncertain or outdated memory
-- Richer memory extraction and consolidation beyond the current first-pass heuristic
+- Richer memory extraction and consolidation beyond the current normalized-text dedupe rule
 - Tracked `RAG-only` versus naive-memory versus Hopfield-memory evaluation
 - Bilingual memory detection that behaves acceptably on real chat rather than only on synthetic data
-- Integrated binary BiLSTM memory-extraction classifier for `ru` and `en`
+- Real-chat bilingual memory detection that is measured and acceptable beyond the current synthetic benchmark
 - Later fine-grained type classification for `PREFERENCE`, `CONSTRAINT`, `GOAL`, and `AVAILABILITY`
 - Memory-debug exports, comparison traces, and report-ready artifacts
 - Learned projections and differentiable `ksoftmax` as a future Hopfield phase
@@ -105,11 +111,27 @@ Boundary result:
 - Full safety-policy implementation
 - Full experiment harness for memory contribution and report-ready result exports
 
+### Post-First-Version Refinements
+
+For the current rapid prototype, the backend core loop is considered good
+enough: retrieval, generation, sentence-level memory extraction, persistence,
+deduplication, and Hopfield recall are all implemented and covered by automated
+tests. The remaining items below should therefore be treated as after-v1
+refinement work rather than prerequisites for beginning the web UI:
+
+- measurable `RAG-only` versus memory-enabled comparison exports
+- memory-debug traces and report-oriented observability
+- Russian-first real-chat threshold calibration and broader extraction tuning
+- profile/artifact memory lifecycle behavior
+- fine-grained positive memory type classification
+- learned Hopfield projections or differentiable `ksoftmax`
+- fuller safety and report-ready experiment harness work
+
 ### Immediate Next Steps
 
-1. Integrate deterministic sentence splitting plus the trained binary BiLSTM extractor into the live memory write path and retire the current whole-turn heuristic.
-2. Add canonical outputs for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`.
-3. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
+1. Add canonical outputs for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`.
+2. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
+3. Run Russian-first real-chat evaluation and threshold calibration for the live sentence-level extractor.
 4. Add explicit profile/artifact memory editing plus lifecycle controls.
 5. Add later fine-grained type classification only after the binary runtime path is stable.
 
@@ -119,8 +141,9 @@ Boundary result:
 - The current dense baseline is good enough to move forward. The measured retrieval elbow is locked at `top_k=10`, explicit citations are now working, and the baseline answer-eval export is no longer degenerate.
 - Answer quality is baseline-acceptable, not polished. Some responses are still terse or stylistically rough, so future prompt work should be evidence-driven rather than assumed complete.
 - The current local workflow now assumes repo-local model caching for both the generator and the retrieval query embedder. If those local artifacts are missing, the runtime may fall back to Hugging Face resolution and surprise the operator.
-- The memory layer is materially more real now: it persists stable heuristic user constraints and performs a non-trainable Hopfield recall over real embedding vectors. What is still missing is the measured multi-arm comparison, Russian-first extraction quality, and the optional learned-projection phase.
-- The repo now has standalone tooling plus a trained ru/en binary BiLSTM memory-extraction baseline, but the live backend still uses the heuristic extractor until sentence-level runtime integration is done.
+- The memory layer is materially more real now: it persists classifier-approved sentence-level user memory and performs a non-trainable Hopfield recall over real embedding vectors. What is still missing is the measured multi-arm comparison, Russian-first extraction quality, and the optional learned-projection phase.
+- The repo now has standalone tooling plus a trained ru/en binary BiLSTM memory-extraction baseline, and the live backend now uses that tracked binary bundle in its sentence-level write path. The remaining quality gap is calibration and evaluation, not wiring.
+- The preferred runtime splitter is now `pySBD`, but environments that have not yet been refreshed from `requirements.txt` will fall back to regex sentence splitting.
 - The binary extractor metrics are encouraging on the tracked synthetic split, but the corpus still contains some noisy sentences. Synthetic held-out scores therefore overstate real-chat readiness.
 - The current repo is still answer-first rather than artifact-first. That is acceptable for the baseline RAG milestone, but the planned structured outputs and artifact reuse remain open work.
 - The latest `direct_answer` contract tightening and the dev-server reload-watch exclusions are implemented in code but should still be treated as pending smoke revalidation.
@@ -148,7 +171,8 @@ Boundary result:
   - client wired to `/v1/chat/completions`
 - Memory backend:
   - store=`SQLite memory_items table`
-  - live write path=`/chat/answer` extracts and upserts heuristic user-constraint memory
+  - live write path=`/chat/answer` extracts and upserts sentence-level memory approved by the tracked binary BiLSTM bundle
+  - runtime sentence splitter=`pySBD` preferred, regex fallback when `pysbd` is missing
   - dedupe rule=`normalized text per user`
   - prompt path=`persisted memory is summarized through a non-trainable Hopfield recall step`
   - current vector basis=`active real semantic embedding stack via the retrieval embedder`
@@ -210,7 +234,7 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 - Теперь также существует standalone tooling для synthetic-data и BiLSTM-training memory extraction в `tooling/memory_extraction/`.
 - Synthetic-data generator теперь ротирует prompt variants, отбрасывает повторяющиеся openings и token-set near-duplicates и останавливает collapsed buckets по последовательным no-progress attempts вместо тихого зависания.
 - Raw extraction-corpus сохраняет fine-grained labels, но первый supervised extractor baseline теперь бинарный: `MEMORY` против `NO_MEMORY`, а не сразу пяти-классовый multiclass.
-- Standalone binary BiLSTM extraction-baseline теперь уже обучен и оценен на отслеживаемом corpus `memory_extraction_synthetic_v4`, но пока еще не интегрирован в live backend write-path.
+- Standalone binary BiLSTM extraction-baseline теперь уже обучен, оценен и подключен к live backend write-path через sentence-level extraction.
 - English CSV classification dump ESCO уже нормализован в общий формат concepts и relations репозитория.
 - One-time перевод ESCO с английского на русский уже выполнен и записан в отслеживаемый bilingual corpus.
 - Политика отслеживания ESCO-артефактов определена: raw vendor data игнорируется, а normalized concepts, normalized relations, bilingual translated corpus и preprocessing manifests отслеживаются.
@@ -234,7 +258,8 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 - Теперь существует канонический dense-only tuning-скрипт: `python -m backend.scripts.tune_dense_retrieval`.
 - Теперь существует канонический answer-export скрипт: `python -m backend.scripts.export_answer_predictions`.
 - Default memory store теперь работает через локальную SQLite-таблицу `memory_items`, а не через in-process dictionary.
-- Live-flow `/chat/answer` теперь извлекает heuristic memory-candidates для user-constraints и сохраняет их до retrieval и prompt assembly.
+- Live-flow `/chat/answer` теперь извлекает sentence-level memory-candidates через отслеживаемый binary BiLSTM bundle и сохраняет их до retrieval и prompt assembly.
+- Runtime sentence-segmentation теперь предпочитает `pySBD` и откатывается к regex-splitting, если `pysbd` еще не установлен в app-env.
 - Текущее правило дедупликации memory — уникальность normalized-text отдельно для каждого пользователя.
 - Live prompt-path теперь суммирует persisted memory через базовый нетренируемый Hopfield recall-step поверх реальных embedding-векторов.
 - Unit-тесты теперь покрывают текущие режимы Hopfield recall в `backend/tests/test_hopfield_memory.py`.
@@ -272,18 +297,18 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 
 - Реализация profile- и artifact-memory поверх текущего slice `memory_items`.
 - Расширение evaluation harness от baseline RAG validation к сравнению naive-memory и Hopfield-memory поверх `RAG-only`.
-- Расширение extraction и consolidation памяти за пределы текущей первой эвристики.
+- Измерение и калибровка live sentence-level extractor-а за пределами текущих synthetic-only evidence.
 - Добавление memory-debug артефактов и comparison traces, чтобы текущий Hopfield-read был inspectable.
-- Интеграция обученного бинарного BiLSTM-extractor в live sentence-level memory write-path.
+- Проверка предпочтительного runtime-path через `pySBD` в обновленных локальных app-env и измерение качества extraction на реальном чате.
 
 ### Что еще не сделано
 
 - Редактируемое persistent storage для user profile и artifact memory
 - Confirmation/archive/supersede flow для uncertain или устаревшей memory
-- Более богатые extraction и consolidation памяти за пределами текущей первой эвристики
+- Более богатые extraction и consolidation памяти за пределами текущего normalized-text dedupe-rule
 - Отслеживаемая evaluation `RAG-only` против naive-memory и Hopfield-memory
 - Bilingual memory detection, которая приемлемо ведет себя на реальном чате, а не только на synthetic-data
-- Интегрированный бинарный BiLSTM-classifier для memory extraction на `ru` и `en`
+- Измеренное bilingual memory detection, приемлемое на реальном чате, а не только на synthetic benchmark
 - Более поздняя fine-grained type-classification для `PREFERENCE`, `CONSTRAINT`, `GOAL` и `AVAILABILITY`
 - Memory-debug exports, comparison traces и report-ready артефакты
 - Learned projections и differentiable `ksoftmax` как будущая фаза Hopfield-слоя
@@ -293,9 +318,9 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 
 ### Ближайшие шаги
 
-1. Интегрировать детерминированный sentence-splitting и обученный binary BiLSTM-extractor в live memory write-path и убрать текущую whole-turn heuristic.
-2. Добавить канонические outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`.
-3. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
+1. Добавить канонические outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`.
+2. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
+3. Провести Russian-first real-chat evaluation и калибровку threshold для live sentence-level extractor-а.
 4. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
 5. Добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path.
 
@@ -305,8 +330,9 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 - Текущий dense baseline уже достаточно хорош, чтобы двигаться дальше. Retrieval-elbow зафиксирован на `top_k=10`, explicit citations работают, а baseline answer-eval export больше не является вырожденным.
 - Качество ответов уже приемлемо для baseline, но еще не отполировано. Некоторые ответы все еще слишком краткие или стилистически грубые, поэтому будущая prompt-доработка должна быть опираться на evidence, а не на ощущения.
 - Текущий локальный workflow теперь предполагает repo-local model caching и для generator, и для retrieval query-embedder. Если эти локальные артефакты отсутствуют, runtime может неожиданно обратиться к Hugging Face.
-- Memory-layer теперь существенно более реален: он сохраняет стабильные heuristic user-constraints и выполняет нетренируемый Hopfield recall поверх реальных embedding-векторов. Все еще не хватает измеряемого многорукавного comparison-report, качества Russian-first extraction и, при необходимости, learned-projection фазы.
-- В репозитории теперь есть standalone tooling и уже обученный ru/en binary BiLSTM-baseline для memory extraction, но live-backend все еще использует heuristic extractor, пока не будет сделана sentence-level runtime-интеграция.
+- Memory-layer теперь существенно более реален: он сохраняет classifier-approved sentence-level user memory и выполняет нетренируемый Hopfield recall поверх реальных embedding-векторов. Все еще не хватает измеряемого многорукавного comparison-report, качества Russian-first extraction и, при необходимости, learned-projection фазы.
+- В репозитории теперь есть standalone tooling и уже обученный ru/en binary BiLSTM-baseline для memory extraction, и live-backend теперь уже использует этот tracked binary bundle в sentence-level write-path. Оставшийся разрыв — это калибровка и evaluation, а не wiring.
+- Предпочтительный runtime-splitter теперь `pySBD`, но env-ы, которые еще не были обновлены из `requirements.txt`, будут откатываться к regex sentence-splitting.
 - Метрики binary extractor выглядят обнадеживающе на отслеживаемом synthetic split, но corpus все еще содержит некоторый шум. Поэтому synthetic held-out scores завышают готовность к реальному чату.
 - Текущий repo все еще answer-first, а не artifact-first. Для baseline RAG это допустимо, но planned structured outputs и artifact reuse все еще остаются открытой работой.
 - Последние изменения с `direct_answer` contract и исключениями для reload-watch реализованы в коде, но их все еще нужно считать ожидающими smoke-подтверждения.
@@ -334,7 +360,8 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
   - client подключен к `/v1/chat/completions`
 - Memory backend:
   - store=`SQLite memory_items table`
-  - live write path=`/chat/answer` извлекает и upsert-ит heuristic user-constraint memory
+  - live write path=`/chat/answer` извлекает и upsert-ит sentence-level memory, одобренную отслеживаемым binary BiLSTM bundle
+  - runtime sentence-splitter=`pySBD` preferred, regex fallback при отсутствии `pysbd`
   - dedupe rule=`normalized text per user`
   - prompt path=`persisted memory суммируется через нетренируемый Hopfield recall-step`
   - current vector basis=`активный real semantic embedding stack через retrieval-embedder`

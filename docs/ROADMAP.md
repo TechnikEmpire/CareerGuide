@@ -32,7 +32,7 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | 3. Baseline RAG retrieval | completed | The repo now has canonical CPU-only HNSW benchmarking, tracked qrels, scored dense-versus-reranker outputs, and a measured decision to keep dense-only retrieval as the active baseline. |
 | 4. LLM grounding and structured generation | completed | Retrieval-backed prompt assembly, the real OpenAI-compatible local generator client, explicit citation export, and baseline answer validation are now in place. The dense-only default is locked at `top_k=10`, and `Baseline RAG v1 Complete` is now closed for the current scope. |
 | 5. User profile and artifact memory | in_progress | The active memory store now persists into the SQLite `memory_items` table instead of an in-process dict, but editable profile and artifact storage are not finished. |
-| 6. Memory extraction and consolidation | in_progress | Heuristic extraction and normalized-text consolidation still power the live answer flow, but the standalone ru/en synthetic-data tooling has now already produced a trained and evaluated binary BiLSTM baseline under `tooling/memory_extraction/`. The raw corpus keeps fine-grained labels, while the first supervised runtime target remains binary `MEMORY` vs `NO_MEMORY`. Sentence-level runtime integration, richer extraction logic, and lifecycle behavior are still pending. |
+| 6. Memory extraction and consolidation | in_progress | The live answer flow now uses sentence-level binary BiLSTM extraction with `pySBD`-preferred segmentation plus regex fallback and normalized-text consolidation. The raw corpus keeps fine-grained labels, while the first supervised runtime target remains binary `MEMORY` vs `NO_MEMORY`. Real-chat calibration, richer extraction logic, and lifecycle behavior are still pending. |
 | 7. Hopfield memory read | in_progress | A basic non-trainable Hopfield recall over real embedding vectors is now live with explicit `top1` and `topk` modes. Learned projections and differentiable `ksoftmax` remain future work. |
 | 8. Joint RAG + memory generation | in_progress | The production answer path now merges dense retrieval with persisted memory summary, but tracked outputs for `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` are still pending. |
 | 9. Safety and refusal behavior | scaffolded | There is a minimal scope guard, but the real risk-policy layer is not complete. |
@@ -44,17 +44,21 @@ For the short-term snapshot, use `docs/STATUS.md`.
 - Dense-only retrieval is the active runtime path by evidence, even though the older broader design left room for a fuller hybrid stack. This is acceptable drift while the tracked qrels continue to reject reranking.
 - Structured artifact generation is still behind the intended end-state. The repo is baseline-answer capable, but persisted career/wellbeing artifacts and artifact reuse are still open work.
 - The memory layer is integrated but not yet scientifically closed. The current read path is now a basic non-trainable Hopfield recall over real embedding vectors, but the tracked multi-arm evaluation, Russian-first extraction quality, and optional learned phase are still open.
-- Russian-first behavior is still uneven: retrieval is multilingual, and standalone ru/en extraction tooling now exists, but the live memory extractor is still too English-biased for the intended product target.
+- Russian-first behavior is still uneven: retrieval is multilingual, and the live memory extractor is now sentence-level and bilingual, but real-chat Russian quality is still not yet well measured for the intended product target.
 
 ### Current Trajectory
 
 The most important next implementation path is now:
 
-1. integrate deterministic sentence splitting plus the trained binary BiLSTM extractor into the live memory write path
-2. extend the evaluation harness to produce tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
-3. add explicit memory-debug traces and report-quality analysis artifacts
+1. extend the evaluation harness to produce tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
+2. add explicit memory-debug traces and report-quality analysis artifacts
+3. run real-chat evaluation and threshold calibration for the live sentence-level extractor, especially on Russian negatives
 4. add explicit profile/artifact memory lifecycle operations
 5. add later fine-grained type classification only after the binary runtime path is stable
+
+These should now be read as **post-first-version refinement work** for the
+backend, not as blockers for starting the web UI. The backend core loop is
+already implemented for the rapid prototype.
 
 ### Next Clean Boundary
 
@@ -106,7 +110,7 @@ active runtime baseline.
 | 3. Baseline RAG retrieval | completed | В репозитории теперь есть канонический CPU-only HNSW benchmark, отслеживаемые qrels, scored dense-versus-reranker outputs и уже измеренное решение оставить dense-only retrieval активным baseline. |
 | 4. LLM grounding и structured generation | completed | Retrieval-backed prompt assembly, реальный локальный OpenAI-compatible generator client, explicit citation export и baseline validation ответов уже реализованы. Dense-only default зафиксирован на `top_k=10`, а `Baseline RAG v1 Complete` теперь закрыт в рамках текущего scope. |
 | 5. User profile и artifact memory | in_progress | Активный memory-store теперь сохраняется в SQLite-таблицу `memory_items`, а не в in-process dict, но редактируемый profile/artifact storage еще не завершен. |
-| 6. Извлечение памяти и консолидация | in_progress | Heuristic extraction и normalized-text consolidation пока все еще используются в live answer-flow, но standalone tooling для synthetic-data на `ru`/`en` уже успел выпустить обученный и оцененный binary BiLSTM-baseline в `tooling/memory_extraction/`. Raw corpus сохраняет fine-grained labels, а первый supervised runtime-target по-прежнему намеренно бинарный: `MEMORY` vs `NO_MEMORY`. Sentence-level runtime-integration, более богатая логика extraction и lifecycle behavior все еще впереди. |
+| 6. Извлечение памяти и консолидация | in_progress | Live answer-flow теперь использует sentence-level binary BiLSTM extraction с `pySBD`-preferred segmentation, regex-fallback и normalized-text consolidation. Raw corpus сохраняет fine-grained labels, а первый supervised runtime-target по-прежнему намеренно бинарный: `MEMORY` vs `NO_MEMORY`. Real-chat calibration, более богатая логика extraction и lifecycle behavior все еще впереди. |
 | 7. Hopfield memory read | in_progress | В live prompt-path уже работает базовый нетренируемый Hopfield recall поверх реальных embedding-векторов с явными режимами `top1` и `topk`. Learned projections и differentiable `ksoftmax` остаются будущей работой. |
 | 8. Совместная генерация RAG + memory | in_progress | Production answer-path теперь объединяет dense retrieval и persisted memory summary, но tracked outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk` все еще впереди. |
 | 9. Safety и refusal behavior | scaffolded | Есть минимальная scope-защита, но полноценный risk-policy layer еще не завершен. |
@@ -118,17 +122,25 @@ active runtime baseline.
 - Dense-only retrieval является активным runtime-path по данным измерений, даже если более ранний широкий дизайн оставлял место для более полного hybrid stack. Это допустимый drift, пока отслеживаемые qrels продолжают отвергать reranking.
 - Structured artifact generation все еще отстает от intended end-state. Репозиторий уже умеет baseline-answer, но persisted career/wellbeing artifacts и artifact reuse все еще остаются открытой работой.
 - Memory-layer интегрирован, но еще не закрыт научно. Текущий read-path теперь является базовым нетренируемым Hopfield recall поверх реальных embedding-векторов, но все еще не хватает отслеживаемой многорукавной evaluation, качества Russian-first extraction и при необходимости learned-фазы.
-- Russian-first behavior все еще неровный: retrieval уже multilingual, standalone tooling для extraction на `ru`/`en` уже существует, но live memory-extractor пока все еще слишком English-biased для intended product target.
+- Russian-first behavior все еще неровный: retrieval уже multilingual, а live memory-extractor теперь sentence-level и bilingual, но реальное качество Russian extraction пока еще недостаточно хорошо измерено для intended product target.
 
 ### Текущая траектория
 
 Наиболее важная следующая последовательность реализации теперь такая:
 
-1. интегрировать детерминированный sentence-splitting и обученный binary BiLSTM-extractor в live memory write-path
-2. расширить evaluation-harness так, чтобы он выпускал отслеживаемые outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
-3. добавить явные memory-debug traces и report-quality артефакты анализа
+1. расширить evaluation-harness так, чтобы он выпускал отслеживаемые outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
+2. добавить явные memory-debug traces и report-quality артефакты анализа
+3. провести real-chat evaluation и калибровку threshold для live sentence-level extractor-а, особенно на Russian negatives
 4. добавить явные lifecycle-операции для profile/artifact memory
 5. добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path
+
+Теперь это следует трактовать как **post-first-version refinement work** для
+backend, а не как блокеры перед началом web UI. Core-loop backend уже
+реализован для rapid prototype.
+
+Теперь это следует трактовать как **post-first-version refinement work** для
+backend, а не как блокеры перед началом web UI. Core-loop backend уже
+реализован для rapid prototype.
 
 ### Следующая чистая граница
 

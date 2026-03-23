@@ -51,19 +51,20 @@ The local app is no longer using fake in-process-only memory.
 At the current stage:
 
 - user memory is persisted in the local SQLite `memory_items` table
-- `/chat/answer` now extracts simple memory candidates from the user question
+- `/chat/answer` now extracts sentence-level memory candidates from the user question through the tracked binary BiLSTM bundle
+- sentence segmentation prefers `pySBD` and falls back to a lightweight regex splitter if `pysbd` is not yet installed in the app environment
 - the persisted memory set is read back immediately and summarized for prompt assembly
 - duplicate memory text is collapsed by normalized text per user
-- a trained standalone binary BiLSTM extractor now exists under `tooling/memory_extraction/`, but it is not yet wired into the live write path
+- the trained standalone binary BiLSTM extractor under `tooling/memory_extraction/` is now wired into the live write path
 
 This is still a narrow first slice, not the final memory system. The current
-heuristic mainly captures explicit preference or constraint phrasing such as
-`prefer`, `want`, `need`, `cannot`, or `can't`.
+binary gate captures sentence-level memory candidates, but richer type
+classification and lifecycle behavior are still not wired in.
 
-The planned runtime integration shape for the trained classifier is now:
+The current runtime shape for the trained classifier is now:
 
 1. normalize one incoming user turn
-2. split it into deterministic sentence-like segments
+2. split it into sentence-like segments with `pySBD` when available and regex fallback otherwise
 3. run the binary `MEMORY` vs `NO_MEMORY` classifier on each segment
 4. convert positive segments into `MemoryItemPayload` records
 5. dedupe them within the request and upsert them into `memory_items`
@@ -88,19 +89,20 @@ k-Nearest Memories with Modern Hopfield Networks"; see
 На текущем этапе:
 
 - user memory сохраняется в локальной SQLite-таблице `memory_items`
-- `/chat/answer` теперь извлекает простые memory-candidates из вопроса пользователя
+- `/chat/answer` теперь извлекает sentence-level memory-candidates из вопроса пользователя через отслеживаемый binary BiLSTM bundle
+- sentence-segmentation предпочитает `pySBD` и откатывается к легкому regex-splitter, если `pysbd` еще не установлен в app-env
 - persisted memory сразу читается обратно и суммируется для prompt assembly
 - дублирующийся memory-text схлопывается по normalized-text отдельно для каждого пользователя
-- обученный standalone binary BiLSTM-extractor теперь уже существует в `tooling/memory_extraction/`, но пока не подключен к live write-path
+- обученный standalone binary BiLSTM-extractor из `tooling/memory_extraction/` теперь уже подключен к live write-path
 
 Это все еще узкий первый slice, а не финальная memory-system. Текущая
-эвристика в основном ловит явные формулировки preference или constraint, такие
-как `prefer`, `want`, `need`, `cannot` и `can't`.
+binary-gate ловит sentence-level memory-candidates, но более богатая
+type-classification и lifecycle behavior пока еще не подключены.
 
-Предполагаемая runtime-схема интеграции обученного classifier теперь такая:
+Текущая runtime-схема работы обученного classifier теперь такая:
 
 1. нормализовать один входной user turn
-2. разбить его на детерминированные sentence-like segments
+2. разбить его на sentence-like segments через `pySBD`, когда он доступен, и через regex-fallback в противном случае
 3. прогнать binary-classifier `MEMORY` vs `NO_MEMORY` по каждому segment
 4. превратить positive segments в записи `MemoryItemPayload`
 5. дедуплицировать их внутри запроса и upsert-ить в `memory_items`

@@ -385,13 +385,13 @@ Last updated: 2026-03-23
 **English**
 
 - Status: active
-- Decision: The active memory store should be SQLite-backed through the `memory_items` table, and the live `/chat/answer` path should extract heuristic user-constraint memory candidates before retrieval/prompt assembly.
+- Decision: The active memory store should be SQLite-backed through the `memory_items` table, and the live `/chat/answer` path should extract sentence-level memory candidates before retrieval/prompt assembly.
 - Rationale: The project is past the point where an in-process dictionary is a defensible personalization layer. Persisting memory through SQLite gives the repo an inspectable, durable state boundary, and wiring extraction into the live answer path creates the minimum viable basis for later `RAG-only` versus `RAG + memory` evaluation.
 
 **Русский**
 
 - Статус: активно
-- Решение: Активный memory-store должен быть SQLite-backed через таблицу `memory_items`, а live-path `/chat/answer` должен извлекать heuristic memory-candidates для user-constraints до retrieval/prompt assembly.
+- Решение: Активный memory-store должен быть SQLite-backed через таблицу `memory_items`, а live-path `/chat/answer` должен извлекать sentence-level memory-candidates до retrieval/prompt assembly.
 - Обоснование: Проект уже вышел за пределы точки, где in-process dictionary можно считать защищаемым personalization-layer. Сохранение памяти через SQLite дает репозиторию inspectable и долговечную границу состояния, а подключение extraction в live answer-path создает минимально жизнеспособную основу для последующего сравнения `RAG-only` и `RAG + memory`.
 
 ## D-028 Memory Vector Basis
@@ -498,21 +498,21 @@ Last updated: 2026-03-23
 
 - Status: active
 - Decision: The first runtime integration of the trained BiLSTM extractor should operate on deterministic sentence-like segments, not on whole user turns and not through another LLM extraction pass.
-- Decision: One incoming user message should be normalized, split by newlines and sentence-ending punctuation into short sentence-like segments, and each segment should be classified independently as `MEMORY` or `NO_MEMORY`.
+- Decision: One incoming user message should be normalized, split into short sentence-like segments with `pySBD` when available and a newline-aware regex fallback otherwise, and each segment should be classified independently as `MEMORY` or `NO_MEMORY`.
 - Decision: Accepted segments should be converted into one `MemoryItemPayload` each, deduplicated first within the request via `consolidate_memory_items(...)`, then persisted through `SqliteMemoryStore.upsert_item(...)`, which remains the canonical normalized-text-per-user dedupe layer.
 - Decision: In the binary-only phase, accepted classifier outputs should use a coarse runtime category such as `user_memory`, store classifier probability as `confidence`, and keep a stable default `importance` until a separate type-classification phase exists.
 - Decision: The Hopfield layer should not implement a second bespoke dedupe path. It should keep reading the already persisted and normalized `memory_items` set and perform recall over that list.
-- Rationale: The classifier is sentence-level by design, so whole-turn classification would mix unrelated facts and questions into one decision. A deterministic splitter is faster, inspectable, and more appropriate for a rapid prototype than introducing a heavier external NLP dependency or another model call. Reusing the existing store-level dedupe keeps one canonical persistence policy instead of fragmenting memory-write logic across multiple modules.
+- Rationale: The classifier is sentence-level by design, so whole-turn classification would mix unrelated facts and questions into one decision. `pySBD` gives the runtime a lightweight deterministic bilingual sentence splitter without another model call, while the regex fallback keeps local app environments usable until dependencies are refreshed. Reusing the existing store-level dedupe keeps one canonical persistence policy instead of fragmenting memory-write logic across multiple modules.
 
 **Русский**
 
 - Статус: активно
 - Решение: Первая runtime-интеграция обученного BiLSTM-extractor должна работать на детерминированных sentence-like segments, а не на whole user turn и не через еще один LLM extraction-pass.
-- Решение: Одно входное сообщение пользователя должно нормализоваться, разбиваться по newline и sentence-ending punctuation на короткие sentence-like segments, и каждый segment должен независимо классифицироваться как `MEMORY` или `NO_MEMORY`.
+- Решение: Одно входное сообщение пользователя должно нормализоваться, разбиваться на короткие sentence-like segments через `pySBD`, когда он доступен, и через newline-aware regex-fallback в противном случае, и каждый segment должен независимо классифицироваться как `MEMORY` или `NO_MEMORY`.
 - Решение: Принятые segments должны превращаться в отдельные `MemoryItemPayload`, сначала дедуплицироваться внутри запроса через `consolidate_memory_items(...)`, а затем сохраняться через `SqliteMemoryStore.upsert_item(...)`, который остается каноническим normalized-text-per-user слоем дедупликации.
 - Решение: В binary-only фазе принятые classifier outputs должны использовать coarse runtime-category вроде `user_memory`, сохранять вероятность classifier как `confidence` и держать стабильный default `importance`, пока не появится отдельная phase type-classification.
 - Решение: Hopfield-layer не должен реализовывать второй отдельный dedupe-path. Он должен по-прежнему читать уже сохраненный и нормализованный набор `memory_items` и выполнять recall поверх этого списка.
-- Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. Детерминированный splitter быстрее, inspectable и лучше подходит для rapid prototype, чем добавление тяжелой внешней NLP-зависимости или еще одного model-call. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям.
+- Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. `pySBD` дает runtime легкий детерминированный bilingual sentence-splitter без еще одного model-call, а regex-fallback сохраняет работоспособность локального app-env, пока зависимости не обновлены. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям.
 
 ## Decision Maintenance Rule
 

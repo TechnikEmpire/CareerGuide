@@ -19,7 +19,7 @@ The end-user product experience should be treated as **Russian-first**. English 
 - `Baseline RAG v1 Complete` is already closed for the current scope.
 - The active milestone is now `Memory Layer v1 Integrated`.
 - The repo now persists user memory through the SQLite `memory_items` table.
-- The live `/chat/answer` flow now extracts and upserts heuristic user-constraint memory before prompt assembly.
+- The live `/chat/answer` flow now extracts sentence-level memory candidates through the tracked binary BiLSTM bundle before prompt assembly.
 - The repo now also has a trained and evaluated standalone binary BiLSTM memory-extraction baseline under `tooling/memory_extraction/`.
 - The next hard comparison is `RAG-only` versus naive-memory versus Hopfield-memory, not another reranker pass.
 
@@ -27,19 +27,20 @@ The end-user product experience should be treated as **Russian-first**. English 
 
 - Baseline dense retrieval plus local Qwen3 generation is aligned and already defensible.
 - The repo has intentionally drifted from the older hybrid-retrieval idea into dense-only live retrieval because measured qrels do not justify reranking right now. Treat lexical retrieval as optional future work, not the critical path.
-- The biggest current mismatch is memory quality, not retrieval quality:
+- The biggest current mismatch is memory quality measurement, not retrieval wiring:
   - memory persistence exists
   - memory write path exists
-  - but the live extraction path is still heuristic and not Russian-first in practice
+  - the live extraction path is now sentence-level and bilingual
+  - but real-chat Russian quality and threshold calibration are still open
 - The second major mismatch is structured artifacts. The plan expects persisted career/wellbeing artifacts, while the repo is still mainly grounded-answer oriented.
 - The most important scientific gap is still the missing tracked comparison outputs for naive-memory, Hopfield-`top1`, and Hopfield-`topk` against `RAG-only`.
 
 ### Immediate critical-path sequence
 
-1. integrate deterministic sentence splitting plus the trained binary BiLSTM extractor into the live memory write path
-2. add tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison artifacts
-3. add memory lifecycle controls and artifact/profile memory
-4. export memory debug artifacts for evaluation and report work
+1. add tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison artifacts
+2. export memory debug artifacts for evaluation and report work
+3. run real-chat evaluation and threshold calibration for the live sentence-level extractor
+4. add memory lifecycle controls and artifact/profile memory
 5. revalidate the recent runtime fixes
 6. add the missing safety/refusal layer
 7. add later fine-grained type classification only after the binary runtime path is stable

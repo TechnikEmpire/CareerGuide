@@ -45,6 +45,16 @@ def _default_retrieval_manifest_path() -> Path:
     return _repo_root() / "data" / "processed" / "retrieval" / "faiss_hnsw_manifest.json"
 
 
+def _default_memory_extraction_model_path() -> Path:
+    return (
+        _repo_root()
+        / "tooling"
+        / "memory_extraction"
+        / "models"
+        / "bilstm_memory_classifier_binary.pt"
+    )
+
+
 class AppSettings(BaseSettings):
     """Environment-driven backend settings."""
 
@@ -54,6 +64,14 @@ class AppSettings(BaseSettings):
     database_url: str = Field(default_factory=_default_database_url)
     default_top_k: int = 10
     memory_vector_size: int = 32
+    memory_extraction_backend: str = "bilstm"
+    memory_extraction_sentence_splitter: str = "pysbd"
+    memory_extraction_model_path: Path = Field(default_factory=_default_memory_extraction_model_path)
+    memory_extraction_device: str = "cpu"
+    memory_extraction_min_confidence: float = 0.75
+    memory_extraction_min_segment_characters: int = 10
+    memory_extraction_default_category: str = "user_memory"
+    memory_extraction_default_importance: float = 0.7
     memory_hopfield_mode: str = "topk"
     memory_hopfield_top_k: int = 3
     memory_hopfield_beta: float = 8.0

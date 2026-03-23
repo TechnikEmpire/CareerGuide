@@ -24,9 +24,9 @@ This tooling is separate from the live backend on purpose.
 
 Those are different problems and should remain different modules.
 
-This tooling does **not** yet replace the live heuristic extractor in
-`backend/app/services/memory/memory_extract.py`. It is the training and
-evaluation path for the next extraction baseline.
+This tooling is still the training and evaluation path for the extraction
+baseline, but the tracked binary bundle now also feeds the live runtime path in
+`backend/app/services/memory/memory_extract.py`.
 
 ### Why This Exists
 
@@ -579,17 +579,20 @@ Current tracked artifacts include:
 Current interpretation:
 
 - the standalone binary baseline is trained and evaluated
-- the live backend still does **not** use it yet
-- the next runtime step is sentence-level integration, not more synthetic-only
-  plumbing
+- the live backend now uses the tracked binary bundle in its sentence-level
+  memory write path
+- runtime sentence splitting now prefers `pySBD` and falls back to regex if
+  `pysbd` is not yet installed in the app environment
+- the next runtime step is real-chat evaluation and debugging, not more
+  synthetic-only plumbing
 
-### Planned Backend Integration Shape
+### Current Backend Integration Shape
 
-When this classifier is integrated into the live backend, the intended runtime
-flow is:
+The current live runtime flow is:
 
 1. normalize one user turn
-2. split it into deterministic sentence-like segments
+2. split it into sentence-like segments with `pySBD` when available and regex
+   fallback otherwise
 3. classify each segment independently as `MEMORY` or `NO_MEMORY`
 4. convert positive segments into `MemoryItemPayload` items
 5. dedupe them within the request and then upsert them into `memory_items`
@@ -606,8 +609,8 @@ separate inspectable steps.
   deduplication system
 - synthetic generation quality depends strongly on the chosen local model and
   prompt discipline
-- the live backend still uses heuristic memory extraction until this classifier
-  is trained, validated, and integrated
+- the preferred runtime splitter depends on `pysbd` being present in the app
+  environment; otherwise the backend falls back to regex segmentation
 - `importance` remains policy metadata; it is not a direct classifier output
 
 ## Русский
@@ -635,9 +638,9 @@ extraction.
 
 Это разные задачи и они должны оставаться разными модулями.
 
-Пока это tooling **не** заменяет live heuristic extractor в
-`backend/app/services/memory/memory_extract.py`. Это training- и
-evaluation-path для следующего extraction-baseline.
+Это tooling по-прежнему остается training- и evaluation-path для extraction
+baseline, но отслеживаемый binary bundle теперь также питает live runtime-path
+в `backend/app/services/memory/memory_extract.py`.
 
 ### Зачем это нужно
 
@@ -1195,17 +1198,20 @@ outputs в version control.
 Текущая интерпретация:
 
 - standalone binary baseline уже обучен и оценен
-- live-backend его пока **не** использует
-- следующий runtime-шаг — это sentence-level integration, а не еще один слой
-  synthetic-only plumbing
+- live-backend теперь уже использует tracked binary bundle в sentence-level
+  memory write-path
+- runtime sentence-splitting теперь предпочитает `pySBD` и откатывается к
+  regex, если `pysbd` еще не установлен в app-env
+- следующий runtime-шаг — это real-chat evaluation и debugging, а не еще один
+  слой synthetic-only plumbing
 
-### Планируемая схема backend-интеграции
+### Текущая схема backend-интеграции
 
-Когда этот classifier будет интегрирован в live-backend, предполагаемый
-runtime-flow такой:
+Текущий live runtime-flow такой:
 
 1. нормализовать один user turn
-2. разбить его на детерминированные sentence-like segments
+2. разбить его на sentence-like segments через `pySBD`, когда он доступен, и
+   через regex-fallback в противном случае
 3. независимо классифицировать каждый segment как `MEMORY` или `NO_MEMORY`
 4. превратить positive segments в элементы `MemoryItemPayload`
 5. дедуплицировать их внутри запроса и затем upsert-ить в `memory_items`
@@ -1222,6 +1228,6 @@ runtime-flow такой:
   deduplication система
 - качество synthetic generation сильно зависит от выбранной локальной модели и
   дисциплины prompt-а
-- live-backend все еще использует heuristic memory extraction, пока этот
-  classifier не будет обучен, валидирован и интегрирован
+- preferred runtime-splitter зависит от наличия `pysbd` в app-env; в
+  противном случае backend откатывается к regex-segmentation
 - `importance` остается policy metadata; это не прямой output classifier

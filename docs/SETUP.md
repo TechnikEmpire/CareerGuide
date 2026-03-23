@@ -458,10 +458,11 @@ python -m tooling.memory_extraction.evaluate_classifier --task binary
 Important notes:
 
 - v1 targets only `ru` and `en`
-- the classifier is a lightweight BiLSTM; the standalone binary baseline is now trained and evaluated, but it is not part of the current live backend yet
+- the classifier is a lightweight BiLSTM; the standalone binary baseline is now trained, evaluated, and wired into the current live backend memory-write path
 - the raw synthetic corpus keeps fine-grained labels, but the first supervised extractor baseline is binary `MEMORY` vs `NO_MEMORY`
 - synthetic corpus generation loads the chosen model directly inside the tooling process and is intended to use the workstation GPU
-- the live backend keeps using the heuristic extractor until the trained classifier is integrated into the sentence-level memory write path
+- the live backend now prefers `pySBD` sentence splitting in the `careerguide` app environment and falls back to regex segmentation if `pysbd` is not yet installed there
+- after pulling these changes, refresh the main `careerguide` environment from `requirements.txt` so the preferred splitter is available at runtime
 - generated corpora and trained model bundles under `tooling/memory_extraction/` may be persisted in git when you want the dataset, checkpoint, and reports tracked for reproducibility
 - the currently tracked supervised artifacts are the `memory_extraction_synthetic_v4` corpus plus the binary BiLSTM bundles and reports under `tooling/memory_extraction/models/`
 
@@ -929,8 +930,9 @@ python -m tooling.memory_extraction.evaluate_classifier --task binary
 
 - генерация synthetic corpus напрямую загружает выбранную модель внутри tooling-процесса и рассчитана на использование workstation GPU
 - v1 нацелен только на `ru` и `en`
-- classifier является легким BiLSTM; standalone binary baseline уже обучен и оценен, но пока не входит в current live-backend
+- classifier является легким BiLSTM; standalone binary baseline уже обучен, оценен и подключен к текущему live backend memory write-path
 - raw synthetic corpus сохраняет fine-grained labels, но первый supervised extractor baseline является бинарным: `MEMORY` vs `NO_MEMORY`
-- live-backend продолжает использовать heuristic extractor, пока обученный classifier не будет интегрирован в sentence-level memory write-path
+- live-backend теперь предпочитает sentence-splitting через `pySBD` в app-env `careerguide` и откатывается к regex-segmentation, если `pysbd` там еще не установлен
+- после получения этих изменений обновите основное окружение `careerguide` из `requirements.txt`, чтобы preferred splitter был доступен в runtime
 - generated corpora и trained model-bundles в `tooling/memory_extraction/` могут сохраняться в git, если вам нужна воспроизводимость dataset, checkpoint и reports
 - текущие отслеживаемые supervised-артефакты — это corpus `memory_extraction_synthetic_v4` и binary BiLSTM bundles/reports в `tooling/memory_extraction/models/`

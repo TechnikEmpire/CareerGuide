@@ -11,7 +11,10 @@ from fastapi.testclient import TestClient
 
 from backend.app.config import settings
 from backend.app.main import create_app
+from backend.app.services.assistant_service import answer_question as run_answer_question
 from backend.app.services.generation.generator_client import get_generator_client
+from backend.app.services.generation.schemas import AnswerRequest
+from backend.app.services.memory.memory_store import default_memory_store
 from backend.app.services.retrieval.embeddings import get_embedding_provider
 from backend.app.services.retrieval.faiss_hnsw import build_retrieval_index
 from backend.app.services.retrieval.faiss_hnsw import get_faiss_hnsw_retrieval_service
@@ -230,7 +233,7 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
     """The live answer flow should persist extracted memory across requests."""
 
     client = TestClient(create_app())
-    question = "I prefer remote work and async collaboration."
+    question = "I prefer remote work and async collaboration. What skills do data analysts need?"
 
     first_response = client.post(
         "/chat/answer",
@@ -244,7 +247,7 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
     assert listed_memory.status_code == 200
     listed_payload = listed_memory.json()
     assert len(listed_payload) == 1
-    assert "remote work" in listed_payload[0]["text"].lower()
+    assert listed_payload[0]["text"] == "I prefer remote work and async collaboration."
 
     second_response = client.post(
         "/chat/answer",
@@ -254,6 +257,61 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
     listed_again = client.get("/memory/list", params={"user_id": "memory-user"})
     assert listed_again.status_code == 200
     assert len(listed_again.json()) == 1
+
+
+def test_answer_flow_extracts_and_persists_russian_memory() -> None:
+    """The live answer flow should persist Russian sentence-level memory too."""
+
+    client = TestClient(create_app())
+    question = "Я предпочитаю удаленную работу и спокойный график. Какие навыки нужны для аналитики данных?"
+
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": "memory-user-ru", "question": question},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert "удаленную работу" in payload["memory_summary"].lower()
+
+    listed_memory = client.get("/memory/list", params={"user_id": "memory-user-ru"})
+    assert listed_memory.status_code == 200
+    listed_payload = listed_memory.json()
+    assert len(listed_payload) == 1
+    assert listed_payload[0]["text"] == "Я предпочитаю удаленную работу и спокойный график."
+
+
+def test_answer_flow_dedupes_duplicate_memory_sentences_within_one_request() -> None:
+    """One user turn should not persist the same memory twice."""
+
+    client = TestClient(create_app())
+    question = "I prefer remote work. I prefer remote work."
+
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": "memory-user-dup", "question": question},
+    )
+    assert response.status_code == 200
+
+    listed_memory = client.get("/memory/list", params={"user_id": "memory-user-dup"})
+    assert listed_memory.status_code == 200
+    listed_payload = listed_memory.json()
+    assert len(listed_payload) == 1
+    assert listed_payload[0]["text"] == "I prefer remote work."
+
+
+def test_answer_service_can_run_without_memory_and_does_not_persist() -> None:
+    """The core answer service should support a RAG-only path without memory writes."""
+
+    response = run_answer_question(
+        AnswerRequest(
+            user_id="rag-only-user",
+            question="I prefer remote work and async collaboration.",
+        ),
+        include_memory=False,
+    )
+
+    assert response.memory_summary == "No stored user memory yet."
+    assert default_memory_store.list_items(user_id="rag-only-user") == []
 
 
 def test_answer_flow_supports_hopfield_top1_mode() -> None:

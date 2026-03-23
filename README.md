@@ -85,32 +85,34 @@ runs.
 
 The repo now also includes standalone ru/en synthetic-data and BiLSTM training
 tooling for sentence-level memory extraction under
-`tooling/memory_extraction/`. This tooling is separate from the live backend:
-the current app still uses the heuristic extractor until the trained classifier
-is integrated into the runtime write path. The raw synthetic corpus keeps
-fine-grained memory labels, but the first supervised extractor baseline is now
-a trained binary `MEMORY` vs `NO_MEMORY` classifier before any later
-type-classification phase. Synthetic corpus generation for this tooling is
-direct local-model GPU work, not routed through the app server. The intended
-runtime shape is now explicit: split one user turn into deterministic
-sentence-like segments, classify each segment independently, upsert only the
-positive segments into `memory_items`, and let the existing Hopfield read work
-over that deduplicated persistent store.
+`tooling/memory_extraction/`. This tooling remains separate from generation and
+retrieval training, but the tracked binary bundle is now wired into the live
+backend write path. The runtime now prefers `pySBD` sentence segmentation and
+falls back to a lightweight regex splitter if `pysbd` is not yet installed in
+the local app environment. The raw synthetic corpus keeps fine-grained memory
+labels, but the first supervised extractor baseline remains a binary
+`MEMORY` vs `NO_MEMORY` classifier before any later type-classification phase.
+Synthetic corpus generation for this tooling is direct local-model GPU work,
+not routed through the app server. The live runtime shape is now explicit:
+split one user turn into sentence-like segments, classify each segment
+independently, upsert only the positive segments into `memory_items`, and let
+the existing Hopfield read work over that deduplicated persistent store.
 
 Репозиторий теперь также включает standalone tooling для synthetic-data на
 `ru`/`en` и обучения BiLSTM для sentence-level memory extraction в
-`tooling/memory_extraction/`. Это tooling отделено от live-backend: текущее
-приложение все еще использует heuristic extractor, пока обученный classifier не
-будет интегрирован в runtime write-path. Raw synthetic corpus сохраняет
-fine-grained memory labels, но первый supervised baseline extractor теперь уже
-является обученным binary-classifier `MEMORY` vs `NO_MEMORY`, а более поздняя
-type-classification phase откладывается после этого baseline. Генерация
-synthetic corpus для этого tooling выполняется как direct local-model GPU
-workflow, а не через app-server. Предполагаемая runtime-схема теперь тоже
-явно зафиксирована: один user turn разбивается на детерминированные
-sentence-like segments, каждый segment независимо классифицируется, только
-positive segments upsert-ятся в `memory_items`, а существующий Hopfield-read
-работает уже поверх этого дедуплицированного persistent store.
+`tooling/memory_extraction/`. Это tooling по-прежнему отделено от обучения
+generation/retrieval, но отслеживаемый binary bundle теперь уже подключен к
+live backend write-path. Runtime теперь предпочитает sentence-splitting через
+`pySBD` и откатывается к легкому regex-splitter, если `pysbd` еще не установлен
+в локальном app-env. Raw synthetic corpus сохраняет fine-grained memory labels,
+но первый supervised baseline extractor по-прежнему остается binary-classifier
+`MEMORY` vs `NO_MEMORY`, а более поздняя type-classification phase откладывается
+после этого baseline. Генерация synthetic corpus для этого tooling выполняется
+как direct local-model GPU workflow, а не через app-server. Live runtime-схема
+теперь явно зафиксирована: один user turn разбивается на sentence-like
+segments, каждый segment независимо классифицируется, только positive segments
+upsert-ятся в `memory_items`, а существующий Hopfield-read работает уже поверх
+этого дедуплицированного persistent store.
 
 ## Authoritative Repository Docs
 
