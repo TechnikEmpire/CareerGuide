@@ -20,8 +20,9 @@ If you are the student or the main project operator, start here:
 1. [Student Manual](docs/STUDENT_MANUAL.en.md)
 2. [Setup Guide](docs/SETUP.en.md)
 3. [Local Workflow](docs/LOCAL_WORKFLOW.en.md)
-4. [Project Status](docs/STATUS.en.md)
-5. [Roadmap](docs/ROADMAP.en.md)
+4. [Deployment Guide](docs/DEPLOYMENT.en.md)
+5. [Project Status](docs/STATUS.en.md)
+6. [Roadmap](docs/ROADMAP.en.md)
 
 ## Current Scope
 
@@ -59,6 +60,7 @@ core product behavior.
 - [Active Decisions](docs/DECISIONS.en.md)
 - [Setup Guide](docs/SETUP.en.md)
 - [Local Workflow](docs/LOCAL_WORKFLOW.en.md)
+- [Deployment Guide](docs/DEPLOYMENT.en.md)
 - [Evaluation](docs/EVALUATION.en.md)
 - [Benchmarks](docs/BENCHMARKS.en.md)
 - [Status](docs/STATUS.en.md)
@@ -84,6 +86,13 @@ Start the frontend:
 cd frontend
 npm install
 npm run dev
+```
+
+Build and run the single-image deployment container:
+
+```bash
+docker build -t careerguide:local .
+docker run --rm -p 8000:8000 -v careerguide-data:/app/data/runtime careerguide:local
 ```
 
 ## Documentation Policy

@@ -16,6 +16,7 @@ That means the repo already contains:
 - sentence-level memory extraction with a tracked binary BiLSTM bundle
 - persistent memory storage plus Hopfield-style memory recall
 - structured career plans with schedule metadata and `.ics` export
+- a CI-built single deployment image that serves the SPA and backend together
 
 The remaining work is no longer “missing core product functionality.” It is
 optional polish, research-extension work, or later thesis-improvement work.
@@ -36,6 +37,8 @@ optional polish, research-extension work, or later thesis-improvement work.
 - Generates structured career plans with study preferences, workload metadata, and dated calendar sessions.
 - Exports saved plans as `.ics`.
 - Ships a real frontend for chat, plan generation, local conversation history, memory inspection, memory deletion, and refusal/scope UI states.
+- Serves the built frontend from the backend in the single-image deployment path.
+- Builds and publishes a deployable container image through GitHub Actions after CI succeeds on `main`.
 
 ### What Is Verified
 
@@ -47,6 +50,7 @@ optional polish, research-extension work, or later thesis-improvement work.
   present in the repository.
 - The schedule-aware plan artifact and `.ics` export path are implemented and
   exercised by tests.
+- The single-image SPA-serving backend path is covered by app tests, and the deployment configuration is committed in the repo.
 
 ### Authoritative Current Entry Points
 
@@ -58,6 +62,7 @@ For the current live system, start with:
 - `docs/DECISIONS.md`
 - `docs/LOCAL_WORKFLOW.md`
 - `docs/SETUP.md`
+- `docs/DEPLOYMENT.md`
 
 ### What Is Left
 
@@ -74,6 +79,7 @@ functionally complete.
 - Stronger real-chat Russian calibration for memory extraction
 - Report-quality debug exports and comparison traces
 - Cleanup debt such as the FastAPI `on_event` deprecation
+- Fully automated host-side rollout from GHCR to Linode or another VM
 
 ### Practical Meaning Of “Done”
 
@@ -109,5 +115,6 @@ That condition is now satisfied.
 - Memory recall: Hopfield-style `top1` and `topk`
 - Plan artifact: structured steps + schedule metadata + calendar events + `.ics` export
 - Frontend stack: React + Vite + TypeScript
+- Deployment baseline: one Docker image, same-origin SPA + backend, GHCR publish via GitHub Actions
 - Frontend surfaces: chat, citations, memory-used display, saved plan, calendar preview, memory list/delete, local history
 - Prototype status: complete for the current v1 scope

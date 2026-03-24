@@ -17,6 +17,7 @@
 - sentence-level memory extraction через отслеживаемый binary BiLSTM bundle
 - persistent memory storage и Hopfield-style memory recall
 - structured career plans с schedule metadata и `.ics`-экспортом
+- single deployment-image, который раздает SPA и backend вместе
 
 Оставшаяся работа больше не является «отсутствующей core-функциональностью
 продукта». Теперь это optional polish, research-extension work или более
@@ -38,6 +39,8 @@
 - Генерирует structured career plans с study-preferences, workload metadata и датированными calendar sessions.
 - Экспортирует сохраненные планы в `.ics`.
 - Содержит реальный frontend для chat, plan generation, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
+- Раздает собранный frontend прямо из backend в single-image deployment-path.
+- Собирает и публикует deployable container-image через GitHub Actions после успешного CI на `main`.
 
 ### Что проверено
 
@@ -47,6 +50,7 @@
 - Retrieval-артефакты, evaluation fixtures и scored evaluation outputs уже есть
   в репозитории.
 - Schedule-aware plan-artifact и `.ics`-экспорт реализованы и покрыты тестами.
+- Single-image SPA-serving path в backend покрыт app-тестами, а deployment-конфигурация зафиксирована в репозитории.
 
 ### Канонические точки входа
 
@@ -58,6 +62,7 @@
 - `docs/DECISIONS.md`
 - `docs/LOCAL_WORKFLOW.md`
 - `docs/SETUP.md`
+- `docs/DEPLOYMENT.md`
 
 ### Что осталось
 
@@ -74,6 +79,7 @@
 - Более сильная real-chat Russian calibration для memory extraction
 - Report-quality debug exports и comparison traces
 - Cleanup-долг вроде deprecation warning для FastAPI `on_event`
+- Полностью автоматизированный host-side rollout из GHCR на Linode или другую VM
 
 ### Практический смысл слова «готово»
 
@@ -109,5 +115,6 @@
 - Memory recall: Hopfield-style `top1` и `topk`
 - Plan artifact: structured steps + schedule metadata + calendar events + `.ics`-экспорт
 - Frontend stack: React + Vite + TypeScript
+- Deployment baseline: один Docker-image, same-origin SPA + backend, GHCR publish через GitHub Actions
 - Frontend surfaces: chat, citations, memory-used display, saved plan, preview календаря, список/удаление memory, local history
 - Prototype status: завершен для текущего v1-scope

@@ -69,9 +69,20 @@ type ErrorPayload = {
   detail?: string;
 };
 
-const DEFAULT_API_BASE_URL = "http://127.0.0.1:8000";
+const DEFAULT_DEV_API_BASE_URL = "http://127.0.0.1:8000";
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(/\/+$/, "");
+function resolveApiBaseUrl(): string {
+  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL;
+  if (configuredBaseUrl && configuredBaseUrl.trim()) {
+    return configuredBaseUrl.replace(/\/+$/, "");
+  }
+  if (import.meta.env.DEV) {
+    return DEFAULT_DEV_API_BASE_URL;
+  }
+  return "";
+}
+
+const apiBaseUrl = resolveApiBaseUrl();
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {

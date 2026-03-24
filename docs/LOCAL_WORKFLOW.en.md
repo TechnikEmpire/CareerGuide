@@ -6,6 +6,8 @@ Last updated: 2026-03-23
 
 This document explains the current local development workflow in plain terms.
 
+For the single-image deployment path, use [docs/DEPLOYMENT.en.md](DEPLOYMENT.en.md).
+
 At this stage of the project, there are four different kinds of work:
 
 1. one-time corpus preprocessing

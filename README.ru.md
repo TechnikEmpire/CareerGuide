@@ -20,8 +20,9 @@ career guidance.
 1. [Student Manual](docs/STUDENT_MANUAL.ru.md)
 2. [Setup Guide](docs/SETUP.ru.md)
 3. [Local Workflow](docs/LOCAL_WORKFLOW.ru.md)
-4. [Project Status](docs/STATUS.ru.md)
-5. [Roadmap](docs/ROADMAP.ru.md)
+4. [Deployment Guide](docs/DEPLOYMENT.ru.md)
+5. [Project Status](docs/STATUS.ru.md)
+6. [Roadmap](docs/ROADMAP.ru.md)
 
 ## Текущий scope
 
@@ -59,6 +60,7 @@ research-extension, а не к отсутствующему core behavior про
 - [Active Decisions](docs/DECISIONS.ru.md)
 - [Setup Guide](docs/SETUP.ru.md)
 - [Local Workflow](docs/LOCAL_WORKFLOW.ru.md)
+- [Deployment Guide](docs/DEPLOYMENT.ru.md)
 - [Evaluation](docs/EVALUATION.ru.md)
 - [Benchmarks](docs/BENCHMARKS.ru.md)
 - [Status](docs/STATUS.ru.md)
@@ -84,6 +86,13 @@ python -m backend.scripts.run_local_app_stack --reload
 cd frontend
 npm install
 npm run dev
+```
+
+Соберите и запустите single-image deployment-container:
+
+```bash
+docker build -t careerguide:local .
+docker run --rm -p 8000:8000 -v careerguide-data:/app/data/runtime careerguide:local
 ```
 
 ## Политика документации

@@ -350,6 +350,19 @@
 - Решение: Оставшиеся пункты вроде более богатых artifact types, более широкого memory-lifecycle, более глубокой safety-policy, report-grade comparison-output для memory и более сильной real-chat Russian calibration теперь считаются post-v1 refinement work, а не blockers для завершения.
 - Обоснование: Репозиторий уже демонстрирует задуманный end-to-end академический product loop. Явная фиксация оставшегося backlog как optional защищает проект от scope creep и делает handoff для студентки более защищаемым.
 
+## D-040 Single-Image Deployment Baseline
+
+**Русский**
+
+- Статус: активно
+- Решение: Самый короткий deployable-baseline для текущего прототипа — это один Docker-image, который раздает и собранный frontend, и FastAPI-backend.
+- Решение: Frontend должен собираться во время image-creation и затем раздаваться backend-ом из того же runtime-image, а не выноситься в отдельный frontend-container на этапе v1.
+- Решение: Deployable-image должен скачивать публичные local runtime model-artifacts во время `docker build`, а не полагаться на то, что неотслеживаемые repo-local model-directories уже существуют в CI.
+- Решение: Текущий container-baseline может продолжать использовать существующий dual-process local app-stack runner, чтобы image запускал локальные `llama_cpp.server` и FastAPI вместе внутри одного inspectable unit.
+- Решение: Изменяемое runtime-state должно жить вне каталога с отслеживаемыми retrieval-artifacts. Контейнер должен хранить SQLite application-database в отдельном runtime-path, чтобы смонтированные volume не скрывали baked-in FAISS-index.
+- Решение: CI должен быть разделен на verification-workflow и container-image-workflow, причем container-image должен собираться и публиковаться только после успешных core CI-checks на `main`.
+- Обоснование: Для текущего thesis/demo-scope single-image deployment — это самый быстрый воспроизводимый путь от репозитория до работающего сервера на обычной CPU-VM. Он сохраняет deployment-story понятной, не вводит лишнюю orchestration-сложность и при этом дает реальный deployable artifact через CI.
+
 ## Decision Maintenance Rule
 
 **Русский**

@@ -4,6 +4,9 @@
 
 This guide explains how to create, activate, and verify the local Python environment for CareerGuide using Conda or Miniconda.
 
+If you are looking for the containerized server path instead of a local Conda
+workflow, use [docs/DEPLOYMENT.en.md](DEPLOYMENT.en.md).
+
 The default environment name used in this repository is:
 
 ```text

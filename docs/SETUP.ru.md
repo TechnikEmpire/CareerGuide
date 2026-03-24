@@ -4,6 +4,9 @@
 
 Это руководство объясняет, как создать, активировать и проверить локальное Python-окружение для CareerGuide с помощью Conda или Miniconda.
 
+Если вам нужен containerized server-path, а не локальный Conda-workflow,
+используйте [docs/DEPLOYMENT.ru.md](DEPLOYMENT.ru.md).
+
 Имя окружения по умолчанию в этом репозитории:
 
 ```text

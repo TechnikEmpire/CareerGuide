@@ -7,6 +7,8 @@
 
 Этот документ простыми словами объясняет текущий локальный workflow разработки.
 
+Для single-image deployment-path используйте [docs/DEPLOYMENT.ru.md](DEPLOYMENT.ru.md).
+
 На текущей стадии проекта есть четыре разных типа работы:
 
 1. one-time preprocessing корпуса

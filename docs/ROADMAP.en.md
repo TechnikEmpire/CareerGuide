@@ -35,7 +35,8 @@ For a more narrative current-state snapshot, use `docs/STATUS.md`.
 | 9. Safety and refusal behavior | completed | The prototype now blocks unsupported or out-of-scope requests with calm grounded refusal behavior. |
 | 10. Evaluation baseline | completed | Retrieval qrels, answer-eval fixtures, scoring scripts, benchmark outputs, and core regression tests exist for the current prototype scope. |
 | 11. Web UI v1 | completed | The frontend now covers chat, citations, memory, saved plans, study preferences, scheduled sessions, local history, and `.ics` export. |
-| 12. Optional post-v1 refinement | optional | Everything that remains is now polish, research extension, or thesis-strengthening work rather than missing product core. |
+| 12. Deployment baseline | completed | The repo now builds and publishes a single-image container that serves the frontend and backend together and bakes in the public local runtime models. |
+| 13. Optional post-v1 refinement | optional | Everything that remains is now polish, research extension, or thesis-strengthening work rather than missing product core. |
 
 ### Optional Polish Backlog
 
@@ -52,6 +53,7 @@ current end-to-end prototype:
 - report-quality debug traces and export artifacts
 - learned Hopfield projections or differentiable `ksoftmax`
 - general cleanup such as removing the FastAPI `on_event` deprecation path
+- fully automated host rollout from GHCR to Linode or another VM
 
 ### Current Trajectory
 

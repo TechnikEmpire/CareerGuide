@@ -216,6 +216,48 @@ def test_healthcheck_includes_local_frontend_cors_headers() -> None:
     assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
 
 
+def test_frontend_dist_root_serves_index_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The backend should serve the built SPA shell when a frontend dist exists."""
+
+    dist_path = tmp_path / "frontend-dist"
+    assets_path = dist_path / "assets"
+    assets_path.mkdir(parents=True)
+    (dist_path / "index.html").write_text("<html><body>CareerGuide SPA</body></html>", encoding="utf-8")
+    (assets_path / "app.js").write_text("console.log('career');", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "frontend_dist_path", dist_path)
+    monkeypatch.setattr(settings, "serve_frontend", True)
+
+    client = TestClient(create_app())
+
+    index_response = client.get("/")
+    asset_response = client.get("/assets/app.js")
+
+    assert index_response.status_code == 200
+    assert "CareerGuide SPA" in index_response.text
+    assert asset_response.status_code == 200
+    assert "console.log('career');" in asset_response.text
+
+
+def test_frontend_dist_does_not_shadow_reserved_api_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The SPA fallback should not silently swallow missing API-like paths."""
+
+    dist_path = tmp_path / "frontend-dist"
+    dist_path.mkdir(parents=True)
+    (dist_path / "index.html").write_text("<html><body>CareerGuide SPA</body></html>", encoding="utf-8")
+
+    monkeypatch.setattr(settings, "frontend_dist_path", dist_path)
+    monkeypatch.setattr(settings, "serve_frontend", True)
+
+    client = TestClient(create_app())
+    response = client.get("/chat/not-a-real-route")
+
+    assert response.status_code == 404
+
+
 def test_retrieval_preview_returns_ranked_chunks() -> None:
     """The retrieval endpoint should return real ESCO-backed chunks."""
 

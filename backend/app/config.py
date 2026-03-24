@@ -64,6 +64,10 @@ def _default_frontend_dev_origins() -> list[str]:
     ]
 
 
+def _default_frontend_dist_path() -> Path:
+    return _repo_root() / "frontend" / "dist"
+
+
 class AppSettings(BaseSettings):
     """Environment-driven backend settings."""
 
@@ -72,6 +76,8 @@ class AppSettings(BaseSettings):
     debug: bool = True
     database_url: str = Field(default_factory=_default_database_url)
     frontend_dev_origins: list[str] = Field(default_factory=_default_frontend_dev_origins)
+    frontend_dist_path: Path = Field(default_factory=_default_frontend_dist_path)
+    serve_frontend: bool = True
     default_top_k: int = 10
     memory_vector_size: int = 32
     memory_extraction_backend: str = "bilstm"

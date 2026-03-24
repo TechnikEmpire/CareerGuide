@@ -12,6 +12,8 @@ Student handoff manuals:
 - [Руководство для студентки (Русский)](docs/STUDENT_MANUAL.ru.md)
 - [Student Memory Guide (English)](docs/STUDENT_MEMORY_GUIDE.en.md)
 - [Memory Guide для студентки (Русский)](docs/STUDENT_MEMORY_GUIDE.ru.md)
+- [Deployment Guide (English)](docs/DEPLOYMENT.en.md)
+- [Deployment Guide (Русский)](docs/DEPLOYMENT.ru.md)
 
 Этот репозиторий теперь ведет authored top-level documentation в
 language-specific файлах:
@@ -25,3 +27,5 @@ language-specific файлах:
 - [Руководство для студентки (Русский)](docs/STUDENT_MANUAL.ru.md)
 - [Student Memory Guide (English)](docs/STUDENT_MEMORY_GUIDE.en.md)
 - [Memory Guide для студентки (Русский)](docs/STUDENT_MEMORY_GUIDE.ru.md)
+- [Deployment Guide (English)](docs/DEPLOYMENT.en.md)
+- [Deployment Guide (Русский)](docs/DEPLOYMENT.ru.md)
