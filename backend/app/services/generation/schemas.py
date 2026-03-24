@@ -27,6 +27,7 @@ class AnswerResponse(BaseModel):
     citations: list[RetrievedChunk]
     prompt_preview: str
     memory_summary: str
+    response_kind: str = "answer"
 
 
 class CareerPlanRequest(BaseModel):

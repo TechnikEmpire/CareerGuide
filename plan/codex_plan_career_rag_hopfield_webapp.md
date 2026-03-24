@@ -1136,9 +1136,9 @@ That is enough for the scientific core.
 Current repo checkpoint for this section:
 
 - the repo now has a real `frontend/` app implemented as a lightweight React + Vite client
-- it already supports profile selection, chat, citations, “memory used”, structured plan generation, and memory inspection
+- it already supports profile selection, chat, citations, “memory used”, structured plan generation, memory inspection, local chat history, and save/reload support for one active plan per profile
 - it talks directly to the existing FastAPI backend instead of introducing a second AI app layer
-- `save/reload plans` is still the main missing frontend feature in this minimal scope
+- the remaining frontend work after this checkpoint is polish and optional scope expansion, not the minimal scientific-core surface
 
 ---
 

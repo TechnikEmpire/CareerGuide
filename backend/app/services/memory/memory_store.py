@@ -90,5 +90,19 @@ class SqliteMemoryStore:
             session.refresh(target)
             return _memory_item_to_payload(target)
 
+    def delete_item(self, user_id: str, item_id: str) -> MemoryItemPayload | None:
+        """Delete one persisted memory item owned by the given user."""
+
+        init_db()
+        with get_session() as session:
+            record = session.get(MemoryItem, item_id)
+            if record is None or record.user_id != user_id:
+                return None
+
+            payload = _memory_item_to_payload(record)
+            session.delete(record)
+            session.commit()
+            return payload
+
 
 default_memory_store = SqliteMemoryStore()

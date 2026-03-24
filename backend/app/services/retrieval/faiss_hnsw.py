@@ -421,6 +421,27 @@ class FaissHnswRetrievalService:
         if sqlite_current and faiss_current:
             return
 
+        try:
+            build_retrieval_index(force=False)
+        except Exception as exc:
+            raise RetrievalArtifactsError(
+                "Retrieval artifacts are missing or stale, and automatic rebuild failed. "
+                "Run `python -m backend.scripts.build_retrieval_index` before querying the API."
+            ) from exc
+
+        sqlite_current = _sqlite_corpus_matches(
+            expected_count,
+            embedding_model=self.embedder.model_id,
+            vector_size=self.embedder.vector_size,
+        )
+        faiss_current = _faiss_artifacts_match(
+            expected_count,
+            embedding_model=self.embedder.model_id,
+            vector_size=self.embedder.vector_size,
+        )
+        if sqlite_current and faiss_current:
+            return
+
         raise RetrievalArtifactsError(
             "Retrieval artifacts are missing or stale. "
             "Run `python -m backend.scripts.build_retrieval_index` before querying the API."

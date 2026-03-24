@@ -5,6 +5,8 @@ from __future__ import annotations
 from backend.app.services.generation.generator_client import _extract_answer_payload
 from backend.app.services.generation.generator_client import _extract_json_object
 from backend.app.services.generation.generator_client import _strip_think_tags
+from backend.app.services.generation.generator_client import LlamaCppGeneratorClient
+from backend.app.services.generation.schemas import CareerPlanRequest
 from backend.app.services.generation.schemas import RetrievedChunk
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
@@ -244,3 +246,49 @@ def test_extract_answer_payload_strips_leading_question_restatement() -> None:
 
     assert answer.startswith("Сфокусируйтесь на ролях аналитика данных")
     assert [chunk.chunk_id for chunk in citations] == ["chunk-1"]
+
+
+def test_generate_career_plan_falls_back_when_model_returns_invalid_json(
+    monkeypatch,
+) -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="occupation-1",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation",
+                title="project manager",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: project manager.\n"
+                    "Description (EN): Coordinate project delivery.\n"
+                    "Essential skills (EN): risk management, stakeholder communication, resource planning."
+                ),
+                score=0.93,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+    request = CareerPlanRequest(
+        user_id="demo-user",
+        goal="Build a transition plan into project management",
+        target_role="Project Manager",
+    )
+
+    client = LlamaCppGeneratorClient()
+    monkeypatch.setattr(
+        client,
+        "_chat_completion",
+        lambda **_: "not valid json at all",
+    )
+
+    response = client.generate_career_plan(
+        request=request,
+        prompt="prompt",
+        retrieval_context=retrieval_context,
+    )
+
+    assert response.goal == request.goal
+    assert response.target_role == request.target_role
+    assert len(response.steps) == 4

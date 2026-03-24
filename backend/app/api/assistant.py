@@ -8,6 +8,7 @@ from backend.app.services.assistant_service import (
     answer_question as generate_answer_response,
     build_career_plan as generate_career_plan_response,
 )
+from backend.app.services.generation.answer_guardrails import UnsupportedGuidanceRequestError
 from backend.app.services.generation.generator_client import GenerationClientError
 from backend.app.services.generation.schemas import AnswerRequest, AnswerResponse, CareerPlanRequest, CareerPlanResponse
 from backend.app.services.retrieval.faiss_hnsw import RetrievalArtifactsError
@@ -21,6 +22,8 @@ def answer_question(request: AnswerRequest) -> AnswerResponse:
 
     try:
         return generate_answer_response(request)
+    except UnsupportedGuidanceRequestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (GenerationClientError, RetrievalArtifactsError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -31,5 +34,7 @@ def build_career_plan(request: CareerPlanRequest) -> CareerPlanResponse:
 
     try:
         return generate_career_plan_response(request)
+    except UnsupportedGuidanceRequestError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (GenerationClientError, RetrievalArtifactsError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

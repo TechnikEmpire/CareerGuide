@@ -12,6 +12,7 @@ from typing import Any, Protocol
 import httpx
 
 from backend.app.config import settings
+from backend.app.services.generation.plan_guardrails import build_fallback_career_plan
 from backend.app.services.generation.schemas import (
     AnswerResponse,
     CareerPlanRequest,
@@ -183,8 +184,6 @@ class LlamaCppGeneratorClient:
     ) -> CareerPlanResponse:
         """Generate a grounded structured career plan from the generation server."""
 
-        del request  # The prompt already carries the plan request fields.
-
         system_prompt = (
             "You are a grounded career guidance assistant. "
             "Return only valid JSON with keys goal, target_role, and steps. "
@@ -197,26 +196,42 @@ class LlamaCppGeneratorClient:
             user_prompt=prompt,
             max_tokens=settings.generation_plan_max_tokens,
         )
-        payload = _extract_json_object(raw_text)
+        try:
+            payload = _extract_json_object(raw_text)
+        except GenerationClientError:
+            return build_fallback_career_plan(
+                request=request,
+                retrieval_context=retrieval_context,
+            )
 
         try:
             goal = str(payload["goal"])
             target_role = str(payload["target_role"])
             steps_payload = list(payload["steps"])
         except (KeyError, TypeError, ValueError) as exc:
-            raise GenerationClientError(
-                "The generation server returned invalid career-plan JSON payload."
-            ) from exc
-
-        steps = [
-            CareerPlanStep(
-                title=str(step["title"]),
-                description=str(step["description"]),
+            return build_fallback_career_plan(
+                request=request,
+                retrieval_context=retrieval_context,
             )
-            for step in steps_payload
-        ]
+
+        try:
+            steps = [
+                CareerPlanStep(
+                    title=str(step["title"]),
+                    description=str(step["description"]),
+                )
+                for step in steps_payload
+            ]
+        except (KeyError, TypeError, ValueError):
+            return build_fallback_career_plan(
+                request=request,
+                retrieval_context=retrieval_context,
+            )
         if not steps:
-            raise GenerationClientError("The generation server returned an empty career plan.")
+            return build_fallback_career_plan(
+                request=request,
+                retrieval_context=retrieval_context,
+            )
 
         return CareerPlanResponse(
             goal=goal,

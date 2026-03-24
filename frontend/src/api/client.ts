@@ -15,6 +15,7 @@ export type AnswerResponse = {
   citations: RetrievedChunk[];
   prompt_preview: string;
   memory_summary: string;
+  response_kind?: string;
 };
 
 export type CareerPlanStep = {
@@ -103,4 +104,11 @@ export function requestCareerPlan(
 export function fetchMemories(userId: string): Promise<MemoryItemPayload[]> {
   const params = new URLSearchParams({ user_id: userId });
   return requestJson<MemoryItemPayload[]>(`/memory/list?${params.toString()}`);
+}
+
+export function deleteMemory(userId: string, memoryId: string): Promise<MemoryItemPayload> {
+  const params = new URLSearchParams({ user_id: userId });
+  return requestJson<MemoryItemPayload>(`/memory/${encodeURIComponent(memoryId)}?${params.toString()}`, {
+    method: "DELETE",
+  });
 }

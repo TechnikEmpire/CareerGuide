@@ -317,6 +317,65 @@ def test_answer_flow_dedupes_duplicate_memory_sentences_within_one_request() -> 
     assert listed_payload[0]["text"] == "I prefer remote work."
 
 
+def test_memory_endpoint_deletes_one_persisted_item() -> None:
+    """The memory API should delete a stored item for the active user only."""
+
+    client = TestClient(create_app())
+    user_id = "memory-delete-user"
+
+    upserted = client.post(
+        "/memory/upsert",
+        json={
+            "item": {
+                "id": "memory-delete-1",
+                "user_id": user_id,
+                "text": "I prefer remote work.",
+                "category": "user_constraint",
+                "importance": 0.8,
+                "confidence": 0.9,
+            }
+        },
+    )
+    assert upserted.status_code == 200
+
+    deleted = client.delete("/memory/memory-delete-1", params={"user_id": user_id})
+    assert deleted.status_code == 200
+    assert deleted.json()["id"] == "memory-delete-1"
+
+    listed_memory = client.get("/memory/list", params={"user_id": user_id})
+    assert listed_memory.status_code == 200
+    assert listed_memory.json() == []
+
+
+def test_memory_endpoint_returns_404_for_wrong_user_delete() -> None:
+    """Deletion should not expose or remove another user's memory item."""
+
+    client = TestClient(create_app())
+    owner_user_id = "memory-delete-owner"
+
+    upserted = client.post(
+        "/memory/upsert",
+        json={
+            "item": {
+                "id": "memory-delete-protected",
+                "user_id": owner_user_id,
+                "text": "I prefer async collaboration.",
+                "category": "user_constraint",
+                "importance": 0.8,
+                "confidence": 0.9,
+            }
+        },
+    )
+    assert upserted.status_code == 200
+
+    wrong_delete = client.delete("/memory/memory-delete-protected", params={"user_id": "intruder"})
+    assert wrong_delete.status_code == 404
+
+    listed_memory = client.get("/memory/list", params={"user_id": owner_user_id})
+    assert listed_memory.status_code == 200
+    assert len(listed_memory.json()) == 1
+
+
 def test_answer_service_can_run_without_memory_and_does_not_persist() -> None:
     """The core answer service should support a RAG-only path without memory writes."""
 
@@ -330,6 +389,62 @@ def test_answer_service_can_run_without_memory_and_does_not_persist() -> None:
 
     assert response.memory_summary == "No stored user memory yet."
     assert default_memory_store.list_items(user_id="rag-only-user") == []
+
+
+def test_answer_flow_handles_external_resource_requests_honestly() -> None:
+    """The answer path should not hallucinate external resources from ESCO-only evidence."""
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "resource-user",
+            "question": "Do you have any external resources you could point me to, to learn more about these?",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "external courses or websites" in payload["answer"]
+    assert "study plan or a search checklist" in payload["answer"]
+    assert "Scaffold answer" not in payload["answer"]
+
+
+def test_answer_flow_refuses_unsupported_explicit_role_request() -> None:
+    """Explicit unsupported role requests should return a grounded refusal, not fake coaching."""
+
+    client = TestClient(create_app())
+    user_id = "unsupported-role-user"
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": user_id, "question": "I prefer remote work. How do I become a stripper?"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["response_kind"] == "refusal"
+    assert "can’t provide grounded career guidance" in payload["answer"]
+    assert payload["citations"] == []
+    listed_memory = client.get("/memory/list", params={"user_id": user_id})
+    assert listed_memory.status_code == 200
+    assert listed_memory.json() == []
+
+
+def test_answer_flow_blocks_exploitative_illegal_request() -> None:
+    """Exploitative or illegal work requests should fail through the scope gate."""
+
+    client = TestClient(create_app())
+    user_id = "blocked-user"
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": user_id, "question": "I prefer remote work. How do I become a pimp?"},
+    )
+
+    assert response.status_code == 400
+    assert "exploitative, coercive, or illegal work" in response.json()["detail"]
+    listed_memory = client.get("/memory/list", params={"user_id": user_id})
+    assert listed_memory.status_code == 200
+    assert listed_memory.json() == []
 
 
 def test_answer_flow_supports_hopfield_top1_mode() -> None:
@@ -411,6 +526,23 @@ def test_career_plan_returns_503_when_retrieval_artifacts_are_unavailable(
 
     assert response.status_code == 503
     assert "Retrieval artifacts are missing or stale." in response.json()["detail"]
+
+
+def test_career_plan_returns_400_for_unsupported_target_role() -> None:
+    """Plan building should refuse unsupported target roles instead of inventing a plan."""
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/career/plan",
+        json={
+            "user_id": "unsupported-plan-user",
+            "goal": "Build a transition plan into stripping",
+            "target_role": "Stripper",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "does not show a strong enough match" in response.json()["detail"]
 
 
 def test_answer_flow_supports_hopfield_topk_mode() -> None:

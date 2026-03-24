@@ -1,8 +1,8 @@
 # Active Decisions
 
-Last updated: 2026-03-23
+Last updated: 2026-03-24
 
-Последнее обновление: 2026-03-23
+Последнее обновление: 2026-03-24
 
 ## D-001 Product Direction
 
@@ -500,6 +500,7 @@ Last updated: 2026-03-23
 - Decision: The first runtime integration of the trained BiLSTM extractor should operate on deterministic sentence-like segments, not on whole user turns and not through another LLM extraction pass.
 - Decision: One incoming user message should be normalized, split into short sentence-like segments with `pySBD` when available and a newline-aware regex fallback otherwise, and each segment should be classified independently as `MEMORY` or `NO_MEMORY`.
 - Decision: Accepted segments should be converted into one `MemoryItemPayload` each, deduplicated first within the request via `consolidate_memory_items(...)`, then persisted through `SqliteMemoryStore.upsert_item(...)`, which remains the canonical normalized-text-per-user dedupe layer.
+- Decision: Runtime memory extraction should stage request-local candidates first, use them only as an in-memory preview for the current turn, and persist them only after the request completes with a non-refusal answer.
 - Decision: In the binary-only phase, accepted classifier outputs should use a coarse runtime category such as `user_memory`, store classifier probability as `confidence`, and keep a stable default `importance` until a separate type-classification phase exists.
 - Decision: The Hopfield layer should not implement a second bespoke dedupe path. It should keep reading the already persisted and normalized `memory_items` set and perform recall over that list.
 - Rationale: The classifier is sentence-level by design, so whole-turn classification would mix unrelated facts and questions into one decision. `pySBD` gives the runtime a lightweight deterministic bilingual sentence splitter without another model call, while the regex fallback keeps local app environments usable until dependencies are refreshed. Reusing the existing store-level dedupe keeps one canonical persistence policy instead of fragmenting memory-write logic across multiple modules.
@@ -510,9 +511,10 @@ Last updated: 2026-03-23
 - Решение: Первая runtime-интеграция обученного BiLSTM-extractor должна работать на детерминированных sentence-like segments, а не на whole user turn и не через еще один LLM extraction-pass.
 - Решение: Одно входное сообщение пользователя должно нормализоваться, разбиваться на короткие sentence-like segments через `pySBD`, когда он доступен, и через newline-aware regex-fallback в противном случае, и каждый segment должен независимо классифицироваться как `MEMORY` или `NO_MEMORY`.
 - Решение: Принятые segments должны превращаться в отдельные `MemoryItemPayload`, сначала дедуплицироваться внутри запроса через `consolidate_memory_items(...)`, а затем сохраняться через `SqliteMemoryStore.upsert_item(...)`, который остается каноническим normalized-text-per-user слоем дедупликации.
+- Решение: Runtime memory extraction должен сначала стадировать request-local candidates, использовать их только как in-memory preview для текущего turn и сохранять их только после того, как запрос завершился non-refusal answer.
 - Решение: В binary-only фазе принятые classifier outputs должны использовать coarse runtime-category вроде `user_memory`, сохранять вероятность classifier как `confidence` и держать стабильный default `importance`, пока не появится отдельная phase type-classification.
 - Решение: Hopfield-layer не должен реализовывать второй отдельный dedupe-path. Он должен по-прежнему читать уже сохраненный и нормализованный набор `memory_items` и выполнять recall поверх этого списка.
-- Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. `pySBD` дает runtime легкий детерминированный bilingual sentence-splitter без еще одного model-call, а regex-fallback сохраняет работоспособность локального app-env, пока зависимости не обновлены. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям.
+- Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. `pySBD` дает runtime легкий детерминированный bilingual sentence-splitter без еще одного model-call, а regex-fallback сохраняет работоспособность локального app-env, пока зависимости не обновлены. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям. Отложенный commit защищает систему от записи памяти из входов, которые закончились scope-refusal или другим неудовлетворенным исходом.
 
 ## D-035 Web UI Stack and Integration Boundary
 
@@ -544,7 +546,9 @@ Last updated: 2026-03-23
 - Decision: Direct chat answers should no longer force the generator to emit JSON.
 - Decision: The answer-generation prompt should request plain text with inline evidence markers like `[1]` and `[2]`, while the backend extracts those references into the structured API response.
 - Decision: Structured JSON remains appropriate for explicitly structured outputs like career plans, but it is no longer the preferred contract for conversational answers.
+- Decision: Structured outputs like career plans may fall back to deterministic grounded templates when the small local model fails to return valid JSON, rather than surfacing avoidable runtime errors to the user.
 - Decision: Conversational chat answers should sound like normal career coaching, not like source-dump summaries. Exploratory fit questions should prefer tentative options plus one short follow-up question over encyclopedic explanation.
+- Decision: The live backend may override the small-model free-form answer for common failure-prone intents with deterministic grounded guardrails, especially for broad career-fit questions, skill-requirement questions, and external-resource requests that the ESCO-only evidence base cannot honestly satisfy.
 - Rationale: The local small-model stack follows rigid JSON less reliably than it follows short plain-text answer instructions, and forcing JSON made the user-visible chat output feel mechanical and brittle.
 
 **Русский**
@@ -553,8 +557,30 @@ Last updated: 2026-03-23
 - Решение: Прямые chat-ответы больше не должны заставлять generator выдавать JSON.
 - Решение: Prompt для answer-generation должен запрашивать plain-text с inline-маркерами evidence вроде `[1]` и `[2]`, а backend должен извлекать эти ссылки в структурированный API-response.
 - Решение: Структурированный JSON остается уместным для явно структурированных output, таких как career plan, но больше не является предпочтительным контрактом для conversational answer.
+- Решение: Для структурированных output, таких как career plan, runtime может использовать детерминированный grounded-template fallback, если локальная small-model не вернула валидный JSON, вместо того чтобы показывать пользователю устранимую runtime-ошибку.
 - Решение: Conversational chat-ответы должны звучать как нормальный карьерный коучинг, а не как summary source-дампа. Для exploratory fit-вопросов предпочтительны осторожные варианты и один короткий follow-up question вместо энциклопедического объяснения.
+- Решение: Live-backend может заменять free-form answer от small-model детерминированными grounded-guardrails для наиболее проблемных intent-типов, особенно для broad career-fit questions, вопросов о требуемых skills и запросов на external resources, которые текущая ESCO-only evidence-base не может честно удовлетворить.
 - Обоснование: Локальный стек small-model надежнее следует коротким инструкциям для plain-text answer, чем жесткому JSON-контракту, а принудительный JSON делал chat-output для пользователя механическим и хрупким.
+
+## D-037 Grounded Support Refusal for Unsupported Requests
+
+**English**
+
+- Status: active
+- Decision: The prototype should refuse explicit role-seeking or planning requests when the current grounded corpus does not show a strong enough match for a supported role or transition.
+- Decision: In conversational chat, unsupported explicit role requests should return a calm assistant refusal message rather than hallucinated generic coaching.
+- Decision: In structured planning, unsupported target roles should fail cleanly with a user-facing scope/support message instead of generating an invented plan.
+- Decision: The scope layer should also block clearly exploitative or illegal work requests, not only crisis-response cases.
+- Rationale: The current ESCO-centered corpus is strong enough for standard grounded career guidance, but not for every conceivable role request. A prototype that refuses unsupported requests is easier to defend than one that improvises misleading advice from weak evidence.
+
+**Русский**
+
+- Статус: активно
+- Решение: Прототип должен отказывать в явных role-seeking и planning-запросах, если текущий grounded-corpus не показывает достаточно сильного совпадения с поддерживаемой ролью или карьерным переходом.
+- Решение: В conversational chat неподдерживаемые explicit role-запросы должны возвращать спокойное refusal-сообщение от ассистента, а не hallucinated generic coaching.
+- Решение: В structured planning неподдерживаемые target-role должны завершаться чистым user-facing сообщением о границах scope/support, а не генерацией выдуманного плана.
+- Решение: Scope-layer также должен блокировать явно exploitative или illegal work-запросы, а не только crisis-response случаи.
+- Обоснование: Текущий ESCO-centered corpus достаточно силен для стандартного grounded career guidance, но не для любого imaginable role-request. Прототип, который честно отказывает в неподдерживаемых запросах, защищать проще, чем систему, которая импровизирует вводящее в заблуждение advice из слабых evidence.
 
 ## Decision Maintenance Rule
 

@@ -56,9 +56,9 @@ export function CitationList({ citations, title = "Sources" }: CitationListProps
 
   return (
     <section className="citation-block">
-      <div className="section-header compact">
+      <div className="message-detail-header">
         <h4>{title}</h4>
-        <span className="eyebrow">{citations.length} cited chunks</span>
+        <span className="detail-kicker">{citations.length} cited chunks</span>
       </div>
       <ul className="citation-list">
         {citations.map((citation, index) => (

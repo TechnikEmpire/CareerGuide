@@ -86,3 +86,37 @@ def test_sqlite_memory_store_dedupes_by_normalized_text(
     assert listed[0].importance == 0.9
     assert listed[0].confidence == 0.8
     assert listed[0].text == deduped.text
+
+
+def test_sqlite_memory_store_deletes_only_matching_user_item(
+    temporary_memory_database: None,
+) -> None:
+    """Deletion should remove only the targeted user's memory item."""
+
+    store = SqliteMemoryStore()
+    item = MemoryItemPayload(
+        id="memory-delete-1",
+        user_id="memory-user",
+        text="I prefer remote work.",
+        category="user_constraint",
+        importance=0.7,
+        confidence=0.6,
+    )
+    other_user_item = MemoryItemPayload(
+        id="memory-delete-2",
+        user_id="other-user",
+        text="I prefer office work.",
+        category="user_constraint",
+        importance=0.7,
+        confidence=0.6,
+    )
+
+    store.upsert_item(item)
+    store.upsert_item(other_user_item)
+
+    deleted = store.delete_item(user_id="memory-user", item_id="memory-delete-1")
+    assert deleted == item
+    assert store.list_items(user_id="memory-user") == []
+    assert store.list_items(user_id="other-user") == [other_user_item]
+
+    assert store.delete_item(user_id="memory-user", item_id="memory-delete-2") is None

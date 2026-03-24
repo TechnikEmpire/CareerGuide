@@ -35,9 +35,9 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | 6. Memory extraction and consolidation | in_progress | The live answer flow now uses sentence-level binary BiLSTM extraction with `pySBD`-preferred segmentation plus regex fallback and normalized-text consolidation. The raw corpus keeps fine-grained labels, while the first supervised runtime target remains binary `MEMORY` vs `NO_MEMORY`. Real-chat calibration, richer extraction logic, and lifecycle behavior are still pending. |
 | 7. Hopfield memory read | in_progress | A basic non-trainable Hopfield recall over real embedding vectors is now live with explicit `top1` and `topk` modes. Learned projections and differentiable `ksoftmax` remain future work. |
 | 8. Joint RAG + memory generation | in_progress | The production answer path now merges dense retrieval with persisted memory summary, but tracked outputs for `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` are still pending. |
-| 9. Safety and refusal behavior | scaffolded | There is a minimal scope guard, but the real risk-policy layer is not complete. |
+| 9. Safety and refusal behavior | in_progress | The repo now has deterministic scope blocking for crisis and exploitative requests plus grounded-support refusal for unsupported role or planning requests, but the full risk-policy layer is not complete. |
 | 10. Evaluation harness | in_progress | Canonical retrieval qrels, answer-evaluation cases, score utilities, dense-only tuning export, and answer-export tooling now exist. The dense-only elbow is locked at `top_k=10`, explicit citation export is now working, and the next work is extending the harness to `RAG-only` versus `RAG + memory` comparison. |
-| 11. Web UI v1 | in_progress | A lightweight React + Vite frontend now exists with profile selection, chat, citations, memory-used display, structured plan generation, and memory inspection. Save/reload plan flow and polish are still open. |
+| 11. Web UI v1 | completed | The lightweight React + Vite frontend now provides profile selection, chat, citations, memory-used display, structured plan generation, memory inspection with delete support, local chat history, save/reload support for one active plan per profile, and UI-facing refusal/scope handling. |
 | 12. Optional browser inference experiment | optional | Explicitly deferred until the backend-first system is stable. |
 
 ### Current Drift Notes
@@ -51,15 +51,15 @@ For the short-term snapshot, use `docs/STATUS.md`.
 
 The most important next implementation path is now:
 
-1. finish the remaining `Web UI v1` slice, especially save/reload plan flow and Russian-first polish
-2. keep the remaining backend memory-evaluation items as post-first-version refinement work
-3. return later to tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
+1. keep the remaining backend memory-evaluation items as post-first-version refinement work
+2. return later to tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
+3. decide later whether `skills-gap` and `compare-options` artifacts remain in scope or are formally deferred
 4. add later profile/artifact lifecycle operations after the first end-to-end web prototype is stable
 5. add later fine-grained type classification only after the binary runtime path is stable
 
-The backend core loop is already implemented for the rapid prototype. The
-current critical path has therefore shifted to the thin web UI layer rather
-than more backend rewiring.
+The backend core loop and Web UI v1 are now implemented for the rapid
+prototype. The current critical path has therefore shifted away from core app
+construction and toward optional post-v1 refinement work.
 
 ### Next Clean Boundary
 
@@ -114,9 +114,9 @@ active runtime baseline.
 | 6. Извлечение памяти и консолидация | in_progress | Live answer-flow теперь использует sentence-level binary BiLSTM extraction с `pySBD`-preferred segmentation, regex-fallback и normalized-text consolidation. Raw corpus сохраняет fine-grained labels, а первый supervised runtime-target по-прежнему намеренно бинарный: `MEMORY` vs `NO_MEMORY`. Real-chat calibration, более богатая логика extraction и lifecycle behavior все еще впереди. |
 | 7. Hopfield memory read | in_progress | В live prompt-path уже работает базовый нетренируемый Hopfield recall поверх реальных embedding-векторов с явными режимами `top1` и `topk`. Learned projections и differentiable `ksoftmax` остаются будущей работой. |
 | 8. Совместная генерация RAG + memory | in_progress | Production answer-path теперь объединяет dense retrieval и persisted memory summary, но tracked outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk` все еще впереди. |
-| 9. Safety и refusal behavior | scaffolded | Есть минимальная scope-защита, но полноценный risk-policy layer еще не завершен. |
+| 9. Safety и refusal behavior | in_progress | В репозитории теперь есть детерминированная scope-блокировка для crisis- и exploitative-запросов, а также grounded-support refusal для неподдерживаемых role- и planning-запросов, но полноценный risk-policy layer еще не завершен. |
 | 10. Evaluation harness | in_progress | Канонические retrieval qrels, answer-evaluation cases, scoring-утилиты, dense-only tuning export и answer-export tooling уже существуют. Dense-only elbow зафиксирован на `top_k=10`, explicit citation export теперь работает, и следующая работа — расширить harness до сравнения `RAG-only` и `RAG + memory`. |
-| 11. Web UI v1 | in_progress | Теперь уже существует легкий frontend на React + Vite с выбором профиля, чатом, citations, отображением memory-used, structured plan generation и memory inspection. Save/reload plan-flow и polish все еще впереди. |
+| 11. Web UI v1 | completed | Легкий frontend на React + Vite теперь уже дает выбор профиля, чат, citations, отображение memory-used, structured plan generation, memory inspection с удалением, local chat history, save/reload support для одного активного плана на профиль и UI-подачу refusal/scope-limit состояний. |
 | 12. Optional browser inference experiment | optional | Явно отложено до тех пор, пока backend-first система не станет стабильной. |
 
 ### Текущие заметки о дрейфе
@@ -130,14 +130,15 @@ active runtime baseline.
 
 Наиболее важная следующая последовательность реализации теперь такая:
 
-1. завершить оставшийся slice `Web UI v1`, прежде всего save/reload plan-flow и Russian-first polish
-2. оставить оставшиеся backend memory-evaluation items как post-first-version refinement work
-3. позже вернуться к отслеживаемым comparison-output для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
+1. оставить оставшиеся backend memory-evaluation items как post-first-version refinement work
+2. позже вернуться к отслеживаемым comparison-output для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
+3. позже решить, остаются ли `skills-gap` и `compare-options` артефакты в scope или формально откладываются
 4. добавить lifecycle-операции для profile/artifact memory после стабилизации первого end-to-end web prototype
 5. добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path
 
-Core-loop backend уже реализован для rapid prototype. Поэтому текущий critical
-path сместился к тонкому web UI layer, а не к дополнительному backend rewiring.
+Core-loop backend и Web UI v1 уже реализованы для rapid prototype. Поэтому
+текущий critical path сместился от core app-construction к необязательной
+post-v1 refinement work.
 
 ### Следующая чистая граница
 
