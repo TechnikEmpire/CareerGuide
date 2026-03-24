@@ -1,15 +1,11 @@
 # Data Layout
 
-## English
+This document is maintained in language-specific files:
 
-- `raw/` stores source files and downloads before normalization
-- `processed/` stores derived artifacts such as SQLite files and normalized outputs
-- `raw/ESCO/` is the expected location for downloaded ESCO source dumps
-- `processed/esco/` is the expected location for normalized and bilingual ESCO artifacts
+- [English](README.en.md)
+- [Русский](README.ru.md)
 
-## Русский
+Этот документ поддерживается в language-specific файлах:
 
-- `raw/` хранит исходные файлы и загрузки до нормализации
-- `processed/` хранит производные артефакты, такие как SQLite-файлы и нормализованные результаты
-- `raw/ESCO/` - ожидаемое место для загруженных исходных ESCO dump-файлов
-- `processed/esco/` - ожидаемое место для нормализованных и двуязычных ESCO-артефактов
+- [English](README.en.md)
+- [Русский](README.ru.md)

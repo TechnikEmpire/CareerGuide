@@ -228,18 +228,24 @@ data/processed/esco/**/*.jsonl
 # Local model runtime artifacts and generated runtime config
 models/*
 !models/README.md
+!models/README.en.md
+!models/README.ru.md
 config/*.local.json
 
 # Persist the canonical FAISS retrieval cache for the active Qwen3 retrieval
 # configuration. The local SQLite database remains untracked.
 data/processed/retrieval/*
 !data/processed/retrieval/README.md
+!data/processed/retrieval/README.en.md
+!data/processed/retrieval/README.ru.md
 !data/processed/retrieval/faiss_hnsw.index
 !data/processed/retrieval/faiss_hnsw_manifest.json
 
 # Generated benchmark and evaluation outputs
 eval/out/*
 !eval/out/README.md
+!eval/out/README.en.md
+!eval/out/README.ru.md
 !eval/out/dense_retrieval_tuning.json
 !eval/out/answer_predictions.json
 !eval/out/answer_scores.json

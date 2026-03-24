@@ -1,15 +1,11 @@
 # Memory Extraction Models
 
-## English
+This document is maintained in language-specific files:
 
-Trained BiLSTM classifier bundles and evaluation reports for the standalone
-memory-extraction tooling live here.
+- [English](README.en.md)
+- [Русский](README.ru.md)
 
-These artifacts may be committed to git when reproducibility matters.
+Этот документ поддерживается в language-specific файлах:
 
-## Русский
-
-Здесь хранятся обученные BiLSTM classifier bundles и evaluation reports для
-standalone memory-extraction tooling.
-
-Эти артефакты могут коммититься в git, когда важна воспроизводимость.
+- [English](README.en.md)
+- [Русский](README.ru.md)

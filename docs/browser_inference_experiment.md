@@ -1,14 +1,11 @@
 # Browser Inference Experiment
 
-## English
+This document is maintained in language-specific files:
 
-This document is reserved for a later optional experiment. The main system will
-remain Python-backend-first and `llama.cpp`-based until the grounded retrieval,
-memory, and evaluation pipeline is stable.
+- [English](browser_inference_experiment.en.md)
+- [Русский](browser_inference_experiment.ru.md)
 
-## Русский
+Этот документ поддерживается в language-specific файлах:
 
-Этот документ зарезервирован для более позднего опционального эксперимента.
-Основная система должна оставаться Python-backend-first и основанной на
-`llama.cpp` до тех пор, пока retrieval, memory и evaluation pipeline не станут
-стабильными.
+- [English](browser_inference_experiment.en.md)
+- [Русский](browser_inference_experiment.ru.md)

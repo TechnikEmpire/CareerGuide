@@ -1,15 +1,11 @@
 # Memory Extraction Data
 
-## English
+This document is maintained in language-specific files:
 
-Generated synthetic corpora and prepared train/dev/test splits for the
-standalone memory-extraction classifier live here.
+- [English](README.en.md)
+- [Русский](README.ru.md)
 
-These artifacts may be committed to git when reproducibility matters.
+Этот документ поддерживается в language-specific файлах:
 
-## Русский
-
-Здесь хранятся сгенерированные synthetic corpora и подготовленные
-train/dev/test splits для standalone memory-extraction classifier.
-
-Эти артефакты могут коммититься в git, когда важна воспроизводимость.
+- [English](README.en.md)
+- [Русский](README.ru.md)

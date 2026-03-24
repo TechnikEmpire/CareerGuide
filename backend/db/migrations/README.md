@@ -1,5 +1,11 @@
 # Database Migrations
 
-Alembic or another migration workflow can be introduced once the schema settles.
+This document is maintained in language-specific files:
 
-Alembic или другой migration workflow можно ввести после стабилизации схемы.
+- [English](README.en.md)
+- [Русский](README.ru.md)
+
+Этот документ поддерживается в language-specific файлах:
+
+- [English](README.en.md)
+- [Русский](README.ru.md)
