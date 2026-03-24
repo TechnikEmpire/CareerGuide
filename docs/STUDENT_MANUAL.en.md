@@ -56,19 +56,19 @@ If you want to learn the project efficiently, use this order:
 
 1. `README.en.md`
    Why: fast repo-level orientation
-2. `docs/STUDENT_MANUAL.en.md`
+2. [`docs/STUDENT_MANUAL.en.md`](./STUDENT_MANUAL.en.md)
    Why: this document explains the whole system by feature
-3. `docs/STUDENT_MEMORY_GUIDE.en.md`
+3. [`docs/STUDENT_MEMORY_GUIDE.en.md`](./STUDENT_MEMORY_GUIDE.en.md)
    Why: the memory subsystem is the student’s strongest academic ownership area
-4. `docs/SETUP.en.md`
+4. [`docs/SETUP.en.md`](./SETUP.en.md)
    Why: environment and local setup
-5. `docs/LOCAL_WORKFLOW.en.md`
+5. [`docs/LOCAL_WORKFLOW.en.md`](./LOCAL_WORKFLOW.en.md)
    Why: how to actually run the stack and evaluation scripts
-6. `docs/STATUS.en.md`
+6. [`docs/STATUS.en.md`](./STATUS.en.md)
    Why: what is finished vs optional
-7. `docs/ROADMAP.en.md`
+7. [`docs/ROADMAP.en.md`](./ROADMAP.en.md)
    Why: stage map and what is deferred
-8. `docs/DECISIONS.en.md`
+8. [`docs/DECISIONS.en.md`](./DECISIONS.en.md)
    Why: why the architecture looks the way it does
 
 Use the long plan docs in `plan/` only as historical implementation context.
@@ -151,12 +151,12 @@ The backend then:
 
 Main files:
 
-- `backend/app/api/assistant.py`
-- `backend/app/services/assistant_service.py`
-- `backend/app/services/retrieval/rag_pipeline.py`
-- `backend/app/services/generation/prompt_builder.py`
-- `backend/app/services/generation/generator_client.py`
-- `backend/app/services/generation/answer_guardrails.py`
+- [`backend/app/api/assistant.py`](../backend/app/api/assistant.py)
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
+- [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+- [`backend/app/services/generation/prompt_builder.py`](../backend/app/services/generation/prompt_builder.py)
+- [`backend/app/services/generation/generator_client.py`](../backend/app/services/generation/generator_client.py)
+- [`backend/app/services/generation/answer_guardrails.py`](../backend/app/services/generation/answer_guardrails.py)
 
 ### 5.2 Citations
 
@@ -171,9 +171,9 @@ The student should be able to say:
 
 Main files:
 
-- `backend/app/services/generation/schemas.py`
-- `backend/app/services/retrieval/rag_pipeline.py`
-- `frontend/src/components/CitationList.tsx`
+- [`backend/app/services/generation/schemas.py`](../backend/app/services/generation/schemas.py)
+- [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+- [`frontend/src/components/CitationList.tsx`](../frontend/src/components/CitationList.tsx)
 
 ### 5.3 Memory
 
@@ -194,12 +194,12 @@ Important detail:
 
 Main files:
 
-- `backend/app/services/memory/sentence_split.py`
-- `backend/app/services/memory/runtime_classifier.py`
-- `backend/app/services/memory/memory_extract.py`
-- `backend/app/services/memory/memory_consolidate.py`
-- `backend/app/services/memory/memory_store.py`
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
+- [`backend/app/services/memory/memory_consolidate.py`](../backend/app/services/memory/memory_consolidate.py)
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 ### 5.4 Plans
 
@@ -223,10 +223,10 @@ The backend returns:
 
 Main files:
 
-- `backend/app/services/generation/plan_guardrails.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `backend/app/services/generation/esco_grounding.py`
-- `backend/app/services/generation/schemas.py`
+- [`backend/app/services/generation/plan_guardrails.py`](../backend/app/services/generation/plan_guardrails.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`backend/app/services/generation/esco_grounding.py`](../backend/app/services/generation/esco_grounding.py)
+- [`backend/app/services/generation/schemas.py`](../backend/app/services/generation/schemas.py)
 
 ### 5.5 Calendar Export
 
@@ -237,9 +237,9 @@ scheduling logic.
 
 Main files:
 
-- `backend/app/api/assistant.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `frontend/src/api/client.ts`
+- [`backend/app/api/assistant.py`](../backend/app/api/assistant.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`frontend/src/api/client.ts`](../frontend/src/api/client.ts)
 
 ### 5.6 Conversation History
 
@@ -255,7 +255,7 @@ This is kept simple on purpose.
 
 Main file:
 
-- `frontend/src/App.tsx`
+- [`frontend/src/App.tsx`](../frontend/src/App.tsx)
 
 ### 5.7 Memory Inspection And Deletion
 
@@ -269,9 +269,9 @@ The user can:
 
 Main files:
 
-- `backend/app/api/memory.py`
-- `frontend/src/components/MemoryPanel.tsx`
-- `frontend/src/api/client.ts`
+- [`backend/app/api/memory.py`](../backend/app/api/memory.py)
+- [`frontend/src/components/MemoryPanel.tsx`](../frontend/src/components/MemoryPanel.tsx)
+- [`frontend/src/api/client.ts`](../frontend/src/api/client.ts)
 
 ### 5.8 Refusal And Scope Handling
 
@@ -286,9 +286,9 @@ The current behavior is:
 
 Main files:
 
-- `backend/app/services/safety/safety.py`
-- `backend/app/services/generation/answer_guardrails.py`
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/safety/safety.py`](../backend/app/services/safety/safety.py)
+- [`backend/app/services/generation/answer_guardrails.py`](../backend/app/services/generation/answer_guardrails.py)
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
 
 ## 6. End-To-End Flow By Feature
 
@@ -296,13 +296,13 @@ Main files:
 
 Use this when explaining the chat path in a defense or demo.
 
-1. Frontend sends a request from `frontend/src/api/client.ts`.
-2. FastAPI receives it in `backend/app/api/assistant.py`.
+1. Frontend sends a request from [`frontend/src/api/client.ts`](../frontend/src/api/client.ts).
+2. FastAPI receives it in [`backend/app/api/assistant.py`](../backend/app/api/assistant.py).
 3. `assistant_service.answer_question()` orchestrates the request.
 4. Memory candidates are staged from the question.
-5. Retrieval context is built in `rag_pipeline.py`.
-6. Memory summary is built with `hopfield_memory.py`.
-7. Prompt text is built in `prompt_builder.py`.
+5. Retrieval context is built in [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py).
+6. Memory summary is built with [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py).
+7. Prompt text is built in [`backend/app/services/generation/prompt_builder.py`](../backend/app/services/generation/prompt_builder.py).
 8. Guardrails may return a deterministic answer immediately.
 9. Otherwise the generator client calls the local model server.
 10. The response is normalized into the shared schema.
@@ -421,19 +421,19 @@ This stores:
 
 ### Local Model Artifacts
 
-See `models/README.en.md`.
+See [`models/README.en.md`](../models/README.en.md).
 
 Important runtime models:
 
 - generator: `Qwen/Qwen3-0.6B`
 - embedder: `Qwen/Qwen3-Embedding-0.6B`
-- memory classifier bundle: `tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`
+- memory classifier bundle: [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 
 ## 9. Tooling You Should Understand
 
 ### Translation Tooling
 
-Located in `tooling/translation/`.
+Located in [`tooling/translation/`](../tooling/translation/README.md).
 
 Purpose:
 
@@ -443,7 +443,7 @@ Purpose:
 
 ### Memory Extraction Tooling
 
-Located in `tooling/memory_extraction/`.
+Located in [`tooling/memory_extraction/`](../tooling/memory_extraction/README.md).
 
 Purpose:
 
@@ -459,7 +459,7 @@ resulting trained bundle is used by the backend.
 
 ## 10. How To Run The Project
 
-Use the full instructions in `docs/SETUP.en.md` and `docs/LOCAL_WORKFLOW.en.md`.
+Use the full instructions in [`docs/SETUP.en.md`](./SETUP.en.md) and [`docs/LOCAL_WORKFLOW.en.md`](./LOCAL_WORKFLOW.en.md).
 
 The shortest summary is:
 
@@ -489,12 +489,12 @@ You do not need to memorize every test.
 
 These are the most useful groups:
 
-- `backend/tests/test_app.py` — API behavior
-- `backend/tests/test_memory_extract.py` — memory extraction runtime behavior
-- `backend/tests/test_memory_store.py` — persistent memory behavior
-- `backend/tests/test_hopfield_memory.py` — recall behavior
-- `backend/tests/test_plan_calendar.py` — schedule generation and calendar logic
-- `backend/tests/test_answer_guardrails.py` — refusal and grounded overrides
+- [`backend/tests/test_app.py`](../backend/tests/test_app.py) — API behavior
+- [`backend/tests/test_memory_extract.py`](../backend/tests/test_memory_extract.py) — memory extraction runtime behavior
+- [`backend/tests/test_memory_store.py`](../backend/tests/test_memory_store.py) — persistent memory behavior
+- [`backend/tests/test_hopfield_memory.py`](../backend/tests/test_hopfield_memory.py) — recall behavior
+- [`backend/tests/test_plan_calendar.py`](../backend/tests/test_plan_calendar.py) — schedule generation and calendar logic
+- [`backend/tests/test_answer_guardrails.py`](../backend/tests/test_answer_guardrails.py) — refusal and grounded overrides
 
 For the frontend, the most immediate check is still:
 
@@ -543,42 +543,42 @@ If someone asks, “What is left?”, this is the correct answer:
 
 Look at:
 
-- `backend/app/services/retrieval/faiss_hnsw.py`
-- `backend/scripts/build_retrieval_index.py`
-- `data/processed/retrieval/`
+- [`backend/app/services/retrieval/faiss_hnsw.py`](../backend/app/services/retrieval/faiss_hnsw.py)
+- [`backend/scripts/build_retrieval_index.py`](../backend/scripts/build_retrieval_index.py)
+- [`data/processed/retrieval/`](../data/processed/retrieval/README.md)
 
 ### If the local model server fails
 
 Look at:
 
-- `backend/app/services/generation/generator_client.py`
-- `backend/app/config.py`
-- `backend/scripts/run_local_generation_server.py`
+- [`backend/app/services/generation/generator_client.py`](../backend/app/services/generation/generator_client.py)
+- [`backend/app/config.py`](../backend/app/config.py)
+- [`backend/scripts/run_local_generation_server.py`](../backend/scripts/run_local_generation_server.py)
 
 ### If memory behavior looks wrong
 
 Look at:
 
-- `backend/app/services/memory/memory_extract.py`
-- `backend/app/services/memory/runtime_classifier.py`
-- `backend/app/services/memory/memory_store.py`
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 ### If plans look wrong
 
 Look at:
 
-- `backend/app/services/generation/plan_guardrails.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `backend/app/services/generation/esco_grounding.py`
+- [`backend/app/services/generation/plan_guardrails.py`](../backend/app/services/generation/plan_guardrails.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`backend/app/services/generation/esco_grounding.py`](../backend/app/services/generation/esco_grounding.py)
 
 ### If the UI looks wrong
 
 Look at:
 
-- `frontend/src/App.tsx`
-- `frontend/src/styles.css`
-- `frontend/src/components/`
+- [`frontend/src/App.tsx`](../frontend/src/App.tsx)
+- [`frontend/src/styles.css`](../frontend/src/styles.css)
+- [`frontend/src/components/`](../frontend/src/README.md)
 
 ## 15. Final Advice For The Student
 
@@ -587,10 +587,10 @@ If you feel lost, do not start with every file in the repo.
 Start with:
 
 1. this manual
-2. `frontend/src/App.tsx`
-3. `backend/app/services/assistant_service.py`
-4. `backend/app/services/retrieval/rag_pipeline.py`
-5. `backend/app/services/memory/`
-6. `backend/app/services/generation/`
+2. [`frontend/src/App.tsx`](../frontend/src/App.tsx)
+3. [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
+4. [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+5. [`backend/app/services/memory/`](../backend/app/services/memory/)
+6. [`backend/app/services/generation/`](../backend/app/services/generation/)
 
 That path will give you the fastest real understanding of how the app works.

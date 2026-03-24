@@ -92,35 +92,35 @@ These are the most important files.
 
 ### Runtime Memory Creation
 
-- `backend/app/services/memory/sentence_split.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
   Splits a user turn into sentence-like segments.
-- `backend/app/services/memory/runtime_classifier.py`
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
   Loads the trained classifier bundle and runs inference.
-- `backend/app/services/memory/memory_extract.py`
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
   Turns accepted segments into `MemoryItemPayload` objects.
-- `backend/app/services/memory/memory_consolidate.py`
+- [`backend/app/services/memory/memory_consolidate.py`](../backend/app/services/memory/memory_consolidate.py)
   Deduplicates memory candidates by normalized text.
-- `backend/app/services/memory/memory_store.py`
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
   Persists memory items in SQLite.
 
 ### Memory Recall
 
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
   Performs the associative memory recall.
 
 ### Integration
 
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
   Stages memory before answer generation, previews it for the current turn, and
   only persists it after a successful non-refusal answer.
 
 ### Training Tooling
 
-- `tooling/memory_extraction/generate_synthetic_dataset.py`
-- `tooling/memory_extraction/prepare_dataset.py`
-- `tooling/memory_extraction/train_bilstm_classifier.py`
-- `tooling/memory_extraction/evaluate_classifier.py`
-- `tooling/memory_extraction/classifier.py`
+- [`tooling/memory_extraction/generate_synthetic_dataset.py`](../tooling/memory_extraction/generate_synthetic_dataset.py)
+- [`tooling/memory_extraction/prepare_dataset.py`](../tooling/memory_extraction/prepare_dataset.py)
+- [`tooling/memory_extraction/train_bilstm_classifier.py`](../tooling/memory_extraction/train_bilstm_classifier.py)
+- [`tooling/memory_extraction/evaluate_classifier.py`](../tooling/memory_extraction/evaluate_classifier.py)
+- [`tooling/memory_extraction/classifier.py`](../tooling/memory_extraction/classifier.py)
 
 ## 5. How Memory Creation Works
 
@@ -131,7 +131,7 @@ The first step is segmentation.
 The runtime prefers `pySBD` and falls back to regex splitting if `pysbd` is not
 installed. This happens in:
 
-- `backend/app/services/memory/sentence_split.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
 
 The system also:
 
@@ -146,7 +146,7 @@ whole paragraph.
 
 The classifier logic lives in:
 
-- `tooling/memory_extraction/classifier.py`
+- [`tooling/memory_extraction/classifier.py`](../tooling/memory_extraction/classifier.py)
 
 The current baseline is a lightweight **BiLSTM classifier**:
 
@@ -173,7 +173,7 @@ The runtime also applies:
 
 These settings live in:
 
-- `backend/app/config.py`
+- [`backend/app/config.py`](../backend/app/config.py)
 
 Important values to know:
 
@@ -198,13 +198,13 @@ Why this matters:
 
 This logic lives in:
 
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
 
 ## 6. How Hopfield Recall Works
 
 The recall logic lives in:
 
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 The current implementation is intentionally honest and readable.
 
@@ -276,7 +276,7 @@ the user.”
 
 The tracked runtime bundle is:
 
-- `tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`
+- [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 
 The current data/training pipeline already supports:
 
@@ -295,7 +295,7 @@ whether a sentence is worth storing at all.
 
 ## 9. How To Retrain The Memory Classifier
 
-Use the tooling in `tooling/memory_extraction/`.
+Use the tooling in [`tooling/memory_extraction/`](../tooling/memory_extraction/README.md).
 
 ### 9.1 Generate Or Refresh The Raw Corpus
 
@@ -337,7 +337,7 @@ python -m tooling.memory_extraction.evaluate_classifier --task binary
 
 The backend loads the runtime classifier from:
 
-- `backend/app/config.py`
+- [`backend/app/config.py`](../backend/app/config.py)
 - setting: `memory_extraction_model_path`
 
 If you train a better bundle, you can:
@@ -434,7 +434,7 @@ source.
 
 The user-referenced LAPS repository is a strong candidate:
 
-- GitHub: `https://github.com/informagi/laps`
+- GitHub: [informagi/laps](https://github.com/informagi/laps)
 
 Why it is relevant:
 

@@ -93,35 +93,35 @@
 
 ### Runtime memory creation
 
-- `backend/app/services/memory/sentence_split.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
   Разбивает user turn на sentence-like segments.
-- `backend/app/services/memory/runtime_classifier.py`
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
   Загружает trained classifier bundle и запускает inference.
-- `backend/app/services/memory/memory_extract.py`
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
   Превращает принятые segments в `MemoryItemPayload`.
-- `backend/app/services/memory/memory_consolidate.py`
+- [`backend/app/services/memory/memory_consolidate.py`](../backend/app/services/memory/memory_consolidate.py)
   Дедуплицирует memory-candidates по normalized text.
-- `backend/app/services/memory/memory_store.py`
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
   Сохраняет memory items в SQLite.
 
 ### Memory recall
 
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
   Выполняет associative recall.
 
 ### Интеграция
 
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
   Делает staging памяти до answer-generation, preview для текущего turn и
   сохраняет ее только после успешного non-refusal answer.
 
 ### Training tooling
 
-- `tooling/memory_extraction/generate_synthetic_dataset.py`
-- `tooling/memory_extraction/prepare_dataset.py`
-- `tooling/memory_extraction/train_bilstm_classifier.py`
-- `tooling/memory_extraction/evaluate_classifier.py`
-- `tooling/memory_extraction/classifier.py`
+- [`tooling/memory_extraction/generate_synthetic_dataset.py`](../tooling/memory_extraction/generate_synthetic_dataset.py)
+- [`tooling/memory_extraction/prepare_dataset.py`](../tooling/memory_extraction/prepare_dataset.py)
+- [`tooling/memory_extraction/train_bilstm_classifier.py`](../tooling/memory_extraction/train_bilstm_classifier.py)
+- [`tooling/memory_extraction/evaluate_classifier.py`](../tooling/memory_extraction/evaluate_classifier.py)
+- [`tooling/memory_extraction/classifier.py`](../tooling/memory_extraction/classifier.py)
 
 ## 5. Как работает создание памяти
 
@@ -132,7 +132,7 @@
 Runtime предпочитает `pySBD` и откатывается к regex-splitting, если `pysbd`
 не установлен. Это происходит в:
 
-- `backend/app/services/memory/sentence_split.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
 
 Система также:
 
@@ -147,7 +147,7 @@ Runtime предпочитает `pySBD` и откатывается к regex-sp
 
 Логика classifier находится в:
 
-- `tooling/memory_extraction/classifier.py`
+- [`tooling/memory_extraction/classifier.py`](../tooling/memory_extraction/classifier.py)
 
 Текущий baseline — это легкий **BiLSTM-classifier**:
 
@@ -174,7 +174,7 @@ Runtime также применяет:
 
 Эти настройки находятся в:
 
-- `backend/app/config.py`
+- [`backend/app/config.py`](../backend/app/config.py)
 
 Ключевые значения:
 
@@ -199,13 +199,13 @@ Runtime также применяет:
 
 Эта логика находится в:
 
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
 
 ## 6. Как работает Hopfield recall
 
 Логика recall находится в:
 
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 Текущая реализация намеренно честная и читаемая.
 
@@ -276,7 +276,7 @@ knows the user».
 
 Отслеживаемый runtime-bundle:
 
-- `tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`
+- [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 
 Текущий data/training-pipeline уже поддерживает:
 
@@ -295,7 +295,7 @@ knows the user».
 
 ## 9. Как переобучить memory-classifier
 
-Используйте tooling в `tooling/memory_extraction/`.
+Используйте tooling в [`tooling/memory_extraction/`](../tooling/memory_extraction/README.md).
 
 ### 9.1 Сгенерировать или обновить raw corpus
 
@@ -337,7 +337,7 @@ python -m tooling.memory_extraction.evaluate_classifier --task binary
 
 Backend загружает runtime-classifier из:
 
-- `backend/app/config.py`
+- [`backend/app/config.py`](../backend/app/config.py)
 - setting: `memory_extraction_model_path`
 
 Если вы обучили лучший bundle, можно:
@@ -433,7 +433,7 @@ Synthetic dataset был удобной отправной точкой, но н
 
 LAPS, на который сослался пользователь, — очень хороший кандидат:
 
-- GitHub: `https://github.com/informagi/laps`
+- GitHub: [informagi/laps](https://github.com/informagi/laps)
 
 Почему он релевантен:
 

@@ -57,19 +57,19 @@ core behavior продукта.
 
 1. `README.ru.md`
    Зачем: быстрое знакомство с репозиторием
-2. `docs/STUDENT_MANUAL.ru.md`
+2. [`docs/STUDENT_MANUAL.ru.md`](./STUDENT_MANUAL.ru.md)
    Зачем: этот документ объясняет всю систему по feature-группам
-3. `docs/STUDENT_MEMORY_GUIDE.ru.md`
+3. [`docs/STUDENT_MEMORY_GUIDE.ru.md`](./STUDENT_MEMORY_GUIDE.ru.md)
    Зачем: memory-subsystem — самая сильная академическая зона владения студентки
-4. `docs/SETUP.ru.md`
+4. [`docs/SETUP.ru.md`](./SETUP.ru.md)
    Зачем: окружение и локальная настройка
-5. `docs/LOCAL_WORKFLOW.ru.md`
+5. [`docs/LOCAL_WORKFLOW.ru.md`](./LOCAL_WORKFLOW.ru.md)
    Зачем: как реально запускать стек и evaluation scripts
-6. `docs/STATUS.ru.md`
+6. [`docs/STATUS.ru.md`](./STATUS.ru.md)
    Зачем: что завершено, а что optional
-7. `docs/ROADMAP.ru.md`
+7. [`docs/ROADMAP.ru.md`](./ROADMAP.ru.md)
    Зачем: карта стадий и что отложено
-8. `docs/DECISIONS.ru.md`
+8. [`docs/DECISIONS.ru.md`](./DECISIONS.ru.md)
    Зачем: почему архитектура выглядит именно так
 
 Длинные plan-документы в `plan/` используйте только как исторический контекст
@@ -153,12 +153,12 @@ classifier evaluation.
 
 Основные файлы:
 
-- `backend/app/api/assistant.py`
-- `backend/app/services/assistant_service.py`
-- `backend/app/services/retrieval/rag_pipeline.py`
-- `backend/app/services/generation/prompt_builder.py`
-- `backend/app/services/generation/generator_client.py`
-- `backend/app/services/generation/answer_guardrails.py`
+- [`backend/app/api/assistant.py`](../backend/app/api/assistant.py)
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
+- [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+- [`backend/app/services/generation/prompt_builder.py`](../backend/app/services/generation/prompt_builder.py)
+- [`backend/app/services/generation/generator_client.py`](../backend/app/services/generation/generator_client.py)
+- [`backend/app/services/generation/answer_guardrails.py`](../backend/app/services/generation/answer_guardrails.py)
 
 ### 5.2 Citations
 
@@ -173,9 +173,9 @@ classifier evaluation.
 
 Основные файлы:
 
-- `backend/app/services/generation/schemas.py`
-- `backend/app/services/retrieval/rag_pipeline.py`
-- `frontend/src/components/CitationList.tsx`
+- [`backend/app/services/generation/schemas.py`](../backend/app/services/generation/schemas.py)
+- [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+- [`frontend/src/components/CitationList.tsx`](../frontend/src/components/CitationList.tsx)
 
 ### 5.3 Memory
 
@@ -196,12 +196,12 @@ Memory здесь не является свободной магией.
 
 Основные файлы:
 
-- `backend/app/services/memory/sentence_split.py`
-- `backend/app/services/memory/runtime_classifier.py`
-- `backend/app/services/memory/memory_extract.py`
-- `backend/app/services/memory/memory_consolidate.py`
-- `backend/app/services/memory/memory_store.py`
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/sentence_split.py`](../backend/app/services/memory/sentence_split.py)
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
+- [`backend/app/services/memory/memory_consolidate.py`](../backend/app/services/memory/memory_consolidate.py)
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 ### 5.4 Plans
 
@@ -225,10 +225,10 @@ Backend возвращает:
 
 Основные файлы:
 
-- `backend/app/services/generation/plan_guardrails.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `backend/app/services/generation/esco_grounding.py`
-- `backend/app/services/generation/schemas.py`
+- [`backend/app/services/generation/plan_guardrails.py`](../backend/app/services/generation/plan_guardrails.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`backend/app/services/generation/esco_grounding.py`](../backend/app/services/generation/esco_grounding.py)
+- [`backend/app/services/generation/schemas.py`](../backend/app/services/generation/schemas.py)
 
 ### 5.5 Calendar Export
 
@@ -239,9 +239,9 @@ scheduling-логику.
 
 Основные файлы:
 
-- `backend/app/api/assistant.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `frontend/src/api/client.ts`
+- [`backend/app/api/assistant.py`](../backend/app/api/assistant.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`frontend/src/api/client.ts`](../frontend/src/api/client.ts)
 
 ### 5.6 Conversation History
 
@@ -257,7 +257,7 @@ Frontend хранит:
 
 Основной файл:
 
-- `frontend/src/App.tsx`
+- [`frontend/src/App.tsx`](../frontend/src/App.tsx)
 
 ### 5.7 Просмотр и удаление memory
 
@@ -271,9 +271,9 @@ Frontend хранит:
 
 Основные файлы:
 
-- `backend/app/api/memory.py`
-- `frontend/src/components/MemoryPanel.tsx`
-- `frontend/src/api/client.ts`
+- [`backend/app/api/memory.py`](../backend/app/api/memory.py)
+- [`frontend/src/components/MemoryPanel.tsx`](../frontend/src/components/MemoryPanel.tsx)
+- [`frontend/src/api/client.ts`](../frontend/src/api/client.ts)
 
 ### 5.8 Refusal и scope handling
 
@@ -288,9 +288,9 @@ exploitative или явно out-of-scope requests.
 
 Основные файлы:
 
-- `backend/app/services/safety/safety.py`
-- `backend/app/services/generation/answer_guardrails.py`
-- `backend/app/services/assistant_service.py`
+- [`backend/app/services/safety/safety.py`](../backend/app/services/safety/safety.py)
+- [`backend/app/services/generation/answer_guardrails.py`](../backend/app/services/generation/answer_guardrails.py)
+- [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
 
 ## 6. End-to-end flow по feature-группам
 
@@ -298,13 +298,13 @@ exploitative или явно out-of-scope requests.
 
 Используйте это описание, когда объясняете chat-path на защите или demo.
 
-1. Frontend отправляет запрос из `frontend/src/api/client.ts`.
-2. FastAPI принимает его в `backend/app/api/assistant.py`.
+1. Frontend отправляет запрос из [`frontend/src/api/client.ts`](../frontend/src/api/client.ts).
+2. FastAPI принимает его в [`backend/app/api/assistant.py`](../backend/app/api/assistant.py).
 3. `assistant_service.answer_question()` orchestrates весь запрос.
 4. Из вопроса staging-ом извлекаются memory-candidates.
-5. В `rag_pipeline.py` строится retrieval-context.
-6. В `hopfield_memory.py` строится summary памяти.
-7. В `prompt_builder.py` собирается prompt.
+5. В [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py) строится retrieval-context.
+6. В [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py) строится summary памяти.
+7. В [`backend/app/services/generation/prompt_builder.py`](../backend/app/services/generation/prompt_builder.py) собирается prompt.
 8. Guardrails могут сразу вернуть deterministic answer.
 9. Иначе generator client обращается к локальному model server.
 10. Response нормализуется к общей schema.
@@ -423,19 +423,19 @@ Debug/inspection-route, который показывает ranked retrieved chu
 
 ### Local model artifacts
 
-Смотрите `models/README.ru.md`.
+Смотрите [`models/README.ru.md`](../models/README.ru.md).
 
 Важные runtime-models:
 
 - generator: `Qwen/Qwen3-0.6B`
 - embedder: `Qwen/Qwen3-Embedding-0.6B`
-- memory classifier bundle: `tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`
+- memory classifier bundle: [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 
 ## 9. Tooling, которое нужно понимать
 
 ### Translation tooling
 
-Находится в `tooling/translation/`.
+Находится в [`tooling/translation/`](../tooling/translation/README.md).
 
 Назначение:
 
@@ -445,7 +445,7 @@ Debug/inspection-route, который показывает ranked retrieved chu
 
 ### Memory extraction tooling
 
-Находится в `tooling/memory_extraction/`.
+Находится в [`tooling/memory_extraction/`](../tooling/memory_extraction/README.md).
 
 Назначение:
 
@@ -461,8 +461,8 @@ Debug/inspection-route, который показывает ranked retrieved chu
 
 ## 10. Как запускать проект
 
-Используйте полные инструкции в `docs/SETUP.ru.md` и
-`docs/LOCAL_WORKFLOW.ru.md`.
+Используйте полные инструкции в [`docs/SETUP.ru.md`](./SETUP.ru.md) и
+[`docs/LOCAL_WORKFLOW.ru.md`](./LOCAL_WORKFLOW.ru.md).
 
 Самое короткое summary:
 
@@ -492,12 +492,12 @@ npm run dev
 
 Наиболее полезные группы:
 
-- `backend/tests/test_app.py` — поведение API
-- `backend/tests/test_memory_extract.py` — runtime-поведение memory extraction
-- `backend/tests/test_memory_store.py` — persistent memory behavior
-- `backend/tests/test_hopfield_memory.py` — поведение recall
-- `backend/tests/test_plan_calendar.py` — schedule generation и calendar logic
-- `backend/tests/test_answer_guardrails.py` — refusal и grounded overrides
+- [`backend/tests/test_app.py`](../backend/tests/test_app.py) — поведение API
+- [`backend/tests/test_memory_extract.py`](../backend/tests/test_memory_extract.py) — runtime-поведение memory extraction
+- [`backend/tests/test_memory_store.py`](../backend/tests/test_memory_store.py) — persistent memory behavior
+- [`backend/tests/test_hopfield_memory.py`](../backend/tests/test_hopfield_memory.py) — поведение recall
+- [`backend/tests/test_plan_calendar.py`](../backend/tests/test_plan_calendar.py) — schedule generation и calendar logic
+- [`backend/tests/test_answer_guardrails.py`](../backend/tests/test_answer_guardrails.py) — refusal и grounded overrides
 
 Для frontend наиболее прямой check по-прежнему такой:
 
@@ -545,42 +545,42 @@ associative-memory phase.
 
 Смотрите:
 
-- `backend/app/services/retrieval/faiss_hnsw.py`
-- `backend/scripts/build_retrieval_index.py`
-- `data/processed/retrieval/`
+- [`backend/app/services/retrieval/faiss_hnsw.py`](../backend/app/services/retrieval/faiss_hnsw.py)
+- [`backend/scripts/build_retrieval_index.py`](../backend/scripts/build_retrieval_index.py)
+- [`data/processed/retrieval/`](../data/processed/retrieval/README.md)
 
 ### Если ломается local model server
 
 Смотрите:
 
-- `backend/app/services/generation/generator_client.py`
-- `backend/app/config.py`
-- `backend/scripts/run_local_generation_server.py`
+- [`backend/app/services/generation/generator_client.py`](../backend/app/services/generation/generator_client.py)
+- [`backend/app/config.py`](../backend/app/config.py)
+- [`backend/scripts/run_local_generation_server.py`](../backend/scripts/run_local_generation_server.py)
 
 ### Если странно ведет себя memory
 
 Смотрите:
 
-- `backend/app/services/memory/memory_extract.py`
-- `backend/app/services/memory/runtime_classifier.py`
-- `backend/app/services/memory/memory_store.py`
-- `backend/app/services/memory/hopfield_memory.py`
+- [`backend/app/services/memory/memory_extract.py`](../backend/app/services/memory/memory_extract.py)
+- [`backend/app/services/memory/runtime_classifier.py`](../backend/app/services/memory/runtime_classifier.py)
+- [`backend/app/services/memory/memory_store.py`](../backend/app/services/memory/memory_store.py)
+- [`backend/app/services/memory/hopfield_memory.py`](../backend/app/services/memory/hopfield_memory.py)
 
 ### Если странно выглядят планы
 
 Смотрите:
 
-- `backend/app/services/generation/plan_guardrails.py`
-- `backend/app/services/generation/plan_calendar.py`
-- `backend/app/services/generation/esco_grounding.py`
+- [`backend/app/services/generation/plan_guardrails.py`](../backend/app/services/generation/plan_guardrails.py)
+- [`backend/app/services/generation/plan_calendar.py`](../backend/app/services/generation/plan_calendar.py)
+- [`backend/app/services/generation/esco_grounding.py`](../backend/app/services/generation/esco_grounding.py)
 
 ### Если странно выглядит UI
 
 Смотрите:
 
-- `frontend/src/App.tsx`
-- `frontend/src/styles.css`
-- `frontend/src/components/`
+- [`frontend/src/App.tsx`](../frontend/src/App.tsx)
+- [`frontend/src/styles.css`](../frontend/src/styles.css)
+- [`frontend/src/components/`](../frontend/src/README.md)
 
 ## 15. Последний совет студентке
 
@@ -589,11 +589,11 @@ associative-memory phase.
 Начните с:
 
 1. этого manual
-2. `frontend/src/App.tsx`
-3. `backend/app/services/assistant_service.py`
-4. `backend/app/services/retrieval/rag_pipeline.py`
-5. `backend/app/services/memory/`
-6. `backend/app/services/generation/`
+2. [`frontend/src/App.tsx`](../frontend/src/App.tsx)
+3. [`backend/app/services/assistant_service.py`](../backend/app/services/assistant_service.py)
+4. [`backend/app/services/retrieval/rag_pipeline.py`](../backend/app/services/retrieval/rag_pipeline.py)
+5. [`backend/app/services/memory/`](../backend/app/services/memory/)
+6. [`backend/app/services/generation/`](../backend/app/services/generation/)
 
 Этот путь даст вам самое быстрое и реальное понимание того, как работает
 приложение.
