@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import re
 
+from backend.app.services.generation.esco_grounding import extract_description, extract_label, extract_skills
+from backend.app.services.generation.schemas import StudyPreferences
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
-
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
 _EXPLORATORY_FIT_PATTERN = re.compile(
@@ -21,41 +22,22 @@ def _format_memory_summary(retrieval_context: RetrievalContext) -> str:
     return summary if summary else "No stable user memory is currently stored."
 
 
-def _pick_chunk_line(lines: list[str], prefixes: tuple[str, ...]) -> str:
-    for prefix in prefixes:
-        for line in lines:
-            if line.startswith(prefix):
-                return line
-    return ""
-
-
 def _summarize_chunk_for_prompt(chunk, language_code: str) -> str:
     """Compress raw ESCO chunk text into the fields that actually help generation."""
 
-    lines = [line.strip() for line in chunk.text.splitlines() if line.strip()]
-    label_prefixes = (
-        ("Russian label:", "English label:")
-        if language_code == "ru"
-        else ("English label:", "Russian label:")
-    )
-    description_prefixes = (
-        ("Description (RU):", "Definition (RU):", "Scope note (RU):", "Description (EN):")
-        if language_code == "ru"
-        else ("Description (EN):", "Definition (EN):", "Scope note (EN):", "Description (RU):")
-    )
-    skill_prefixes = (
-        ("Essential skills (RU):", "Optional skills (RU):", "Essential skills (EN):")
-        if language_code == "ru"
-        else ("Essential skills (EN):", "Optional skills (EN):", "Essential skills (RU):")
-    )
+    label = extract_label(chunk, language_code)
+    description = extract_description(chunk, language_code)
+    skills = extract_skills(chunk, language_code)
 
     selected_lines = [
-        _pick_chunk_line(lines, ("ESCO concept kind:",)),
-        _pick_chunk_line(lines, label_prefixes),
-        _pick_chunk_line(lines, description_prefixes),
+        f"Kind: {chunk.chunk_type or 'unknown'}",
+        f"Label: {label}" if label else "",
+        f"Summary: {description}" if description else "",
     ]
-    if chunk.chunk_type == "occupation":
-        selected_lines.append(_pick_chunk_line(lines, skill_prefixes))
+    if chunk.chunk_type == "occupation" and skills:
+        selected_lines.append(f"Key skills: {', '.join(skills[:6])}")
+    elif chunk.chunk_type == "skill_concept" and skills:
+        selected_lines.append(f"Related skills: {', '.join(skills[:4])}")
 
     filtered_lines = [line for line in selected_lines if line]
     return "\n".join(filtered_lines) if filtered_lines else chunk.text
@@ -141,6 +123,7 @@ def build_career_plan_prompt(
     *,
     goal: str,
     target_role: str,
+    study_preferences: StudyPreferences,
     retrieval_context: RetrievalContext,
 ) -> str:
     """Build the structured career-plan prompt for the generation backend."""
@@ -151,6 +134,12 @@ def build_career_plan_prompt(
         f"{goal}\n\n"
         "Target role:\n"
         f"{target_role}\n\n"
+        "Study preferences:\n"
+        f"- Start date: {study_preferences.study_start_date or 'auto'}\n"
+        f"- Preferred study time: {study_preferences.preferred_study_time}\n"
+        f"- Sessions per week: {study_preferences.study_frequency_per_week}\n"
+        f"- Session duration minutes: {study_preferences.session_duration_minutes}\n"
+        f"- Timezone: {study_preferences.timezone}\n\n"
         "Required answer language:\n"
         f"{language_name} ({language_code})\n\n"
         "User memory summary:\n"
@@ -160,8 +149,12 @@ def build_career_plan_prompt(
         "Instructions:\n"
         f"- Write all string values in {language_name} ({language_code}).\n"
         "- Return valid JSON only.\n"
-        '- Use exactly this shape: {"goal": "...", "target_role": "...", "steps": [{"title": "...", "description": "..."}]}.\n'
+        '- Use exactly this shape: {"goal": "...", "target_role": "...", "steps": [{"title": "...", "description": "...", "focus_skills": ["..."], "grounded_detail": "...", "estimated_hours": 4.5}]}.\n'
         "- Produce 3 to 5 steps.\n"
         "- Keep every step grounded in the retrieved evidence.\n"
+        "- Pull useful details from role descriptions and ESCO skill lists into the step descriptions naturally.\n"
+        "- Use the retrieved role description to explain what the work actually involves, not just the role title.\n"
+        "- Use focus_skills for the main study topics attached to that step.\n"
+        "- estimated_hours should be a realistic small-block study estimate for that step, not full professional training time.\n"
         "- If evidence is limited, reflect that in cautious wording rather than inventing claims.\n"
     )

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 from pydantic import BaseModel, Field
 
 
@@ -34,18 +36,50 @@ class CareerPlanRequest(BaseModel):
     user_id: str = "demo-user"
     goal: str = Field(min_length=3)
     target_role: str
+    study_preferences: "StudyPreferences" = Field(default_factory=lambda: StudyPreferences())
+
+
+class StudyPreferences(BaseModel):
+    study_start_date: date | None = None
+    preferred_study_time: str = "evening"
+    study_frequency_per_week: int = Field(default=3, ge=1, le=7)
+    session_duration_minutes: int = Field(default=90, ge=30, le=240)
+    timezone: str = "UTC"
 
 
 class CareerPlanStep(BaseModel):
     title: str
     description: str
+    focus_skills: list[str] = Field(default_factory=list)
+    grounded_detail: str | None = None
+    estimated_hours: float | None = Field(default=None, ge=0.0)
+
+
+class CareerPlanCalendarEvent(BaseModel):
+    title: str
+    description: str
+    starts_at: str
+    ends_at: str
+    week_index: int = Field(ge=1)
+    step_index: int = Field(ge=1)
+    session_index: int = Field(ge=1)
+    total_sessions: int = Field(ge=1)
 
 
 class CareerPlanResponse(BaseModel):
     goal: str
     target_role: str
+    workload_level: str = "medium"
+    estimated_weeks: int = Field(default=1, ge=1)
+    study_preferences: StudyPreferences = Field(default_factory=lambda: StudyPreferences())
     steps: list[CareerPlanStep]
+    calendar_events: list[CareerPlanCalendarEvent] = Field(default_factory=list)
     citations: list[RetrievedChunk]
+
+
+class CareerPlanExportRequest(BaseModel):
+    user_id: str = "demo-user"
+    plan: CareerPlanResponse
 
 
 class MemoryItemPayload(BaseModel):

@@ -6,6 +6,13 @@ from dataclasses import dataclass
 from difflib import SequenceMatcher
 import re
 
+from backend.app.services.generation.esco_grounding import (
+    extract_description,
+    extract_label as extract_grounded_label,
+    extract_skills as extract_grounded_skills,
+    join_human_list,
+    lower_sentence_start,
+)
 from backend.app.services.generation.schemas import RetrievedChunk
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
@@ -34,7 +41,6 @@ _META_ROLE_PATTERN = re.compile(
     flags=re.IGNORECASE,
 )
 _SHORT_WEIRD_SKILL_PATTERN = re.compile(r"\d")
-_PM_METHODOLOGY_PATTERN = re.compile(r"\bpm\b|²", flags=re.IGNORECASE)
 _EXPLICIT_TARGET_REQUEST_PATTERN = re.compile(
     r"\b(become|be a|be an|work as|transition into|move into|go into|pursue|target role|"
     r"plan into|plan for|how do i become|how can i become|want to be)\b"
@@ -247,18 +253,21 @@ def _build_skill_answer(
     occupation = _first_useful_occupation(retrieval_context)
     if occupation is not None:
         role_label = _extract_label(occupation, language_code)
+        role_description = extract_description(occupation, language_code)
         skills = _extract_skills(occupation, language_code)
         if skills:
             skill_summary = _join_list(skills[:4], language_code)
             if language_code == "ru":
                 answer = (
-                    f"Для роли {role_label} в текущих данных важнее всего {skill_summary}. "
+                    f"Для роли {role_label} текущие данные описывают работу так: {lower_sentence_start(role_description) if role_description else role_label}. "
+                    f"Из этого наиболее явно следуют такие навыки: {skill_summary}. "
                     "Это хороший базовый набор, с которого стоит начинать. "
                     "Если хотите, я могу дальше разложить это на начальный уровень, практику и портфолио."
                 )
             else:
                 answer = (
-                    f"For {role_label}, the clearest skills in the current data are {skill_summary}. "
+                    f"For {role_label}, the current role data points to work that involves {lower_sentence_start(role_description) if role_description else role_label}. "
+                    f"That makes the clearest skills to build {skill_summary}. "
                     "That is a solid baseline to start with. "
                     "If you want, I can break these into beginner study, practical exercises, and portfolio work next."
                 )
@@ -298,18 +307,20 @@ def _build_career_fit_answer(
     language_code = _language_code(question)
     occupations = _useful_occupations(retrieval_context)
     if len(occupations) >= 2:
-        role_labels = [_extract_label(chunk, language_code) for chunk in occupations[:3]]
-        role_summary = _join_list(role_labels, language_code)
+        role_options = _build_role_fit_options(occupations[:3], language_code)
+        role_lines = "\n".join(f"- {option}" for option in role_options[:3])
         if language_code == "ru":
             answer = (
-                f"С тем, что я знаю сейчас, я бы в первую очередь рассмотрел такие направления: {role_summary}. "
+                "С тем, что я знаю сейчас, я бы в первую очередь рассмотрел такие направления:\n"
+                f"{role_lines}\n"
                 "Пока держу это как предварительные варианты, потому что у меня уже есть ваш предпочтительный формат работы, "
                 "но еще мало данных о типе задач. "
                 "Что вам ближе в повседневной работе: анализ, координация, письмо/документация или исследование?"
             )
         else:
             answer = (
-                f"Based on what I know so far, the first paths I would explore are {role_summary}. "
+                "Based on what I know so far, the first paths I would explore are:\n"
+                f"{role_lines}\n"
                 "I’d still keep that tentative, because I understand your work-style preference but not yet the kind of tasks you enjoy most. "
                 "Which sounds closer to you day to day: analysis, coordination, writing/documentation, or research?"
             )
@@ -406,73 +417,31 @@ def _first_useful_occupation(retrieval_context: RetrievalContext) -> RetrievedCh
 
 
 def _extract_label(chunk: RetrievedChunk, language_code: str) -> str:
-    lines = [line.strip() for line in chunk.text.splitlines() if line.strip()]
-    prefixes = (
-        ("Russian label:", "English label:")
-        if language_code == "ru"
-        else ("English label:", "Russian label:")
-    )
-    for prefix in prefixes:
-        for line in lines:
-            if line.startswith(prefix):
-                return line.removeprefix(prefix).strip().strip(".")
-
-    if " / " in chunk.title:
-        parts = [part.strip() for part in chunk.title.split(" / ") if part.strip()]
-        if len(parts) >= 2:
-            return parts[0] if language_code == "ru" else parts[-1]
-    return chunk.title.strip()
+    return extract_grounded_label(chunk, language_code)
 
 
 def _extract_skills(chunk: RetrievedChunk, language_code: str) -> list[str]:
-    lines = [line.strip() for line in chunk.text.splitlines() if line.strip()]
-    prefixes = (
-        ("Essential skills (RU):", "Optional skills (RU):", "Essential skills (EN):")
-        if language_code == "ru"
-        else ("Essential skills (EN):", "Optional skills (EN):", "Essential skills (RU):")
-    )
-    skill_blob = ""
-    for prefix in prefixes:
-        for line in lines:
-            if line.startswith(prefix):
-                skill_blob = line.removeprefix(prefix).strip().strip(".")
-                break
-        if skill_blob:
-            break
-
-    if not skill_blob:
-        return []
-
-    skills: list[str] = []
-    seen: set[str] = set()
-    for raw_skill in skill_blob.split(","):
-        skill = raw_skill.strip().strip(".")
-        if not skill:
-            continue
-        if _PM_METHODOLOGY_PATTERN.search(skill):
-            continue
-        if _SHORT_WEIRD_SKILL_PATTERN.search(skill) and len(skill) <= 8:
-            continue
-        normalized = skill.casefold()
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        skills.append(skill)
-    return skills
+    skills = extract_grounded_skills(chunk, language_code)
+    return [skill for skill in skills if not (_SHORT_WEIRD_SKILL_PATTERN.search(skill) and len(skill) <= 8)]
 
 
 def _join_list(items: list[str], language_code: str) -> str:
-    cleaned = [item for item in items if item]
-    if not cleaned:
-        return ""
-    if len(cleaned) == 1:
-        return cleaned[0]
-    if len(cleaned) == 2:
-        joiner = " и " if language_code == "ru" else " and "
-        return joiner.join(cleaned)
-    separator = ", "
-    tail_joiner = " и " if language_code == "ru" else ", and "
-    return separator.join(cleaned[:-1]) + tail_joiner + cleaned[-1]
+    return join_human_list(items, language_code)
+
+
+def _build_role_fit_options(occupations: list[RetrievedChunk], language_code: str) -> list[str]:
+    options: list[str] = []
+    for chunk in occupations:
+        label = _extract_label(chunk, language_code)
+        description = extract_description(chunk, language_code)
+        if description:
+            if language_code == "ru":
+                options.append(f"{label}: работа, где нужно {lower_sentence_start(description)}")
+            else:
+                options.append(f"{label}: work that involves {lower_sentence_start(description)}")
+        elif label:
+            options.append(label)
+    return options
 
 
 def _dedupe_strings(values: list[str]) -> list[str]:

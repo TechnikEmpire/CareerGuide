@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from backend.app.services.generation.prompt_builder import build_answer_prompt
-from backend.app.services.generation.schemas import RetrievedChunk
+from datetime import date
+
+from backend.app.services.generation.prompt_builder import build_answer_prompt, build_career_plan_prompt
+from backend.app.services.generation.schemas import RetrievedChunk, StudyPreferences
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 
@@ -48,3 +50,23 @@ def test_build_answer_prompt_skips_forced_follow_up_for_non_exploratory_question
     )
 
     assert "End with one short follow-up question that keeps the dialogue moving." not in prompt
+
+
+def test_build_career_plan_prompt_includes_study_preferences_and_richer_shape() -> None:
+    prompt = build_career_plan_prompt(
+        goal="Build a transition plan into data analytics",
+        target_role="Data Analyst",
+        study_preferences=StudyPreferences(
+            study_start_date=date(2026, 4, 6),
+            preferred_study_time="evening",
+            study_frequency_per_week=3,
+            session_duration_minutes=90,
+            timezone="America/St_Johns",
+        ),
+        retrieval_context=_retrieval_context(),
+    )
+
+    assert "Study preferences:" in prompt
+    assert "Sessions per week: 3" in prompt
+    assert '"focus_skills": ["..."]' in prompt
+    assert '"estimated_hours": 4.5' in prompt

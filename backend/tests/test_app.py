@@ -545,6 +545,70 @@ def test_career_plan_returns_400_for_unsupported_target_role() -> None:
     assert "does not show a strong enough match" in response.json()["detail"]
 
 
+def test_career_plan_returns_schedule_ready_fields() -> None:
+    """The plan endpoint should return workload and calendar data for export/UI rendering."""
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/career/plan",
+        json={
+            "user_id": "plan-user",
+            "goal": "Build a transition plan into data analytics",
+            "target_role": "Data Analyst",
+            "study_preferences": {
+                "study_start_date": "2026-04-06",
+                "preferred_study_time": "evening",
+                "study_frequency_per_week": 3,
+                "session_duration_minutes": 90,
+                "timezone": "America/St_Johns",
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["workload_level"] in {"low", "medium", "high"}
+    assert payload["estimated_weeks"] >= 1
+    assert payload["study_preferences"]["preferred_study_time"] == "evening"
+    assert payload["calendar_events"]
+
+
+def test_career_plan_export_ics_returns_calendar_file() -> None:
+    """The plan export endpoint should return a downloadable ICS file."""
+
+    client = TestClient(create_app())
+    plan_response = client.post(
+        "/career/plan",
+        json={
+            "user_id": "plan-export-user",
+            "goal": "Build a transition plan into project management",
+            "target_role": "Project Manager",
+            "study_preferences": {
+                "study_start_date": "2026-04-06",
+                "preferred_study_time": "evening",
+                "study_frequency_per_week": 2,
+                "session_duration_minutes": 90,
+                "timezone": "America/St_Johns",
+            },
+        },
+    )
+    assert plan_response.status_code == 200
+
+    export_response = client.post(
+        "/career/plan/export-ics",
+        json={
+            "user_id": "plan-export-user",
+            "plan": plan_response.json(),
+        },
+    )
+
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("text/calendar")
+    assert "filename=" in export_response.headers["content-disposition"]
+    assert "BEGIN:VCALENDAR" in export_response.text
+    assert "BEGIN:VEVENT" in export_response.text
+
+
 def test_answer_flow_supports_hopfield_topk_mode() -> None:
     """The live answer path should expose Hopfield top-k recall through pytest."""
 

@@ -21,12 +21,38 @@ export type AnswerResponse = {
 export type CareerPlanStep = {
   title: string;
   description: string;
+  focus_skills: string[];
+  grounded_detail?: string | null;
+  estimated_hours?: number | null;
+};
+
+export type StudyPreferences = {
+  study_start_date?: string | null;
+  preferred_study_time: string;
+  study_frequency_per_week: number;
+  session_duration_minutes: number;
+  timezone: string;
+};
+
+export type CareerPlanCalendarEvent = {
+  title: string;
+  description: string;
+  starts_at: string;
+  ends_at: string;
+  week_index: number;
+  step_index: number;
+  session_index: number;
+  total_sessions: number;
 };
 
 export type CareerPlanResponse = {
   goal: string;
   target_role: string;
+  workload_level: string;
+  estimated_weeks: number;
+  study_preferences: StudyPreferences;
   steps: CareerPlanStep[];
+  calendar_events: CareerPlanCalendarEvent[];
   citations: RetrievedChunk[];
 };
 
@@ -90,6 +116,7 @@ export function requestCareerPlan(
   userId: string,
   goal: string,
   targetRole: string,
+  studyPreferences: StudyPreferences,
 ): Promise<CareerPlanResponse> {
   return requestJson<CareerPlanResponse>("/career/plan", {
     method: "POST",
@@ -97,8 +124,42 @@ export function requestCareerPlan(
       user_id: userId,
       goal,
       target_role: targetRole,
+      study_preferences: studyPreferences,
     }),
   });
+}
+
+export async function exportCareerPlanIcs(userId: string, plan: CareerPlanResponse): Promise<{ blob: Blob; fileName: string }> {
+  const response = await fetch(`${apiBaseUrl}/career/plan/export-ics`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      plan,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = `Request failed with status ${response.status}`;
+    try {
+      const payload = (await response.json()) as ErrorPayload;
+      if (payload.detail) {
+        detail = payload.detail;
+      }
+    } catch {
+      // Ignore malformed error bodies and surface the status instead.
+    }
+    throw new Error(detail);
+  }
+
+  const contentDisposition = response.headers.get("content-disposition") ?? "";
+  const fileNameMatch = contentDisposition.match(/filename=\"([^\"]+)\"/i);
+  return {
+    blob: await response.blob(),
+    fileName: fileNameMatch?.[1] ?? "career-plan.ics",
+  };
 }
 
 export function fetchMemories(userId: string): Promise<MemoryItemPayload[]> {

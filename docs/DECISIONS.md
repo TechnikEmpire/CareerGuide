@@ -582,6 +582,24 @@ Last updated: 2026-03-24
 - Решение: Scope-layer также должен блокировать явно exploitative или illegal work-запросы, а не только crisis-response случаи.
 - Обоснование: Текущий ESCO-centered corpus достаточно силен для стандартного grounded career guidance, но не для любого imaginable role-request. Прототип, который честно отказывает в неподдерживаемых запросах, защищать проще, чем систему, которая импровизирует вводящее в заблуждение advice из слабых evidence.
 
+## D-038 Schedule-Aware Career Plans and ICS Export
+
+**English**
+
+- Status: active
+- Decision: The `career_plan` artifact should no longer be only a short ordered list of steps. It should also carry explicit study preferences, workload-aware schedule metadata, and dated calendar events suitable for direct `.ics` export.
+- Decision: The first-calendar export path should stay deterministic and backend-owned. The frontend may request an `.ics` file from the saved plan artifact, but it should not invent its own separate scheduling logic.
+- Decision: The current scheduling inputs are intentionally minimal: study start date, preferred time of day, study frequency per week, and a stable session-duration default.
+- Rationale: A calendar export is only defensible if the plan already contains explicit schedule data. Keeping scheduling deterministic and backend-owned avoids a split-brain plan model between the UI and the backend, makes the artifact easier to inspect, and turns the current `career_plan` into a real reusable structured output rather than a decorative step list.
+
+**Русский**
+
+- Статус: активно
+- Решение: Артефакт `career_plan` больше не должен быть только коротким упорядоченным списком шагов. Он также должен нести явные study-preferences, workload-aware schedule metadata и датированные calendar-events, пригодные для прямого `.ics`-экспорта.
+- Решение: Первый path calendar-export должен оставаться детерминированным и backend-owned. Frontend может запрашивать `.ics`-файл из сохраненного plan-artifact, но не должен изобретать собственную отдельную scheduling-логику.
+- Решение: Текущие scheduling-inputs намеренно минимальны: study start date, preferred time of day, study frequency per week и стабильный default для duration одной сессии.
+- Обоснование: Calendar-export можно защищать только тогда, когда сам план уже содержит явные schedule-данные. Детерминированный backend-owned scheduling избегает split-brain plan-model между UI и backend, делает artifact проще для inspection и превращает текущий `career_plan` в реально переиспользуемый structured output, а не в декоративный список шагов.
+
 ## Decision Maintenance Rule
 
 **English**

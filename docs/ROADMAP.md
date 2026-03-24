@@ -37,13 +37,13 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | 8. Joint RAG + memory generation | in_progress | The production answer path now merges dense retrieval with persisted memory summary, but tracked outputs for `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` are still pending. |
 | 9. Safety and refusal behavior | in_progress | The repo now has deterministic scope blocking for crisis and exploitative requests plus grounded-support refusal for unsupported role or planning requests, but the full risk-policy layer is not complete. |
 | 10. Evaluation harness | in_progress | Canonical retrieval qrels, answer-evaluation cases, score utilities, dense-only tuning export, and answer-export tooling now exist. The dense-only elbow is locked at `top_k=10`, explicit citation export is now working, and the next work is extending the harness to `RAG-only` versus `RAG + memory` comparison. |
-| 11. Web UI v1 | completed | The lightweight React + Vite frontend now provides profile selection, chat, citations, memory-used display, structured plan generation, memory inspection with delete support, local chat history, save/reload support for one active plan per profile, and UI-facing refusal/scope handling. |
+| 11. Web UI v1 | completed | The lightweight React + Vite frontend now provides profile selection, chat, citations, memory-used display, structured plan generation with study preferences, scheduled-plan preview, `.ics` export, memory inspection with delete support, local chat history, save/reload support for one active plan per profile, and UI-facing refusal/scope handling. |
 | 12. Optional browser inference experiment | optional | Explicitly deferred until the backend-first system is stable. |
 
 ### Current Drift Notes
 
 - Dense-only retrieval is the active runtime path by evidence, even though the older broader design left room for a fuller hybrid stack. This is acceptable drift while the tracked qrels continue to reject reranking.
-- Structured artifact generation is still behind the intended end-state. The repo is baseline-answer capable, but persisted career/wellbeing artifacts and artifact reuse are still open work.
+- Structured artifact generation is only partially behind the intended end-state now. The repo has a schedule-aware `career_plan` artifact with `.ics` export, but broader persisted career/wellbeing artifacts and artifact reuse are still open work.
 - The memory layer is integrated but not yet scientifically closed. The current read path is now a basic non-trainable Hopfield recall over real embedding vectors, but the tracked multi-arm evaluation, Russian-first extraction quality, and optional learned phase are still open.
 - Russian-first behavior is still uneven: retrieval is multilingual, and the live memory extractor is now sentence-level and bilingual, but real-chat Russian quality is still not yet well measured for the intended product target.
 
@@ -116,13 +116,13 @@ active runtime baseline.
 | 8. Совместная генерация RAG + memory | in_progress | Production answer-path теперь объединяет dense retrieval и persisted memory summary, но tracked outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk` все еще впереди. |
 | 9. Safety и refusal behavior | in_progress | В репозитории теперь есть детерминированная scope-блокировка для crisis- и exploitative-запросов, а также grounded-support refusal для неподдерживаемых role- и planning-запросов, но полноценный risk-policy layer еще не завершен. |
 | 10. Evaluation harness | in_progress | Канонические retrieval qrels, answer-evaluation cases, scoring-утилиты, dense-only tuning export и answer-export tooling уже существуют. Dense-only elbow зафиксирован на `top_k=10`, explicit citation export теперь работает, и следующая работа — расширить harness до сравнения `RAG-only` и `RAG + memory`. |
-| 11. Web UI v1 | completed | Легкий frontend на React + Vite теперь уже дает выбор профиля, чат, citations, отображение memory-used, structured plan generation, memory inspection с удалением, local chat history, save/reload support для одного активного плана на профиль и UI-подачу refusal/scope-limit состояний. |
+| 11. Web UI v1 | completed | Легкий frontend на React + Vite теперь уже дает выбор профиля, чат, citations, отображение memory-used, structured plan generation со study-preferences, preview расписания плана, `.ics`-экспорт, memory inspection с удалением, local chat history, save/reload support для одного активного плана на профиль и UI-подачу refusal/scope-limit состояний. |
 | 12. Optional browser inference experiment | optional | Явно отложено до тех пор, пока backend-first система не станет стабильной. |
 
 ### Текущие заметки о дрейфе
 
 - Dense-only retrieval является активным runtime-path по данным измерений, даже если более ранний широкий дизайн оставлял место для более полного hybrid stack. Это допустимый drift, пока отслеживаемые qrels продолжают отвергать reranking.
-- Structured artifact generation все еще отстает от intended end-state. Репозиторий уже умеет baseline-answer, но persisted career/wellbeing artifacts и artifact reuse все еще остаются открытой работой.
+- Structured artifact generation теперь отстает от intended end-state лишь частично. Репозиторий уже имеет schedule-aware `career_plan` artifact с `.ics`-экспортом, но persisted career/wellbeing artifacts более широкого scope и artifact reuse все еще остаются открытой работой.
 - Memory-layer интегрирован, но еще не закрыт научно. Текущий read-path теперь является базовым нетренируемым Hopfield recall поверх реальных embedding-векторов, но все еще не хватает отслеживаемой многорукавной evaluation, качества Russian-first extraction и при необходимости learned-фазы.
 - Russian-first behavior все еще неровный: retrieval уже multilingual, а live memory-extractor теперь sentence-level и bilingual, но реальное качество Russian extraction пока еще недостаточно хорошо измерено для intended product target.
 

@@ -134,3 +134,46 @@ def test_guardrails_refuse_explicit_unsupported_role_request() -> None:
     assert response.response_kind == "refusal"
     assert "can’t provide grounded career guidance" in response.text
     assert response.citations == []
+
+
+def test_guardrails_career_fit_answer_uses_role_descriptions_naturally() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="occupation-1",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation/1",
+                title="data analyst",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: data analyst.\n"
+                    "Description (EN): Analyse datasets and prepare reports."
+                ),
+                score=0.91,
+            ),
+            RetrievedChunk(
+                chunk_id="occupation-2",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation/2",
+                title="project coordinator",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: project coordinator.\n"
+                    "Description (EN): Coordinate delivery timelines and stakeholder updates."
+                ),
+                score=0.87,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    response = maybe_build_guardrailed_answer(
+        question="I prefer remote work. What careers fit me?",
+        retrieval_context=retrieval_context,
+    )
+
+    assert response is not None
+    assert "data analyst: work that involves analyse datasets and prepare reports" in response.text.lower()
+    assert "project coordinator: work that involves coordinate delivery timelines and stakeholder updates" in response.text.lower()

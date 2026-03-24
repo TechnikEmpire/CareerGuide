@@ -12,7 +12,7 @@ Foundational scaffold plus tracked ESCO source artifacts, a Qwen3-targeted
 FAISS-backed dense retrieval stack, a validated end-to-end baseline RAG path,
 the first real embedding-based Hopfield memory slice now wired into the live
 answer flow, and Web UI v1 now completed as a thin end-to-end frontend over the
-live backend.
+live backend, including schedule-aware career plans with `.ics` export.
 
 ### What Is Already Done
 
@@ -58,10 +58,11 @@ live backend.
 - The backend dev-server wrapper now builds reload globs as relative patterns, and that behavior is covered by `backend/tests/test_dev_server_scripts.py`.
 - The retrieval service now attempts a one-time lazy artifact rebuild on first stale-artifact hit instead of requiring a manual rebuild after every local drift event.
 - A lightweight React + Vite web UI now exists under `frontend/`.
-- Web UI v1 now covers profile selection, grounded chat, citations, “memory used”, structured plan generation, memory inspection with delete support, local chat history per profile, save/reload support for one active plan per profile, and UI-facing refusal/scope handling.
+- Web UI v1 now covers profile selection, grounded chat, citations, “memory used”, structured plan generation with study preferences, scheduled-plan preview, `.ics` export, memory inspection with delete support, local chat history per profile, save/reload support for one active plan per profile, and UI-facing refusal/scope handling.
 - The backend now allows standard local frontend dev origins through explicit CORS configuration.
 - The live answer path now includes deterministic answer guardrails for the most failure-prone conversational intents, so broad fit questions, skill-requirement questions, and external-resource requests do not rely entirely on weak small-model free-form output.
 - The career-plan path now has a deterministic grounded fallback, so invalid small-model JSON no longer has to surface as a user-facing `503`.
+- The career-plan path now enriches grounded plan steps with workload-aware study scheduling, explicit study preferences, and deterministic calendar events suitable for `.ics` export.
 - The runtime now refuses unsupported explicit role and planning requests when the current corpus does not show a strong enough grounded match, instead of bluffing with generic advice.
 
 ### Current Completion Boundary
@@ -155,7 +156,7 @@ refinement work rather than prerequisites for beginning the web UI:
 - The repo now has standalone tooling plus a trained ru/en binary BiLSTM memory-extraction baseline, and the live backend now uses that tracked binary bundle in its sentence-level write path. The remaining quality gap is calibration and evaluation, not wiring.
 - The preferred runtime splitter is now `pySBD`, but environments that have not yet been refreshed from `requirements.txt` will fall back to regex sentence splitting.
 - The binary extractor metrics are encouraging on the tracked synthetic split, but the corpus still contains some noisy sentences. Synthetic held-out scores therefore overstate real-chat readiness.
-- The current repo is still answer-first rather than artifact-first. That is acceptable for the baseline RAG milestone, but the planned structured outputs and artifact reuse remain open work.
+- The current repo is still only partially artifact-first. The scheduled `career_plan` is now a first-class structured output with calendar export, but broader artifact reuse and additional artifact types remain open work.
 - The current web UI is intentionally thin and direct-to-backend. That is still the right tradeoff for the first prototype; Web UI v1 is now complete for the current scope, and the remaining UI work is post-v1 polish rather than missing core behavior.
 - The latest `direct_answer` contract tightening and the dev-server reload-watch exclusions are implemented in code but should still be treated as pending smoke revalidation.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
@@ -191,7 +192,7 @@ refinement work rather than prerequisites for beginning the web UI:
   - current top-k implementation=`exact top-k masking plus renormalization, not differentiable ksoftmax`
 - Frontend:
   - stack=`React + Vite + TypeScript`
-  - current surfaces=`profile selection, chat, citations, memory-used display, plan generation, memory inspection with delete support, local chat history, single saved plan per profile, UI-facing refusal/scope states`
+  - current surfaces=`profile selection, chat, citations, memory-used display, plan generation with study preferences, scheduled-plan preview, `.ics` export, memory inspection with delete support, local chat history, single saved plan per profile, UI-facing refusal/scope states`
   - backend integration=`direct HTTP calls to FastAPI endpoints`
   - default dev URL=`http://127.0.0.1:5173`
   - configurable backend base URL=`VITE_API_BASE_URL`
@@ -239,7 +240,7 @@ refinement work rather than prerequisites for beginning the web UI:
 stack на базе FAISS для Qwen3, валидированный end-to-end baseline RAG path,
 первый реальный embedding-based Hopfield slice для memory, подключенный к live
 answer-flow, и теперь уже завершенный Web UI v1 как тонкий end-to-end frontend
-поверх live-backend.
+поверх live-backend, включая schedule-aware career plans и `.ics`-экспорт.
 
 ### Что уже сделано
 
@@ -284,9 +285,10 @@ answer-flow, и теперь уже завершенный Web UI v1 как то
 - Unit-тесты теперь покрывают текущие режимы Hopfield recall в `backend/tests/test_hopfield_memory.py`.
 - Wrapper backend dev-server теперь собирает reload-glob как relative patterns, и это поведение покрыто `backend/tests/test_dev_server_scripts.py`.
 - Теперь уже существует легкий web UI на React + Vite в каталоге `frontend/`.
-- Web UI v1 теперь уже покрывает выбор профиля, grounded-chat, citations, отображение “memory used”, structured plan generation, memory inspection с удалением, local chat history, save/reload support для одного активного плана на профиль и UI-подачу refusal/scope-limit состояний.
+- Web UI v1 теперь уже покрывает выбор профиля, grounded-chat, citations, отображение “memory used”, structured plan generation со study-preferences, preview расписания плана, `.ics`-экспорт, memory inspection с удалением, local chat history, save/reload support для одного активного плана на профиль и UI-подачу refusal/scope-limit состояний.
 - Backend теперь явно разрешает стандартные local frontend dev-origins через CORS-конфигурацию.
 - Runtime теперь отказывает в unsupported explicit role- и planning-запросах, если текущий corpus не показывает достаточно сильного grounded-match, вместо того чтобы изображать общую карьерную рекомендацию.
+- Path career-plan теперь дополняет grounded steps workload-aware учебным расписанием, явными study-preferences и детерминированными calendar events, пригодными для `.ics`-экспорта.
 
 ### Текущая граница завершения
 
@@ -356,7 +358,7 @@ answer-flow, и теперь уже завершенный Web UI v1 как то
 - В репозитории теперь есть standalone tooling и уже обученный ru/en binary BiLSTM-baseline для memory extraction, и live-backend теперь уже использует этот tracked binary bundle в sentence-level write-path. Оставшийся разрыв — это калибровка и evaluation, а не wiring.
 - Предпочтительный runtime-splitter теперь `pySBD`, но env-ы, которые еще не были обновлены из `requirements.txt`, будут откатываться к regex sentence-splitting.
 - Метрики binary extractor выглядят обнадеживающе на отслеживаемом synthetic split, но corpus все еще содержит некоторый шум. Поэтому synthetic held-out scores завышают готовность к реальному чату.
-- Текущий repo все еще answer-first, а не artifact-first. Для baseline RAG это допустимо, но planned structured outputs и artifact reuse все еще остаются открытой работой.
+- Текущий repo все еще лишь частично artifact-first. Scheduled `career_plan` теперь является first-class structured output с calendar-export, но более широкое artifact reuse и дополнительные типы artifacts все еще остаются открытой работой.
 - Текущий web UI намеренно тонкий и direct-to-backend. Для первого prototype это правильный компромисс; Web UI v1 теперь завершен в рамках текущего scope, а оставшаяся UI-работа является post-v1 polish, а не отсутствующим core-behavior.
 - Последние изменения с `direct_answer` contract и исключениями для reload-watch реализованы в коде, но их все еще нужно считать ожидающими smoke-подтверждения.
 - ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.

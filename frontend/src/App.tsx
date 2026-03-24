@@ -2,11 +2,13 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 
 import {
   deleteMemory,
+  exportCareerPlanIcs,
   fetchMemories,
   requestAnswer,
   requestCareerPlan,
   type CareerPlanResponse,
   type MemoryItemPayload,
+  type StudyPreferences,
 } from "./api/client";
 import { CitationList } from "./components/CitationList";
 import { MemoryPanel } from "./components/MemoryPanel";
@@ -204,6 +206,34 @@ function formatTimestamp(value: string): string {
   }).format(date);
 }
 
+function formatDateValue(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function detectBrowserTimeZone(): string {
+  if (typeof Intl === "undefined") {
+    return "UTC";
+  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+function defaultStudyStartDate(): string {
+  const date = new Date();
+  const day = date.getDay();
+  const daysUntilMonday = day === 1 ? 7 : ((8 - day) % 7 || 7);
+  date.setDate(date.getDate() + daysUntilMonday);
+  return date.toISOString().slice(0, 10);
+}
+
 function findActiveConversation(
   conversations: ConversationSession[],
   activeConversationId: string | null,
@@ -234,10 +264,14 @@ export default function App() {
   const [isAnswerPending, setIsAnswerPending] = useState(false);
   const [goal, setGoal] = useState("");
   const [targetRole, setTargetRole] = useState("");
+  const [studyStartDate, setStudyStartDate] = useState(() => defaultStudyStartDate());
+  const [preferredStudyTime, setPreferredStudyTime] = useState<StudyPreferences["preferred_study_time"]>("evening");
+  const [studyFrequencyPerWeek, setStudyFrequencyPerWeek] = useState(3);
   const [plan, setPlan] = useState<CareerPlanResponse | null>(null);
   const [savedPlanAt, setSavedPlanAt] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
   const [isPlanPending, setIsPlanPending] = useState(false);
+  const [isPlanExportPending, setIsPlanExportPending] = useState(false);
   const [memories, setMemories] = useState<MemoryItemPayload[]>([]);
   const [isMemoryLoading, setIsMemoryLoading] = useState(false);
   const [memoryError, setMemoryError] = useState<string | null>(null);
@@ -252,6 +286,13 @@ export default function App() {
   const isQuestionReady = question.trim().length > 0;
   const isPlanReady = goal.trim().length > 0 && targetRole.trim().length > 0;
   const planErrorIsScopeLimit = isScopeLimitMessage(planError);
+  const currentStudyPreferences: StudyPreferences = {
+    study_start_date: studyStartDate,
+    preferred_study_time: preferredStudyTime,
+    study_frequency_per_week: studyFrequencyPerWeek,
+    session_duration_minutes: 90,
+    timezone: detectBrowserTimeZone(),
+  };
 
   async function refreshMemories(userId: string): Promise<void> {
     setIsMemoryLoading(true);
@@ -276,11 +317,17 @@ export default function App() {
       setPlan(storedPlan.plan);
       setGoal(storedPlan.goal);
       setTargetRole(storedPlan.targetRole);
+      setStudyStartDate(storedPlan.plan.study_preferences?.study_start_date ?? defaultStudyStartDate());
+      setPreferredStudyTime(storedPlan.plan.study_preferences?.preferred_study_time ?? "evening");
+      setStudyFrequencyPerWeek(storedPlan.plan.study_preferences?.study_frequency_per_week ?? 3);
       setSavedPlanAt(storedPlan.savedAt);
     } else {
       setPlan(null);
       setGoal("");
       setTargetRole("");
+      setStudyStartDate(defaultStudyStartDate());
+      setPreferredStudyTime("evening");
+      setStudyFrequencyPerWeek(3);
       setSavedPlanAt(null);
     }
 
@@ -396,6 +443,9 @@ export default function App() {
     setPlan(storedPlan.plan);
     setGoal(storedPlan.goal);
     setTargetRole(storedPlan.targetRole);
+    setStudyStartDate(storedPlan.plan.study_preferences?.study_start_date ?? defaultStudyStartDate());
+    setPreferredStudyTime(storedPlan.plan.study_preferences?.preferred_study_time ?? "evening");
+    setStudyFrequencyPerWeek(storedPlan.plan.study_preferences?.study_frequency_per_week ?? 3);
     setSavedPlanAt(storedPlan.savedAt);
     setPlanError(null);
     setActiveView("plan");
@@ -406,6 +456,9 @@ export default function App() {
     setPlan(null);
     setGoal("");
     setTargetRole("");
+    setStudyStartDate(defaultStudyStartDate());
+    setPreferredStudyTime("evening");
+    setStudyFrequencyPerWeek(3);
     setSavedPlanAt(null);
     setPlanError(null);
   }
@@ -482,7 +535,7 @@ export default function App() {
     setIsPlanPending(true);
     setPlanError(null);
     try {
-      const response = await requestCareerPlan(activeUserId, trimmedGoal, trimmedRole);
+      const response = await requestCareerPlan(activeUserId, trimmedGoal, trimmedRole, currentStudyPreferences);
       const savedAt = new Date().toISOString();
       setPlan(response);
       setSavedPlanAt(savedAt);
@@ -496,6 +549,34 @@ export default function App() {
       setPlanError(describeError(error));
     } finally {
       setIsPlanPending(false);
+    }
+  }
+
+  async function handleExportPlan(): Promise<void> {
+    if (!plan || isPlanExportPending) {
+      return;
+    }
+    if (!plan.calendar_events?.length) {
+      setPlanError("Build or reload a scheduled plan before exporting a calendar file.");
+      return;
+    }
+
+    setIsPlanExportPending(true);
+    setPlanError(null);
+    try {
+      const { blob, fileName } = await exportCareerPlanIcs(activeUserId, plan);
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setPlanError(describeError(error));
+    } finally {
+      setIsPlanExportPending(false);
     }
   }
 
@@ -779,6 +860,14 @@ export default function App() {
                     Reload saved
                   </button>
                   <button
+                    className="toolbar-button"
+                    type="button"
+                    onClick={() => void handleExportPlan()}
+                    disabled={!plan || isPlanExportPending}
+                  >
+                    {isPlanExportPending ? "Exporting…" : "Export .ics"}
+                  </button>
+                  <button
                     className="toolbar-button secondary"
                     type="button"
                     onClick={clearSavedPlan}
@@ -827,8 +916,44 @@ export default function App() {
                     placeholder="Data Analyst"
                   />
                 </label>
+                <div className="plan-settings-grid">
+                  <label className="sidebar-field">
+                    <span>Study start date</span>
+                    <input
+                      type="date"
+                      value={studyStartDate}
+                      onChange={(event) => setStudyStartDate(event.target.value)}
+                    />
+                  </label>
+                  <label className="sidebar-field">
+                    <span>Preferred study time</span>
+                    <select
+                      value={preferredStudyTime}
+                      onChange={(event) => setPreferredStudyTime(event.target.value as StudyPreferences["preferred_study_time"])}
+                    >
+                      <option value="morning">Morning</option>
+                      <option value="afternoon">Afternoon</option>
+                      <option value="evening">Evening</option>
+                    </select>
+                  </label>
+                  <label className="sidebar-field">
+                    <span>Sessions per week</span>
+                    <select
+                      value={studyFrequencyPerWeek}
+                      onChange={(event) => setStudyFrequencyPerWeek(Number(event.target.value))}
+                    >
+                      <option value={1}>1</option>
+                      <option value={2}>2</option>
+                      <option value={3}>3</option>
+                      <option value={4}>4</option>
+                      <option value={5}>5</option>
+                    </select>
+                  </label>
+                </div>
                 <div className="toolbar-actions">
-                  <span className="composer-hint">Generating a new plan overwrites the saved one for this profile.</span>
+                  <span className="composer-hint">
+                    Generating a new plan overwrites the saved one for this profile and rebuilds the calendar schedule.
+                  </span>
                   <button className="composer-submit" type="submit" disabled={!isPlanReady || isPlanPending}>
                     {isPlanPending ? "Building…" : "Build plan"}
                   </button>
@@ -858,6 +983,14 @@ export default function App() {
               {plan ? (
                 <div className="plan-result">
                   <p className="plan-goal">{plan.goal}</p>
+                  <div className="plan-meta-row">
+                    <span className="pill">Workload: {plan.workload_level ?? "medium"}</span>
+                    <span className="pill">{plan.estimated_weeks ?? 1} week plan</span>
+                    <span className="pill">
+                      {plan.study_preferences?.study_frequency_per_week ?? 3} sessions/week ·{" "}
+                      {plan.study_preferences?.preferred_study_time ?? "evening"}
+                    </span>
+                  </div>
                   <ol className="plan-step-list">
                     {plan.steps.map((step, index) => (
                       <li key={`${step.title}-${index}`} className="plan-step-card">
@@ -865,10 +998,44 @@ export default function App() {
                         <div>
                           <h4>{step.title}</h4>
                           <p>{step.description}</p>
+                          {step.focus_skills?.length ? (
+                            <div className="plan-pill-row">
+                              {step.focus_skills.map((skill) => (
+                                <span key={`${step.title}-${skill}`} className="pill">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </li>
                     ))}
                   </ol>
+                  {plan.calendar_events?.length ? (
+                    <div className="plan-schedule">
+                      <div className="content-card-header">
+                        <div>
+                          <p className="sidebar-eyebrow">Calendar</p>
+                          <h4>Scheduled study sessions</h4>
+                        </div>
+                      </div>
+                      <ol className="plan-step-list">
+                        {plan.calendar_events.map((event, index) => (
+                          <li key={`${event.title}-${event.starts_at}-${index}`} className="plan-step-card">
+                            <span className="step-index">{`${event.step_index}.${event.session_index}`}</span>
+                            <div>
+                              <h4>{event.title}</h4>
+                              <p>{event.description}</p>
+                              <p className="metric">
+                                Step {event.step_index} · Session {event.session_index} of {event.total_sessions} · Week {event.week_index}
+                              </p>
+                              <p className="metric">{formatDateValue(event.starts_at)}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  ) : null}
                   <CitationList citations={plan.citations} title="Plan evidence" />
                 </div>
               ) : (

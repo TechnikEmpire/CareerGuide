@@ -12,9 +12,11 @@ from typing import Any, Protocol
 import httpx
 
 from backend.app.config import settings
+from backend.app.services.generation.plan_calendar import finalize_career_plan
 from backend.app.services.generation.plan_guardrails import build_fallback_career_plan
 from backend.app.services.generation.schemas import (
     AnswerResponse,
+    CareerPlanCalendarEvent,
     CareerPlanRequest,
     CareerPlanResponse,
     CareerPlanStep,
@@ -102,7 +104,11 @@ class StubGeneratorClient:
     ) -> CareerPlanResponse:
         """Return a small structured plan placeholder."""
 
-        return CareerPlanResponse(
+        del prompt
+
+        return finalize_career_plan(
+            request=request,
+            retrieval_context=retrieval_context,
             goal=request.goal,
             target_role=request.target_role,
             steps=[
@@ -219,6 +225,15 @@ class LlamaCppGeneratorClient:
                 CareerPlanStep(
                     title=str(step["title"]),
                     description=str(step["description"]),
+                    focus_skills=[str(skill) for skill in step.get("focus_skills", []) if str(skill).strip()]
+                    if isinstance(step, dict)
+                    else [],
+                    grounded_detail=str(step.get("grounded_detail")).strip()
+                    if isinstance(step, dict) and step.get("grounded_detail") is not None
+                    else None,
+                    estimated_hours=float(step.get("estimated_hours"))
+                    if isinstance(step, dict) and step.get("estimated_hours") is not None
+                    else None,
                 )
                 for step in steps_payload
             ]
@@ -233,11 +248,36 @@ class LlamaCppGeneratorClient:
                 retrieval_context=retrieval_context,
             )
 
-        return CareerPlanResponse(
+        raw_response = CareerPlanResponse(
             goal=goal,
             target_role=target_role,
+            workload_level=str(payload.get("workload_level") or "medium"),
+            estimated_weeks=int(payload.get("estimated_weeks") or 1),
+            study_preferences=request.study_preferences,
             steps=steps,
+            calendar_events=[
+                CareerPlanCalendarEvent(
+                    title=str(event["title"]),
+                    description=str(event["description"]),
+                    starts_at=str(event["starts_at"]),
+                    ends_at=str(event["ends_at"]),
+                    week_index=int(event["week_index"]),
+                    step_index=int(event["step_index"]),
+                    session_index=int(event.get("session_index") or 1),
+                    total_sessions=int(event.get("total_sessions") or 1),
+                )
+                for event in payload.get("calendar_events", [])
+                if isinstance(event, dict)
+            ],
             citations=retrieval_context.chunks,
+        )
+        return finalize_career_plan(
+            request=request,
+            retrieval_context=retrieval_context,
+            goal=raw_response.goal,
+            target_role=raw_response.target_role,
+            steps=raw_response.steps,
+            citations=raw_response.citations,
         )
 
     def _chat_completion(self, *, system_prompt: str, user_prompt: str, max_tokens: int) -> str:

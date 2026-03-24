@@ -292,3 +292,5 @@ def test_generate_career_plan_falls_back_when_model_returns_invalid_json(
     assert response.goal == request.goal
     assert response.target_role == request.target_role
     assert len(response.steps) == 4
+    assert response.calendar_events
+    assert response.estimated_weeks >= 1

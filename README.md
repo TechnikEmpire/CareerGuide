@@ -118,13 +118,15 @@ The repository now also contains the first real web UI slice under `frontend/`.
 It is a lightweight React + Vite client that talks directly to the existing
 FastAPI backend instead of introducing a second AI orchestration layer. The
 current UI already covers profile selection, chat, citations, “memory used”,
-structured plan generation, and a memory inspector backed by `/memory/list`.
+structured plan generation with study preferences, scheduled-plan preview,
+`.ics` export, and a memory inspector backed by `/memory/list`.
 
 Репозиторий теперь также содержит первый реальный slice web UI в `frontend/`.
 Это легкий клиент на React + Vite, который напрямую работает с существующим
 FastAPI-backend и не вводит второй orchestration-layer для AI. Текущий UI уже
 поддерживает выбор профиля, чат, citations, отображение “memory used”,
-structured plan generation и memory inspector поверх `/memory/list`.
+structured plan generation со study-preferences, preview расписания плана,
+`.ics`-экспорт и memory inspector поверх `/memory/list`.
 
 ## Authoritative Repository Docs
 

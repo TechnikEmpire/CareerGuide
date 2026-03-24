@@ -1127,6 +1127,8 @@ The frontend only needs to support:
 - profile capture
 - chat
 - display of structured plans
+- plan schedule preview
+- plan calendar export
 - display of citations
 - display of “memory used”
 - save/reload plans
@@ -1136,7 +1138,7 @@ That is enough for the scientific core.
 Current repo checkpoint for this section:
 
 - the repo now has a real `frontend/` app implemented as a lightweight React + Vite client
-- it already supports profile selection, chat, citations, “memory used”, structured plan generation, memory inspection, local chat history, and save/reload support for one active plan per profile
+- it already supports profile selection, chat, citations, “memory used”, structured plan generation with study preferences, scheduled-plan preview, `.ics` export, memory inspection, local chat history, and save/reload support for one active plan per profile
 - it talks directly to the existing FastAPI backend instead of introducing a second AI app layer
 - the remaining frontend work after this checkpoint is polish and optional scope expansion, not the minimal scientific-core surface
 
@@ -1147,6 +1149,7 @@ Current repo checkpoint for this section:
 ### Backend endpoints
 - `POST /chat/answer`
 - `POST /career/plan`
+- `POST /career/plan/export-ics`
 - `POST /career/skills-gap`
 - `POST /career/compare-options`
 - `POST /memory/upsert`

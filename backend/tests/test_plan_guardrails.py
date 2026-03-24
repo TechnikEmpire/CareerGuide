@@ -43,3 +43,5 @@ def test_build_fallback_career_plan_uses_grounded_role_and_skills() -> None:
     assert len(response.steps) == 4
     assert "project manager" in response.steps[0].description.lower()
     assert "risk management" in response.steps[1].description.lower()
+    assert response.calendar_events
+    assert response.study_preferences.preferred_study_time == "evening"

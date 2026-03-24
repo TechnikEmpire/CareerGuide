@@ -146,7 +146,7 @@ def build_career_plan(
 
     ensure_request_is_in_scope(request.goal)
     retrieval_context = build_retrieval_context(
-        question=request.goal,
+        question=f"{request.goal}\n{request.target_role}",
         memory_items=[],
         top_k=top_k,
         use_reranker=use_reranker,
@@ -159,6 +159,7 @@ def build_career_plan(
     prompt = build_career_plan_prompt(
         goal=request.goal,
         target_role=request.target_role,
+        study_preferences=request.study_preferences,
         retrieval_context=retrieval_context,
     )
     generator = get_generator_client()
