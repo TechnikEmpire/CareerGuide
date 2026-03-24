@@ -10,6 +10,7 @@ from backend.app.services.assistant_service import (
 )
 from backend.app.services.generation.generator_client import GenerationClientError
 from backend.app.services.generation.schemas import AnswerRequest, AnswerResponse, CareerPlanRequest, CareerPlanResponse
+from backend.app.services.retrieval.faiss_hnsw import RetrievalArtifactsError
 
 router = APIRouter(prefix="", tags=["assistant"])
 
@@ -20,7 +21,7 @@ def answer_question(request: AnswerRequest) -> AnswerResponse:
 
     try:
         return generate_answer_response(request)
-    except GenerationClientError as exc:
+    except (GenerationClientError, RetrievalArtifactsError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
@@ -30,5 +31,5 @@ def build_career_plan(request: CareerPlanRequest) -> CareerPlanResponse:
 
     try:
         return generate_career_plan_response(request)
-    except GenerationClientError as exc:
+    except (GenerationClientError, RetrievalArtifactsError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc

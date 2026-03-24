@@ -10,11 +10,12 @@ Last updated: 2026-03-23
 
 This document explains the current local development workflow in plain terms.
 
-At this stage of the project, there are three different kinds of work:
+At this stage of the project, there are four different kinds of work:
 
 1. one-time corpus preprocessing
 2. one-time or infrequent retrieval-index building
 3. repeatable local evaluation and answer-generation validation
+4. repeatable web UI development against the stable backend contracts
 
 These are different steps. They are not the same thing.
 
@@ -134,6 +135,22 @@ The repo-local setup helper writes `.env.local`, and the backend loads that file
 automatically. That is how the local query-embedding model path is activated
 without manual shell exports.
 
+### What The Current Web UI Does
+
+The first UI baseline now exists under `frontend/`.
+
+At the current stage it supports:
+
+- profile selection through a user-id field
+- grounded chat through `POST /chat/answer`
+- explicit citation display
+- explicit “memory used” display from the answer response
+- structured plan generation through `POST /career/plan`
+- memory inspection through `GET /memory/list`
+
+It is intentionally thin. The UI calls the FastAPI backend directly and does
+not add a second AI-runtime layer on the frontend side.
+
 ### Canonical Local Commands
 
 One-time local model setup:
@@ -147,6 +164,10 @@ Start the full local app stack with one command:
 ```bash
 python -m backend.scripts.run_local_app_stack --reload
 ```
+
+This startup path now checks the retrieval artifacts before launching the
+backend server and repairs them automatically when the tracked FAISS cache or
+SQLite retrieval rows are stale.
 
 When `--reload` is enabled, the backend now watches the `backend/` source tree
 instead of mutable runtime artifacts like the local SQLite database, model
@@ -175,6 +196,21 @@ If the local generation server is already running, the evaluation wrapper will
 reuse it instead of starting a duplicate process.
 If the persisted retrieval artifacts are stale, the wrapper refreshes them
 before it starts generation.
+
+Run the frontend against the local backend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The default frontend dev URL is `http://127.0.0.1:5173`. The backend now allows
+local CORS requests from `127.0.0.1` and `localhost` on ports `5173` and
+`3000`.
+
+If the backend is not at `http://127.0.0.1:8000`, set `VITE_API_BASE_URL`
+before launching the frontend.
 
 ### Canonical Hopfield Tests To Run
 
@@ -241,11 +277,12 @@ The reranker was already tested and kept only as a negative ablation record.
 
 Этот документ простыми словами объясняет текущий локальный workflow разработки.
 
-На текущей стадии проекта есть три разных типа работы:
+На текущей стадии проекта есть четыре разных типа работы:
 
 1. one-time preprocessing корпуса
 2. one-time или редкая сборка retrieval-index
 3. повторяемая локальная evaluation и runtime-валидация генерации ответов
+4. повторяемая разработка web UI поверх стабильных backend-контрактов
 
 Это разные этапы. Это не одно и то же.
 
@@ -289,6 +326,22 @@ Repo-local setup-helper записывает `.env.local`, и backend автом
 загружает этот файл. Именно так локальный путь к query-embedding-модели
 активируется без ручного shell-export.
 
+### Что делает текущий web UI
+
+Первый baseline UI теперь существует в `frontend/`.
+
+На текущем этапе он поддерживает:
+
+- выбор профиля через поле user-id
+- grounded-chat через `POST /chat/answer`
+- явное отображение citations
+- явное отображение “memory used” из answer-response
+- structured plan generation через `POST /career/plan`
+- просмотр memory через `GET /memory/list`
+
+UI намеренно остается тонким. Он напрямую обращается к FastAPI-backend и не
+вводит второй frontend-side AI-runtime layer.
+
 ### Канонические локальные команды
 
 One-time setup локальных моделей:
@@ -302,6 +355,10 @@ python -m backend.scripts.setup_local_models
 ```bash
 python -m backend.scripts.run_local_app_stack --reload
 ```
+
+Этот startup-path теперь проверяет retrieval-артефакты перед запуском backend
+server и автоматически восстанавливает их, если отслеживаемый FAISS-cache или
+SQLite retrieval-rows устарели.
 
 Если вы хотите вручную управлять двумя процессами, используйте advanced-команды:
 
@@ -320,6 +377,21 @@ python -m backend.scripts.run_local_eval_workflow
 использует его вместо запуска дублирующего процесса.
 Если persisted retrieval-артефакты устарели, wrapper обновит их до старта
 generation.
+
+Запуск frontend против локального backend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend dev URL по умолчанию — `http://127.0.0.1:5173`. Backend теперь
+разрешает локальные CORS-запросы от `127.0.0.1` и `localhost` на портах `5173`
+и `3000`.
+
+Если backend не работает на `http://127.0.0.1:8000`, задайте
+`VITE_API_BASE_URL` перед запуском frontend.
 
 ### Канонические Hopfield-тесты для запуска
 

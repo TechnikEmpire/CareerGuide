@@ -16,8 +16,11 @@ from backend.app.services.generation.generator_client import get_generator_clien
 from backend.app.services.generation.schemas import AnswerRequest
 from backend.app.services.memory.memory_store import default_memory_store
 from backend.app.services.retrieval.embeddings import get_embedding_provider
-from backend.app.services.retrieval.faiss_hnsw import build_retrieval_index
-from backend.app.services.retrieval.faiss_hnsw import get_faiss_hnsw_retrieval_service
+from backend.app.services.retrieval.faiss_hnsw import (
+    RetrievalArtifactsError,
+    build_retrieval_index,
+    get_faiss_hnsw_retrieval_service,
+)
 from backend.app.services.retrieval.esco_corpus import load_esco_retrieval_chunks
 from backend.app.services.retrieval.rerank import get_reranker_provider
 from backend.db.session import configure_database
@@ -198,6 +201,21 @@ def test_healthcheck_returns_ok() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_healthcheck_includes_local_frontend_cors_headers() -> None:
+    """The backend should allow the local frontend dev server to call the API."""
+
+    client = TestClient(create_app())
+    response = client.options(
+        "/health",
+        headers={
+            "Origin": "http://127.0.0.1:5173",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
 def test_retrieval_preview_returns_ranked_chunks() -> None:
     """The retrieval endpoint should return real ESCO-backed chunks."""
 
@@ -367,6 +385,32 @@ def test_answer_flow_supports_hopfield_top1_mode() -> None:
     finally:
         settings.memory_hopfield_mode = previous_mode
         settings.memory_hopfield_top_k = previous_top_k
+
+
+def test_career_plan_returns_503_when_retrieval_artifacts_are_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Retrieval artifact failures should surface as service errors, not raw 500s."""
+
+    from backend.app.api import assistant as assistant_api
+
+    def fail(_request):
+        raise RetrievalArtifactsError("Retrieval artifacts are missing or stale.")
+
+    monkeypatch.setattr(assistant_api, "generate_career_plan_response", fail)
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/career/plan",
+        json={
+            "user_id": "memory-user",
+            "goal": "Build a transition plan into data analytics",
+            "target_role": "Data Analyst",
+        },
+    )
+
+    assert response.status_code == 503
+    assert "Retrieval artifacts are missing or stale." in response.json()["detail"]
 
 
 def test_answer_flow_supports_hopfield_topk_mode() -> None:

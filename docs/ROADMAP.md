@@ -37,7 +37,8 @@ For the short-term snapshot, use `docs/STATUS.md`.
 | 8. Joint RAG + memory generation | in_progress | The production answer path now merges dense retrieval with persisted memory summary, but tracked outputs for `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` are still pending. |
 | 9. Safety and refusal behavior | scaffolded | There is a minimal scope guard, but the real risk-policy layer is not complete. |
 | 10. Evaluation harness | in_progress | Canonical retrieval qrels, answer-evaluation cases, score utilities, dense-only tuning export, and answer-export tooling now exist. The dense-only elbow is locked at `top_k=10`, explicit citation export is now working, and the next work is extending the harness to `RAG-only` versus `RAG + memory` comparison. |
-| 11. Optional browser inference experiment | optional | Explicitly deferred until the backend-first system is stable. |
+| 11. Web UI v1 | in_progress | A lightweight React + Vite frontend now exists with profile selection, chat, citations, memory-used display, structured plan generation, and memory inspection. Save/reload plan flow and polish are still open. |
+| 12. Optional browser inference experiment | optional | Explicitly deferred until the backend-first system is stable. |
 
 ### Current Drift Notes
 
@@ -50,15 +51,15 @@ For the short-term snapshot, use `docs/STATUS.md`.
 
 The most important next implementation path is now:
 
-1. extend the evaluation harness to produce tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
-2. add explicit memory-debug traces and report-quality analysis artifacts
-3. run real-chat evaluation and threshold calibration for the live sentence-level extractor, especially on Russian negatives
-4. add explicit profile/artifact memory lifecycle operations
+1. finish the remaining `Web UI v1` slice, especially save/reload plan flow and Russian-first polish
+2. keep the remaining backend memory-evaluation items as post-first-version refinement work
+3. return later to tracked `RAG-only`, naive-memory, Hopfield-`top1`, and Hopfield-`topk` comparison outputs
+4. add later profile/artifact lifecycle operations after the first end-to-end web prototype is stable
 5. add later fine-grained type classification only after the binary runtime path is stable
 
-These should now be read as **post-first-version refinement work** for the
-backend, not as blockers for starting the web UI. The backend core loop is
-already implemented for the rapid prototype.
+The backend core loop is already implemented for the rapid prototype. The
+current critical path has therefore shifted to the thin web UI layer rather
+than more backend rewiring.
 
 ### Next Clean Boundary
 
@@ -115,7 +116,8 @@ active runtime baseline.
 | 8. Совместная генерация RAG + memory | in_progress | Production answer-path теперь объединяет dense retrieval и persisted memory summary, но tracked outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk` все еще впереди. |
 | 9. Safety и refusal behavior | scaffolded | Есть минимальная scope-защита, но полноценный risk-policy layer еще не завершен. |
 | 10. Evaluation harness | in_progress | Канонические retrieval qrels, answer-evaluation cases, scoring-утилиты, dense-only tuning export и answer-export tooling уже существуют. Dense-only elbow зафиксирован на `top_k=10`, explicit citation export теперь работает, и следующая работа — расширить harness до сравнения `RAG-only` и `RAG + memory`. |
-| 11. Optional browser inference experiment | optional | Явно отложено до тех пор, пока backend-first система не станет стабильной. |
+| 11. Web UI v1 | in_progress | Теперь уже существует легкий frontend на React + Vite с выбором профиля, чатом, citations, отображением memory-used, structured plan generation и memory inspection. Save/reload plan-flow и polish все еще впереди. |
+| 12. Optional browser inference experiment | optional | Явно отложено до тех пор, пока backend-first система не станет стабильной. |
 
 ### Текущие заметки о дрейфе
 
@@ -128,19 +130,14 @@ active runtime baseline.
 
 Наиболее важная следующая последовательность реализации теперь такая:
 
-1. расширить evaluation-harness так, чтобы он выпускал отслеживаемые outputs для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
-2. добавить явные memory-debug traces и report-quality артефакты анализа
-3. провести real-chat evaluation и калибровку threshold для live sentence-level extractor-а, особенно на Russian negatives
-4. добавить явные lifecycle-операции для profile/artifact memory
+1. завершить оставшийся slice `Web UI v1`, прежде всего save/reload plan-flow и Russian-first polish
+2. оставить оставшиеся backend memory-evaluation items как post-first-version refinement work
+3. позже вернуться к отслеживаемым comparison-output для `RAG-only`, naive-memory, Hopfield-`top1` и Hopfield-`topk`
+4. добавить lifecycle-операции для profile/artifact memory после стабилизации первого end-to-end web prototype
 5. добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path
 
-Теперь это следует трактовать как **post-first-version refinement work** для
-backend, а не как блокеры перед началом web UI. Core-loop backend уже
-реализован для rapid prototype.
-
-Теперь это следует трактовать как **post-first-version refinement work** для
-backend, а не как блокеры перед началом web UI. Core-loop backend уже
-реализован для rapid prototype.
+Core-loop backend уже реализован для rapid prototype. Поэтому текущий critical
+path сместился к тонкому web UI layer, а не к дополнительному backend rewiring.
 
 ### Следующая чистая граница
 

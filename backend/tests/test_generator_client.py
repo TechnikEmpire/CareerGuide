@@ -156,6 +156,67 @@ def test_extract_answer_payload_falls_back_to_plain_text_without_fake_citations(
     assert citations == []
 
 
+def test_extract_answer_payload_repairs_python_list_like_plain_text() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Remote-friendly role",
+                text="First chunk",
+                score=0.9,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        "['Data analyst', 'UX researcher', 'Technical writer']",
+        retrieval_context,
+        "What career paths fit me?",
+    )
+
+    assert answer == "- Data analyst\n- UX researcher\n- Technical writer"
+    assert citations == []
+
+
+def test_extract_answer_payload_reads_inline_citations_from_plain_text() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="chunk-1",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/1",
+                title="Data analyst",
+                text="First chunk",
+                score=0.9,
+            ),
+            RetrievedChunk(
+                chunk_id="chunk-2",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/2",
+                title="Project coordinator",
+                text="Second chunk",
+                score=0.8,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    answer, citations = _extract_answer_payload(
+        "Data analyst and project coordinator are the strongest current fits [1] [2].",
+        retrieval_context,
+        "What career paths fit me?",
+    )
+
+    assert answer == "Data analyst and project coordinator are the strongest current fits."
+    assert [chunk.chunk_id for chunk in citations] == ["chunk-1", "chunk-2"]
+
+
 def test_extract_answer_payload_strips_leading_question_restatement() -> None:
     retrieval_context = RetrievalContext(
         chunks=[

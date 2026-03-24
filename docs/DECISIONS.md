@@ -514,6 +514,48 @@ Last updated: 2026-03-23
 - Решение: Hopfield-layer не должен реализовывать второй отдельный dedupe-path. Он должен по-прежнему читать уже сохраненный и нормализованный набор `memory_items` и выполнять recall поверх этого списка.
 - Обоснование: Classifier по своей природе sentence-level, поэтому whole-turn classification смешивала бы в одно решение несвязанные факты, вопросы и chat-fragments. `pySBD` дает runtime легкий детерминированный bilingual sentence-splitter без еще одного model-call, а regex-fallback сохраняет работоспособность локального app-env, пока зависимости не обновлены. Повторное использование store-level dedupe сохраняет одну каноническую policy persistence вместо того, чтобы дробить логику memory-write по разным модулям.
 
+## D-035 Web UI Stack and Integration Boundary
+
+**English**
+
+- Status: active
+- Decision: The first real web UI should be a lightweight TypeScript React client built with Vite under `frontend/`, not a full AI-template app stack.
+- Decision: The frontend should talk directly to the existing FastAPI backend over HTTP and treat FastAPI as the single source of truth for chat, plan generation, retrieval grounding, and memory behavior.
+- Decision: The frontend v1 surface is intentionally narrow: profile selection, chat, citations, “memory used”, structured plan generation, and memory inspection.
+- Decision: Local backend CORS should explicitly allow the standard frontend dev origins on `127.0.0.1` and `localhost` for ports `5173` and `3000`.
+- Rationale: The repository already contains the real backend logic and evaluation story. Pulling in a second AI orchestration layer or a large template app would duplicate responsibilities, blur the system boundary, and make the prototype harder to explain and defend academically.
+- Constraint: The first UI slice should remain thin and fast to inspect. Save/reload flows, richer state management, and advanced frontend polish may follow later, but they should not replace the direct backend contract.
+
+**Русский**
+
+- Статус: активно
+- Решение: Первый реальный web UI должен быть легким TypeScript React-клиентом на базе Vite в каталоге `frontend/`, а не полным template app-stack для AI.
+- Решение: Frontend должен напрямую работать с существующим FastAPI-backend по HTTP и считать FastAPI единственным источником истины для chat, plan-generation, retrieval-grounding и поведения памяти.
+- Решение: Поверхность frontend v1 намеренно узкая: выбор профиля, чат, citations, “memory used”, structured plan generation и просмотр memory.
+- Решение: Локальный backend CORS должен явно разрешать стандартные frontend dev-origins на `127.0.0.1` и `localhost` для портов `5173` и `3000`.
+- Обоснование: Репозиторий уже содержит реальную backend-логику и историю evaluation. Добавление второго AI orchestration-layer или большого template app привело бы к дублированию ответственности, размытию границы системы и усложнило бы объяснение и академическую защиту прототипа.
+- Ограничение: Первый UI-slice должен оставаться тонким и быстрым для анализа. Save/reload-flow, более богатое state-management и более продвинутая frontend-polish могут появиться позже, но они не должны заменять прямой backend-контракт.
+
+## D-036 Direct Answer Contract: Plain Text With Inline Evidence Refs
+
+**English**
+
+- Status: active
+- Decision: Direct chat answers should no longer force the generator to emit JSON.
+- Decision: The answer-generation prompt should request plain text with inline evidence markers like `[1]` and `[2]`, while the backend extracts those references into the structured API response.
+- Decision: Structured JSON remains appropriate for explicitly structured outputs like career plans, but it is no longer the preferred contract for conversational answers.
+- Decision: Conversational chat answers should sound like normal career coaching, not like source-dump summaries. Exploratory fit questions should prefer tentative options plus one short follow-up question over encyclopedic explanation.
+- Rationale: The local small-model stack follows rigid JSON less reliably than it follows short plain-text answer instructions, and forcing JSON made the user-visible chat output feel mechanical and brittle.
+
+**Русский**
+
+- Статус: активно
+- Решение: Прямые chat-ответы больше не должны заставлять generator выдавать JSON.
+- Решение: Prompt для answer-generation должен запрашивать plain-text с inline-маркерами evidence вроде `[1]` и `[2]`, а backend должен извлекать эти ссылки в структурированный API-response.
+- Решение: Структурированный JSON остается уместным для явно структурированных output, таких как career plan, но больше не является предпочтительным контрактом для conversational answer.
+- Решение: Conversational chat-ответы должны звучать как нормальный карьерный коучинг, а не как summary source-дампа. Для exploratory fit-вопросов предпочтительны осторожные варианты и один короткий follow-up question вместо энциклопедического объяснения.
+- Обоснование: Локальный стек small-model надежнее следует коротким инструкциям для plain-text answer, чем жесткому JSON-контракту, а принудительный JSON делал chat-output для пользователя механическим и хрупким.
+
 ## Decision Maintenance Rule
 
 **English**

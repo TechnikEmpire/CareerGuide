@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api import assistant, eval as eval_api, memory, retrieval
 from backend.app.config import settings
@@ -18,6 +19,15 @@ def create_app() -> FastAPI:
         debug=settings.debug,
         summary="Academic proof-of-concept backend for grounded career guidance.",
     )
+
+    if settings.frontend_dev_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.frontend_dev_origins,
+            allow_credentials=False,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     @app.on_event("startup")
     def on_startup() -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+import subprocess
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -63,6 +64,34 @@ def build_uvicorn_command(args: argparse.Namespace) -> list[str]:
     return command
 
 
+def ensure_retrieval_artifacts(
+    env: dict[str, str],
+    *,
+    inspect_status=None,
+    run_command=None,
+) -> None:
+    """Repair stale retrieval artifacts before starting the backend server."""
+
+    if inspect_status is None:
+        from backend.app.services.retrieval.faiss_hnsw import inspect_retrieval_artifacts
+
+        inspect_status = inspect_retrieval_artifacts
+    if run_command is None:
+        run_command = subprocess.run
+
+    artifact_status = inspect_status()
+    if artifact_status.sqlite_current and artifact_status.faiss_current:
+        return
+
+    print("Refreshing retrieval artifacts before starting the backend server.")
+    run_command(
+        [sys.executable, "-m", "backend.scripts.build_retrieval_index"],
+        check=True,
+        env=env,
+        cwd=REPO_ROOT,
+    )
+
+
 def main() -> None:
     args = parse_args()
     env_local_path = REPO_ROOT / ".env.local"
@@ -78,6 +107,7 @@ def main() -> None:
         env.setdefault("HF_HUB_OFFLINE", "1")
         env.setdefault("TRANSFORMERS_OFFLINE", "1")
 
+    ensure_retrieval_artifacts(env)
     command = build_uvicorn_command(args)
     os.execvpe(command[0], command, env)
 

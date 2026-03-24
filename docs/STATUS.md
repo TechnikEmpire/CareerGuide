@@ -10,8 +10,8 @@ Last updated: 2026-03-23
 
 Foundational scaffold plus tracked ESCO source artifacts, a Qwen3-targeted
 FAISS-backed dense retrieval stack, a validated end-to-end baseline RAG path,
-and the first real embedding-based Hopfield memory slice now wired into the
-live answer flow.
+the first real embedding-based Hopfield memory slice now wired into the live
+answer flow, and the first real web UI slice now wired to the live backend.
 
 ### What Is Already Done
 
@@ -54,6 +54,9 @@ live answer flow.
 - The live prompt path now summarizes persisted memory through a basic non-trainable Hopfield recall step over real embedding vectors.
 - Unit tests now cover the current Hopfield recall modes in `backend/tests/test_hopfield_memory.py`.
 - The backend dev-server wrapper now builds reload globs as relative patterns, and that behavior is covered by `backend/tests/test_dev_server_scripts.py`.
+- A lightweight React + Vite web UI now exists under `frontend/`.
+- The first UI slice now covers profile selection, grounded chat, citations, “memory used”, structured plan generation, and memory inspection.
+- The backend now allows standard local frontend dev origins through explicit CORS configuration.
 
 ### Current Completion Boundary
 
@@ -85,6 +88,7 @@ Boundary result:
 
 ### What Is In Progress
 
+- Finishing the remaining `Web UI v1` slice, especially save/reload plan flow and Russian-first polish.
 - Profile and artifact memory implementation beyond the current `memory_items` slice.
 - Extending the evaluation harness from baseline RAG validation into `RAG-only` versus naive-memory versus Hopfield-memory comparison.
 - Measuring and calibrating the live sentence-level extractor beyond the current synthetic-only evidence.
@@ -129,11 +133,10 @@ refinement work rather than prerequisites for beginning the web UI:
 
 ### Immediate Next Steps
 
-1. Add canonical outputs for `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1`, and `RAG + Hopfield topk`.
-2. Add memory-focused debug artifacts so the associative-read behavior is inspectable.
-3. Run Russian-first real-chat evaluation and threshold calibration for the live sentence-level extractor.
-4. Add explicit profile/artifact memory editing plus lifecycle controls.
-5. Add later fine-grained type classification only after the binary runtime path is stable.
+1. Finish the remaining `Web UI v1` slice, especially save/reload plan flow.
+2. Tighten the UI's Russian-first copy and overall presentation polish.
+3. Add minimal UI-facing safety and refusal presentation where the backend declines scope.
+4. Keep the remaining backend memory-evaluation items as post-first-version refinement work.
 
 ### Current Risks and Notes
 
@@ -146,6 +149,7 @@ refinement work rather than prerequisites for beginning the web UI:
 - The preferred runtime splitter is now `pySBD`, but environments that have not yet been refreshed from `requirements.txt` will fall back to regex sentence splitting.
 - The binary extractor metrics are encouraging on the tracked synthetic split, but the corpus still contains some noisy sentences. Synthetic held-out scores therefore overstate real-chat readiness.
 - The current repo is still answer-first rather than artifact-first. That is acceptable for the baseline RAG milestone, but the planned structured outputs and artifact reuse remain open work.
+- The current web UI is intentionally thin and direct-to-backend. That is the right tradeoff for the first prototype, but richer client-side state, plan persistence, and polish remain open.
 - The latest `direct_answer` contract tightening and the dev-server reload-watch exclusions are implemented in code but should still be treated as pending smoke revalidation.
 - ESCO CSV files contain multiline quoted fields, so raw line counts are not reliable record counts. Parsing must use a proper CSV reader.
 - Smoke tests still force deterministic retrieval providers so they remain fast and independent of model downloads. Production defaults point at Qwen3.
@@ -178,6 +182,12 @@ refinement work rather than prerequisites for beginning the web UI:
   - current vector basis=`active real semantic embedding stack via the retrieval embedder`
   - active recall modes=`Hopfield top1 recall and Hopfield topk superposed recall`
   - current top-k implementation=`exact top-k masking plus renormalization, not differentiable ksoftmax`
+- Frontend:
+  - stack=`React + Vite + TypeScript`
+  - current surfaces=`profile selection, chat, citations, memory-used display, plan generation, memory inspection`
+  - backend integration=`direct HTTP calls to FastAPI endpoints`
+  - default dev URL=`http://127.0.0.1:5173`
+  - configurable backend base URL=`VITE_API_BASE_URL`
 - Memory-extraction tooling:
   - tracked raw corpus=`tooling/memory_extraction/data/synthetic_memory_sentences_v4.jsonl`
   - corpus size=`2500` sentence-level examples
@@ -221,7 +231,8 @@ refinement work rather than prerequisites for beginning the web UI:
 Базовый scaffold плюс отслеживаемые ESCO source-артефакты, dense retrieval
 stack на базе FAISS для Qwen3, валидированный end-to-end baseline RAG path и
 теперь уже первый реальный embedding-based Hopfield slice для memory,
-подключенный к live answer-flow.
+подключенный к live answer-flow, а также первый реальный slice web UI,
+подключенный к live-backend.
 
 ### Что уже сделано
 
@@ -264,6 +275,9 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 - Live prompt-path теперь суммирует persisted memory через базовый нетренируемый Hopfield recall-step поверх реальных embedding-векторов.
 - Unit-тесты теперь покрывают текущие режимы Hopfield recall в `backend/tests/test_hopfield_memory.py`.
 - Wrapper backend dev-server теперь собирает reload-glob как relative patterns, и это поведение покрыто `backend/tests/test_dev_server_scripts.py`.
+- Теперь уже существует легкий web UI на React + Vite в каталоге `frontend/`.
+- Первый UI-slice уже покрывает выбор профиля, grounded-chat, citations, отображение “memory used”, structured plan generation и memory inspection.
+- Backend теперь явно разрешает стандартные local frontend dev-origins через CORS-конфигурацию.
 
 ### Текущая граница завершения
 
@@ -295,6 +309,7 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 
 ### Что сейчас в работе
 
+- Завершение оставшегося slice `Web UI v1`, прежде всего save/reload plan-flow и Russian-first polish.
 - Реализация profile- и artifact-memory поверх текущего slice `memory_items`.
 - Расширение evaluation harness от baseline RAG validation к сравнению naive-memory и Hopfield-memory поверх `RAG-only`.
 - Измерение и калибровка live sentence-level extractor-а за пределами текущих synthetic-only evidence.
@@ -318,11 +333,10 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 
 ### Ближайшие шаги
 
-1. Добавить канонические outputs для `RAG-only`, `RAG + naive memory`, `RAG + Hopfield top1` и `RAG + Hopfield topk`.
-2. Добавить memory-focused debug artifacts, чтобы associative-read был inspectable.
-3. Провести Russian-first real-chat evaluation и калибровку threshold для live sentence-level extractor-а.
-4. Добавить явное редактирование profile/artifact memory и lifecycle-controls.
-5. Добавлять более позднюю fine-grained type-classification только после стабилизации binary runtime-path.
+1. Завершить оставшийся slice `Web UI v1`, прежде всего save/reload plan-flow.
+2. Подтянуть Russian-first copy и общую presentation-polish UI.
+3. Добавить минимальную UI-подачу safety/refusal, когда backend отклоняет запрос по scope.
+4. Оставить оставшиеся backend memory-evaluation items как post-first-version refinement work.
 
 ### Текущие риски и заметки
 
@@ -335,6 +349,7 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
 - Предпочтительный runtime-splitter теперь `pySBD`, но env-ы, которые еще не были обновлены из `requirements.txt`, будут откатываться к regex sentence-splitting.
 - Метрики binary extractor выглядят обнадеживающе на отслеживаемом synthetic split, но corpus все еще содержит некоторый шум. Поэтому synthetic held-out scores завышают готовность к реальному чату.
 - Текущий repo все еще answer-first, а не artifact-first. Для baseline RAG это допустимо, но planned structured outputs и artifact reuse все еще остаются открытой работой.
+- Текущий web UI намеренно тонкий и direct-to-backend. Для первого prototype это правильный компромисс, но более богатое client-side state-management, plan persistence и polish все еще остаются открытой работой.
 - Последние изменения с `direct_answer` contract и исключениями для reload-watch реализованы в коде, но их все еще нужно считать ожидающими smoke-подтверждения.
 - ESCO CSV-файлы содержат multiline quoted fields, поэтому raw line counts не являются надежными record counts. Для разбора нужен полноценный CSV reader.
 - Smoke-тесты по-прежнему принудительно используют deterministic retrieval providers, чтобы оставаться быстрыми и независимыми от загрузки моделей. Production-default уже указывает на Qwen3.
@@ -367,6 +382,12 @@ stack на базе FAISS для Qwen3, валидированный end-to-end 
   - current vector basis=`активный real semantic embedding stack через retrieval-embedder`
   - active recall modes=`Hopfield top1 recall и Hopfield topk superposed recall`
   - current top-k implementation=`exact top-k masking plus renormalization, а не differentiable ksoftmax`
+- Frontend:
+  - stack=`React + Vite + TypeScript`
+  - текущие поверхности=`выбор профиля, чат, citations, отображение memory-used, генерация плана, memory inspection`
+  - backend integration=`прямые HTTP-запросы к FastAPI-endpoint`
+  - default dev URL=`http://127.0.0.1:5173`
+  - настраиваемый backend base URL=`VITE_API_BASE_URL`
 - Memory-extraction tooling:
   - tracked raw corpus=`tooling/memory_extraction/data/synthetic_memory_sentences_v4.jsonl`
   - размер corpus=`2500` sentence-level примеров

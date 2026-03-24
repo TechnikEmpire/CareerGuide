@@ -55,6 +55,15 @@ def _default_memory_extraction_model_path() -> Path:
     )
 
 
+def _default_frontend_dev_origins() -> list[str]:
+    return [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://localhost:3000",
+    ]
+
+
 class AppSettings(BaseSettings):
     """Environment-driven backend settings."""
 
@@ -62,6 +71,7 @@ class AppSettings(BaseSettings):
     app_env: str = "development"
     debug: bool = True
     database_url: str = Field(default_factory=_default_database_url)
+    frontend_dev_origins: list[str] = Field(default_factory=_default_frontend_dev_origins)
     default_top_k: int = 10
     memory_vector_size: int = 32
     memory_extraction_backend: str = "bilstm"

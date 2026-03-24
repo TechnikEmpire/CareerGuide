@@ -1,15 +1,27 @@
 # Frontend Source Layout
 
-This folder will hold the web UI once the backend contracts stabilize.
+This folder now contains the first implemented UI slice.
 
-- `pages/` for route-level views
-- `components/` for reusable UI elements
-- `api/` for frontend API bindings
-- `state/` for client-side state logic
+Current structure:
 
-Эта папка будет содержать web UI после стабилизации backend-контрактов.
+- `App.tsx` for the single-page shell and state wiring
+- `api/` for backend HTTP bindings
+- `components/` for reusable presentation blocks
+- `main.tsx` for client bootstrap
+- `styles.css` for the current visual system
 
-- `pages/` для route-level представлений
-- `components/` для переиспользуемых UI-элементов
-- `api/` для frontend API bindings
-- `state/` для client-side state logic
+There is intentionally no router, global store, or frontend-side AI layer yet.
+The current UI stays thin and talks directly to the FastAPI backend.
+
+Эта папка теперь уже содержит первый реализованный slice UI.
+
+Текущая структура:
+
+- `App.tsx` для single-page shell и основной wiring логики состояния
+- `api/` для HTTP-binding к backend
+- `components/` для переиспользуемых UI-блоков
+- `main.tsx` для bootstrap клиентского приложения
+- `styles.css` для текущей visual-system
+
+Маршрутизатор, global store и frontend-side AI-layer пока намеренно не
+добавляются. Текущий UI остается тонким и напрямую работает с FastAPI-backend.

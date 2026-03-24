@@ -25,6 +25,7 @@ class IndexedChunk:
     """In-memory retrieval chunk with its persisted identity."""
 
     chunk_id: str
+    chunk_type: str
     source_name: str
     source_url: str
     title: str
@@ -64,6 +65,10 @@ class RetrievalArtifactStatus:
     manifest_path: Path
     sqlite_current: bool
     faiss_current: bool
+
+
+class RetrievalArtifactsError(RuntimeError):
+    """Raised when the retrieval index or persisted chunk rows are unavailable."""
 
 
 def _embedding_to_bytes(values: tuple[float, ...]) -> bytes:
@@ -334,6 +339,7 @@ class FaissHnswRetrievalService:
             retrieved.append(
                 RetrievedChunk(
                     chunk_id=chunk.chunk_id,
+                    chunk_type=chunk.chunk_type,
                     source_name=chunk.source_name,
                     source_url=chunk.source_url,
                     title=chunk.title,
@@ -390,6 +396,7 @@ class FaissHnswRetrievalService:
         self._chunks = [
             IndexedChunk(
                 chunk_id=row.chunk_id,
+                chunk_type=row.chunk_type,
                 source_name=row.source_name,
                 source_url=row.source_url,
                 title=row.title,
@@ -414,7 +421,7 @@ class FaissHnswRetrievalService:
         if sqlite_current and faiss_current:
             return
 
-        raise RuntimeError(
+        raise RetrievalArtifactsError(
             "Retrieval artifacts are missing or stale. "
             "Run `python -m backend.scripts.build_retrieval_index` before querying the API."
         )

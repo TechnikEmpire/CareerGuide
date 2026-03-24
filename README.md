@@ -114,6 +114,18 @@ segments, каждый segment независимо классифицирует
 upsert-ятся в `memory_items`, а существующий Hopfield-read работает уже поверх
 этого дедуплицированного persistent store.
 
+The repository now also contains the first real web UI slice under `frontend/`.
+It is a lightweight React + Vite client that talks directly to the existing
+FastAPI backend instead of introducing a second AI orchestration layer. The
+current UI already covers profile selection, chat, citations, “memory used”,
+structured plan generation, and a memory inspector backed by `/memory/list`.
+
+Репозиторий теперь также содержит первый реальный slice web UI в `frontend/`.
+Это легкий клиент на React + Vite, который напрямую работает с существующим
+FastAPI-backend и не вводит второй orchestration-layer для AI. Текущий UI уже
+поддерживает выбор профиля, чат, citations, отображение “memory used”,
+structured plan generation и memory inspector поверх `/memory/list`.
+
 ## Authoritative Repository Docs
 
 - `AGENTS.md` - canonical working guide for AI coding agents
@@ -163,6 +175,36 @@ Quick test command:
 ```bash
 python -m pytest backend/tests -q
 ```
+
+Frontend install and build:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+Run the frontend dev server:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Default frontend URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+Default backend API base URL expected by the frontend:
+
+```text
+http://127.0.0.1:8000
+```
+
+If the backend runs elsewhere, set `VITE_API_BASE_URL` before starting the
+frontend.
 
 Targeted tests for the current Hopfield-memory slice:
 
@@ -225,7 +267,9 @@ python -m backend.scripts.run_local_app_stack --reload
 ```
 
 The single stack command starts the model runtime and the FastAPI app together.
-If the local generation server is already running, it reuses it.
+If the local generation server is already running, it reuses it. The backend
+startup path now also repairs stale retrieval artifacts automatically before
+serving requests.
 
 `Baseline RAG v1 Complete` is now the closed baseline boundary for the current
 scope. The active milestone is `Memory Layer v1 Integrated`: user memory now
@@ -298,6 +342,36 @@ careerguide
 python -m pytest backend/tests -q
 ```
 
+Установка frontend и проверка сборки:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+Запуск frontend dev-server:
+
+```bash
+cd frontend
+npm run dev
+```
+
+URL frontend по умолчанию:
+
+```text
+http://127.0.0.1:5173
+```
+
+Backend API base URL по умолчанию, который ожидает frontend:
+
+```text
+http://127.0.0.1:8000
+```
+
+Если backend работает в другом месте, задайте `VITE_API_BASE_URL` перед
+запуском frontend.
+
 Целевые тесты для текущего Hopfield-memory slice:
 
 ```bash
@@ -357,7 +431,9 @@ python -m backend.scripts.run_local_app_stack --reload
 ```
 
 Единая команда stack запускает runtime модели и FastAPI app вместе. Если
-локальный generation-server уже работает, она повторно использует его.
+локальный generation-server уже работает, она повторно использует его. Startup
+backend теперь также автоматически восстанавливает устаревшие
+retrieval-артефакты до начала обслуживания запросов.
 
 Канонические persisted retrieval-eval output теперь находятся в:
 

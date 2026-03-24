@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 from difflib import SequenceMatcher
 from functools import lru_cache
 import json
@@ -31,6 +32,7 @@ _PARTIAL_REFS_PATTERN = re.compile(
     flags=re.DOTALL,
 )
 _INLINE_REF_PATTERN = re.compile(r"\[(\d+)\]")
+_INLINE_REF_STRIP_PATTERN = re.compile(r"\s*\[\d+\](?=(?:\s|[.,;:!?)]|$))")
 _LEADING_SENTENCE_PATTERN = re.compile(r"^\s*(?P<sentence>.+?(?:[.!?](?:\s|$)|$))", flags=re.DOTALL)
 _WORD_PATTERN = re.compile(r"\w+", flags=re.UNICODE)
 
@@ -143,14 +145,20 @@ class LlamaCppGeneratorClient:
         system_prompt = (
             "You are a grounded career guidance assistant. "
             "Answer only from the supplied evidence and memory summary. "
-            "Return only valid JSON with keys direct_answer and cited_refs. "
+            "Return plain text only, not JSON. "
+            "Sound like a thoughtful career coach in a normal conversation, not a database search result. "
+            "Translate evidence into plain human advice rather than echoing source labels. "
             "If the evidence is insufficient, say so plainly. "
             "Do not reveal chain-of-thought or thinking tags. "
             "Follow the requested answer language exactly. "
             "Return a complete final answer and do not stop mid-sentence. "
-            "The direct_answer field must start immediately with the real answer or recommendation. "
+            "Start immediately with the real answer or recommendation. "
             "Do not repeat or paraphrase the user's request. "
-            "Use cited_refs to name the numbered evidence items like 1 or 2. "
+            "Avoid phrases like 'according to the evidence', 'the retrieved evidence', or 'as per'. "
+            "Never present a skill, task, or counseling service as if it were itself a career path. "
+            "If the evidence mostly covers skills rather than occupations, say that briefly and ask a short clarifying question instead of pretending the skills are jobs. "
+            "If the evidence is too generic for confident role suggestions, ask one short follow-up question about strengths, interests, or preferred industries. "
+            "Use inline citations like [1] or [2] for evidence references. "
             "Cite only evidence references that directly support the final answer."
         )
         raw_text = self._chat_completion(
@@ -304,12 +312,15 @@ def _extract_answer_payload(
     except GenerationClientError:
         partial_answer, partial_refs = _extract_partial_answer_fields(cleaned)
         if partial_answer is not None:
-            citations = _resolve_citation_refs(partial_refs, retrieval_context)
-            return _strip_question_restatement(partial_answer, question), citations
+            inline_refs = _INLINE_REF_PATTERN.findall(partial_answer)
+            citations = _resolve_citation_refs(partial_refs or inline_refs, retrieval_context)
+            cleaned_answer = _normalize_answer_text(_strip_question_restatement(partial_answer, question))
+            return _strip_inline_refs(cleaned_answer), citations
         citations = _resolve_citation_refs(_INLINE_REF_PATTERN.findall(cleaned), retrieval_context)
-        return _strip_question_restatement(cleaned, question), citations
+        cleaned_answer = _normalize_answer_text(_strip_question_restatement(cleaned, question))
+        return _strip_inline_refs(cleaned_answer), citations
 
-    answer = str(payload.get("direct_answer") or payload.get("answer") or "").strip()
+    answer = _normalize_answer_value(payload.get("direct_answer") or payload.get("answer") or "").strip()
     if not answer:
         raise GenerationClientError("The generation server returned an empty answer payload.")
 
@@ -320,7 +331,46 @@ def _extract_answer_payload(
         raise GenerationClientError("The generation server returned invalid cited_refs.")
 
     citations = _resolve_citation_refs(cited_refs_raw, retrieval_context)
-    return _strip_question_restatement(answer, question), citations
+    return _strip_inline_refs(_strip_question_restatement(answer, question)), citations
+
+
+def _normalize_answer_value(value: Any) -> str:
+    """Convert odd model payloads into a displayable answer string."""
+
+    if isinstance(value, list):
+        items = [str(item).strip() for item in value if str(item).strip()]
+        return "\n".join(f"- {item}" for item in items)
+    return _normalize_answer_text(str(value))
+
+
+def _normalize_answer_text(text: str) -> str:
+    """Repair common small-model answer formatting failures."""
+
+    cleaned = text.strip()
+    if not cleaned:
+        return cleaned
+
+    if cleaned.startswith("[") and cleaned.endswith("]"):
+        try:
+            parsed = ast.literal_eval(cleaned)
+        except (SyntaxError, ValueError):
+            return cleaned
+        if isinstance(parsed, (list, tuple)):
+            items = [str(item).strip() for item in parsed if str(item).strip()]
+            if items:
+                return "\n".join(f"- {item}" for item in items)
+
+    return cleaned
+
+
+def _strip_inline_refs(answer: str) -> str:
+    """Remove inline citation markers from the displayed answer text."""
+
+    stripped = _INLINE_REF_STRIP_PATTERN.sub("", answer)
+    stripped = re.sub(r"\s+([.,;:!?])", r"\1", stripped)
+    stripped = re.sub(r"[ \t]{2,}", " ", stripped)
+    stripped = re.sub(r"\n{3,}", "\n\n", stripped)
+    return stripped.strip()
 
 
 def _extract_partial_answer_fields(text: str) -> tuple[str | None, list[str]]:

@@ -15,6 +15,7 @@ careerguide
 ### Prerequisites
 
 - Conda, Miniconda, or Anaconda is installed
+- Node.js 18+ and `npm` are installed for the web UI
 - You can open a terminal in the repository root
 - `requirements.txt` is present in the repository root
 
@@ -143,6 +144,49 @@ python -m pytest backend/tests -v
 The smoke tests build a temporary deterministic retrieval index automatically,
 so they do not require the real Qwen3 retrieval models or the persisted FAISS
 artifacts.
+
+### Setting Up The Frontend
+
+The first web UI baseline now lives under `frontend/` and uses React + Vite.
+
+Install the frontend dependencies from the repository root:
+
+```bash
+cd frontend
+npm install
+```
+
+Verify the frontend bundle:
+
+```bash
+npm run build
+```
+
+Run the frontend development server:
+
+```bash
+npm run dev
+```
+
+Default frontend dev URL:
+
+```text
+http://127.0.0.1:5173
+```
+
+The frontend expects the FastAPI backend at:
+
+```text
+http://127.0.0.1:8000
+```
+
+If the backend runs on a different host or port, set:
+
+```bash
+export VITE_API_BASE_URL=http://HOST:PORT
+```
+
+before starting `npm run dev`.
 
 ### Building the Retrieval Index
 
@@ -481,6 +525,7 @@ careerguide
 ### Предварительные требования
 
 - установлен Conda, Miniconda или Anaconda
+- для web UI установлен Node.js 18+ и `npm`
 - вы можете открыть терминал в корне репозитория
 - в корне репозитория присутствует `requirements.txt`
 
@@ -608,6 +653,50 @@ python -m pytest backend/tests -v
 
 Smoke-тесты автоматически собирают временный deterministic retrieval-index, поэтому
 им не нужны реальные retrieval-модели Qwen3 и сохраненные FAISS-артефакты.
+
+### Настройка Frontend
+
+Первый baseline web UI теперь находится в `frontend/` и использует React +
+Vite.
+
+Установите frontend-зависимости из корня репозитория:
+
+```bash
+cd frontend
+npm install
+```
+
+Проверьте, что frontend-бандл собирается:
+
+```bash
+npm run build
+```
+
+Запустите frontend dev-server:
+
+```bash
+npm run dev
+```
+
+URL frontend по умолчанию:
+
+```text
+http://127.0.0.1:5173
+```
+
+Frontend по умолчанию ожидает FastAPI-backend по адресу:
+
+```text
+http://127.0.0.1:8000
+```
+
+Если backend работает на другом host или port, задайте:
+
+```bash
+export VITE_API_BASE_URL=http://HOST:PORT
+```
+
+перед запуском `npm run dev`.
 
 ### Сборка Retrieval-Index
 
