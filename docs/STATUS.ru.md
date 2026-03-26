@@ -1,7 +1,7 @@
 # Project Status
 
 
-Последнее обновление: 2026-03-24
+Последнее обновление: 2026-03-26
 
 ### Текущая фаза
 
@@ -18,6 +18,7 @@
 - persistent memory storage и Hopfield-style memory recall
 - structured career plans с schedule metadata и `.ics`-экспортом
 - single deployment-image, который раздает SPA и backend вместе
+- автоматический SSH-based rollout из GitHub Actions на production Linode host
 
 Оставшаяся работа больше не является «отсутствующей core-функциональностью
 продукта». Теперь это optional polish, research-extension work или более
@@ -41,6 +42,7 @@
 - Содержит реальный frontend для chat, plan generation, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
 - Раздает собранный frontend прямо из backend в single-image deployment-path.
 - Собирает и публикует deployable container-image через GitHub Actions после успешного CI на `main`.
+- Автоматически выкатывает production Linode-host после успешной публикации image на `main`.
 
 ### Что проверено
 
@@ -79,8 +81,6 @@
 - Более сильная real-chat Russian calibration для memory extraction
 - Report-quality debug exports и comparison traces
 - Cleanup-долг вроде deprecation warning для FastAPI `on_event`
-- Полностью автоматизированный host-side rollout из GHCR на Linode или другую VM
-
 ### Практический смысл слова «готово»
 
 Для первой thesis/demo-версии «готово» теперь означает:
@@ -115,6 +115,6 @@
 - Memory recall: Hopfield-style `top1` и `topk`
 - Plan artifact: structured steps + schedule metadata + calendar events + `.ics`-экспорт
 - Frontend stack: React + Vite + TypeScript
-- Deployment baseline: один Docker-image, same-origin SPA + backend, GHCR publish через GitHub Actions
+- Deployment baseline: один Docker-image, same-origin SPA + backend, GHCR publish + Linode rollout через GitHub Actions
 - Frontend surfaces: chat, citations, memory-used display, saved plan, preview календаря, список/удаление memory, local history
 - Prototype status: завершен для текущего v1-scope

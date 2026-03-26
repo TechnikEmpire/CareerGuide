@@ -1,0 +1,47 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Container Image
+    types:
+      - completed
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'
+      )
+    runs-on: ubuntu-latest
+    env:
+      GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
+      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+    steps:
+      - name: Roll out latest image on Linode
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          envs: GHCR_USERNAME,GHCR_TOKEN
+          script_stop: true
+          script: |
+            set -eu
+            cd /opt/careerguide
+
+            if [ -n "${GHCR_USERNAME:-}" ] && [ -n "${GHCR_TOKEN:-}" ]; then
+              echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            fi
+
+            docker compose pull app
+            docker compose up -d app
+            docker image prune -f

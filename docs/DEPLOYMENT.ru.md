@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Последнее обновление: 2026-03-24
+Последнее обновление: 2026-03-26
 
 ## Назначение
 
@@ -58,6 +58,7 @@ CI мог собирать deployable artifact из чистого checkout.
 - [backend/scripts/setup_local_models.py](../backend/scripts/setup_local_models.py)
 - [CI workflow](../.github/workflows/ci.yml)
 - [Container image workflow](../.github/workflows/container-image.yml)
+- [Deploy workflow](../.github/workflows/deploy.yml)
 
 ## Runtime-схема внутри контейнера
 
@@ -167,6 +168,7 @@ docker run -d \
 
 - [CI workflow](../.github/workflows/ci.yml)
 - [Container image workflow](../.github/workflows/container-image.yml)
+- [Deploy workflow](../.github/workflows/deploy.yml)
 
 Поведение такое:
 
@@ -176,19 +178,45 @@ docker run -d \
 3. Image публикуется в GHCR как:
    - `ghcr.io/<OWNER>/careerguide:latest`
    - `ghcr.io/<OWNER>/careerguide:sha-<commit>`
+4. `Deploy` запускается после успешного `Container Image` на `main`, подключается
+   по SSH к Linode-хосту, тянет новый `:latest` image и пересоздает app-service.
 
-## Что CI пока не автоматизирует
+## Secrets репозитория для автоматического деплоя
 
-Текущий baseline останавливается на опубликованном image.
+Для нового deploy-workflow задайте такие repository secrets:
 
-Он **пока не** выполняет автоматически:
+- `DEPLOY_HOST`
+- `DEPLOY_PORT`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
 
-- SSH на сервер Linode
-- `docker pull` нового image на host
-- перезапуск running-container
+Рекомендуемые значения для этого проекта:
 
-Этот последний шаг теперь считается optional deployment polish, а не blocker для
-наличия реального deployable-container pipeline.
+- `DEPLOY_HOST` = `careerplan.builders`
+- `DEPLOY_PORT` = ваш hardened SSH-port, например `2222`
+- `DEPLOY_USER` = `deploy`
+- `DEPLOY_SSH_KEY` = полное содержимое private-key для SSH-ключа пользователя `deploy`
+
+Если GHCR-package приватный, добавьте также:
+
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
+
+Если GHCR-package публичный, эти два registry-secret не нужны.
+
+## Что делает deploy-workflow
+
+Deploy-workflow:
+
+1. подключается к Linode-хосту по SSH как пользователь deploy
+2. при наличии registry-secret при необходимости логинится в GHCR
+3. выполняет `docker compose pull app`
+4. выполняет `docker compose up -d app`
+5. очищает старые dangling images
+
+Это намеренно простой механизм. Сервер уже хранит `compose.yaml`,
+`Caddyfile` и локальные runtime-override файлы, поэтому workflow лишь
+обновляет app-image и оставляет reverse-proxy нетронутым.
 
 ## Операционные оговорки
 
@@ -199,6 +227,8 @@ docker run -d \
 - Это baseline CPU-only deployment, поэтому модель будет функциональной, но не быстрой.
 - Retrieval-index уже baked into the image, но runtime SQLite database по умолчанию
   начинается пустой, если вы не смонтируете существующее состояние.
+- Deploy-workflow обновляет только `app` service. Это сделано специально,
+  потому что Caddy-конфигурация хранится локально на сервере, а не в репозитории.
 
 ## Рекомендуемые минимальные operator-checks
 

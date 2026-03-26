@@ -361,6 +361,7 @@
 - Решение: Текущий container-baseline может продолжать использовать существующий dual-process local app-stack runner, чтобы image запускал локальные `llama_cpp.server` и FastAPI вместе внутри одного inspectable unit.
 - Решение: Изменяемое runtime-state должно жить вне каталога с отслеживаемыми retrieval-artifacts. Контейнер должен хранить SQLite application-database в отдельном runtime-path, чтобы смонтированные volume не скрывали baked-in FAISS-index.
 - Решение: CI должен быть разделен на verification-workflow и container-image-workflow, причем container-image должен собираться и публиковаться только после успешных core CI-checks на `main`.
+- Решение: Rollout на production-host должен оставаться GitHub-driven и SSH-based. После успешной публикации image на `main` отдельный deploy-workflow должен подключаться к Linode-хосту, тянуть `:latest` и пересоздавать `app` service на месте.
 - Обоснование: Для текущего thesis/demo-scope single-image deployment — это самый быстрый воспроизводимый путь от репозитория до работающего сервера на обычной CPU-VM. Он сохраняет deployment-story понятной, не вводит лишнюю orchestration-сложность и при этом дает реальный deployable artifact через CI.
 
 ## Decision Maintenance Rule

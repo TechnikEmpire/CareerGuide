@@ -36,7 +36,7 @@
 | 9. Safety и refusal behavior | completed | Прототип уже блокирует unsupported или out-of-scope requests спокойным grounded refusal behavior. |
 | 10. Evaluation baseline | completed | Для текущего prototype-scope уже существуют retrieval qrels, answer-eval fixtures, scoring scripts, benchmark outputs и ключевые regression tests. |
 | 11. Web UI v1 | completed | Frontend уже покрывает chat, citations, memory, saved plans, study preferences, scheduled sessions, local history и `.ics`-экспорт. |
-| 12. Deployment baseline | completed | Репозиторий теперь собирает и публикует single-image container, который раздает frontend и backend вместе и включает публичные local runtime models. |
+| 12. Deployment baseline | completed | Репозиторий теперь собирает, публикует и автоматически выкатывает single-image container, который раздает frontend и backend вместе и включает публичные local runtime models. |
 | 13. Optional post-v1 refinement | optional | Все, что осталось, теперь является polish, research extension или thesis-strengthening work, а не отсутствующим product core. |
 
 ### Бэклог optional polish
@@ -54,7 +54,6 @@ prototype:
 - report-quality debug traces и export artifacts
 - learned Hopfield projections или differentiable `ksoftmax`
 - общий cleanup, например удаление FastAPI `on_event` deprecation path
-- полностью автоматизированный host-side rollout из GHCR на Linode или другую VM
 
 ### Текущая траектория
 

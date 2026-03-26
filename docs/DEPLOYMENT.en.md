@@ -1,6 +1,6 @@
 # Deployment Guide
 
-Last updated: 2026-03-24
+Last updated: 2026-03-26
 
 ## Purpose
 
@@ -58,6 +58,7 @@ The short version is:
 - [backend/scripts/setup_local_models.py](../backend/scripts/setup_local_models.py)
 - [CI workflow](../.github/workflows/ci.yml)
 - [Container image workflow](../.github/workflows/container-image.yml)
+- [Deploy workflow](../.github/workflows/deploy.yml)
 
 ## Runtime Shape Inside The Container
 
@@ -166,6 +167,7 @@ The repository now has two GitHub Actions workflows:
 
 - [CI workflow](../.github/workflows/ci.yml)
 - [Container image workflow](../.github/workflows/container-image.yml)
+- [Deploy workflow](../.github/workflows/deploy.yml)
 
 The behavior is:
 
@@ -175,19 +177,45 @@ The behavior is:
 3. The image is published to GHCR as:
    - `ghcr.io/<OWNER>/careerguide:latest`
    - `ghcr.io/<OWNER>/careerguide:sha-<commit>`
+4. `Deploy` runs after `Container Image` succeeds on `main`, SSHes into the
+   Linode host, pulls the new `:latest` image, and recreates the app service.
 
-## What CI Does Not Yet Automate
+## Repository Secrets For Automatic Deploy
 
-The current baseline stops at a published image.
+For the new deploy workflow, define these repository secrets:
 
-It does **not** yet automatically:
+- `DEPLOY_HOST`
+- `DEPLOY_PORT`
+- `DEPLOY_USER`
+- `DEPLOY_SSH_KEY`
 
-- SSH into the Linode server
-- pull the new image on the host
-- restart the running container
+The recommended values for this project are:
 
-That last step is now optional deployment polish, not a blocker for having a
-real deployable container pipeline.
+- `DEPLOY_HOST` = `careerplan.builders`
+- `DEPLOY_PORT` = your hardened SSH port such as `2222`
+- `DEPLOY_USER` = `deploy`
+- `DEPLOY_SSH_KEY` = the full private key contents for the deploy user's SSH key
+
+If the GHCR package is private, also define:
+
+- `GHCR_USERNAME`
+- `GHCR_TOKEN`
+
+If the GHCR package is public, those two registry secrets are not needed.
+
+## What The Deploy Workflow Does
+
+The deploy workflow:
+
+1. connects to the Linode host over SSH as the deploy user
+2. optionally logs into GHCR if registry secrets are present
+3. runs `docker compose pull app`
+4. runs `docker compose up -d app`
+5. prunes old dangling images
+
+This is intentionally simple. The server already owns the `compose.yaml`,
+`Caddyfile`, and local runtime override files, so the workflow only refreshes
+the app image and keeps the reverse proxy intact.
 
 ## Operational Caveats
 
@@ -199,6 +227,8 @@ real deployable container pipeline.
   not fast.
 - The retrieval index is already baked into the image, but the runtime SQLite
   database starts empty unless you mount existing state.
+- The deploy workflow refreshes only the `app` service. That is intentional
+  because the Caddy config is server-local rather than repo-authored.
 
 ## Recommended Minimum Operator Checks
 
