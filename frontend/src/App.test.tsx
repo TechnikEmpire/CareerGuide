@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
 import App from "./App";
+import { getUiText } from "./config/ui";
 
 describe("frontend UI language behavior", () => {
   it("defaults the UI language to Russian and persists it", async () => {
@@ -19,6 +20,7 @@ describe("frontend UI language behavior", () => {
 
   it("restores English from the stored language cookie", async () => {
     document.cookie = "careerguide_ui_language=en; Path=/";
+    const englishUi = getUiText("en");
 
     render(<App />);
 
@@ -27,7 +29,10 @@ describe("frontend UI language behavior", () => {
 
     await waitFor(() => {
       expect(document.documentElement.lang).toBe("en");
-      expect(document.title).toBe("CareerGuide");
+      expect(document.title).toBe(englishUi.metadata.title);
+      expect(document.querySelector('meta[name="description"]')?.getAttribute("content")).toBe(
+        englishUi.metadata.description,
+      );
     });
   });
 
