@@ -38,6 +38,7 @@ optional polish, research-extension work, or later thesis-improvement work.
 - Generates structured career plans with study preferences, workload metadata, and dated calendar sessions.
 - Exports saved plans as `.ics`.
 - Ships a real frontend for chat, plan generation, local conversation history, memory inspection, memory deletion, and refusal/scope UI states.
+- Stores frontend UI copy in per-language config files and lets the user switch between Russian and English, with Russian as the default.
 - Serves the built frontend from the backend in the single-image deployment path.
 - Builds and publishes a deployable container image through GitHub Actions after CI succeeds on `main`.
 - Automatically rolls the production Linode host forward after the image publish succeeds on `main`.
@@ -48,6 +49,7 @@ optional polish, research-extension work, or later thesis-improvement work.
   memory storage, Hopfield recall, plan scheduling, refusal behavior, and API
   routes.
 - The frontend builds successfully under Vite.
+- Frontend unit tests cover the UI language default, cookie restore, and RU/EN toggle persistence behavior.
 - Retrieval artifacts, evaluation fixtures, and scored evaluation outputs are
   present in the repository.
 - The schedule-aware plan artifact and `.ics` export path are implemented and

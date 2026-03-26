@@ -254,3 +254,4 @@ eval/out/*
 !eval/out/retrieval_scores_dense.json
 !eval/out/retrieval_scores_rerank.json
 /.ssh
+/Artifacts

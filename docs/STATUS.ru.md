@@ -40,6 +40,7 @@
 - Генерирует structured career plans с study-preferences, workload metadata и датированными calendar sessions.
 - Экспортирует сохраненные планы в `.ics`.
 - Содержит реальный frontend для chat, plan generation, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
+- Хранит frontend UI-copy в language-specific config-файлах и позволяет переключать интерфейс между русским и английским, оставляя русский языком по умолчанию.
 - Раздает собранный frontend прямо из backend в single-image deployment-path.
 - Собирает и публикует deployable container-image через GitHub Actions после успешного CI на `main`.
 - Автоматически выкатывает production Linode-host после успешной публикации image на `main`.
@@ -49,6 +50,7 @@
 - Backend-тесты покрывают retrieval, generation contracts, memory extraction,
   memory storage, Hopfield recall, plan scheduling, refusal behavior и API-routes.
 - Frontend успешно собирается через Vite.
+- Frontend unit-тесты покрывают язык интерфейса по умолчанию, восстановление выбора из cookie и сохранение RU/EN-переключателя.
 - Retrieval-артефакты, evaluation fixtures и scored evaluation outputs уже есть
   в репозитории.
 - Schedule-aware plan-artifact и `.ics`-экспорт реализованы и покрыты тестами.

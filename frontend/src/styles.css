@@ -166,6 +166,17 @@ a {
   gap: 12px;
 }
 
+.language-toggle-group {
+  display: grid;
+  gap: 8px;
+}
+
+.language-toggle-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
 .sidebar-field {
   display: grid;
   gap: 8px;
@@ -312,6 +323,11 @@ a {
 .sidebar-action-button.secondary,
 .toolbar-button.secondary {
   color: var(--muted-strong);
+}
+
+.toolbar-button.active {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: var(--border-strong);
 }
 
 .sidebar-nav-button.active {

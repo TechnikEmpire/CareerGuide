@@ -1,4 +1,5 @@
 import type { RetrievedChunk } from "../api/client";
+import type { UiText } from "../config/ui";
 import { CitationList } from "./CitationList";
 
 const SHOW_DEBUG_PANELS = import.meta.env.VITE_SHOW_DEBUG_PANELS === "true";
@@ -16,9 +17,10 @@ export type ConversationMessage = {
 
 type MessageCardProps = {
   message: ConversationMessage;
+  uiText: UiText;
 };
 
-export function MessageCard({ message }: MessageCardProps) {
+export function MessageCard({ message, uiText }: MessageCardProps) {
   const toneClass =
     message.role === "assistant"
       ? message.isError
@@ -30,10 +32,11 @@ export function MessageCard({ message }: MessageCardProps) {
   const roleLabel =
     message.role === "assistant"
       ? message.responseKind === "refusal"
-        ? "Scope note"
-        : "Coach"
-      : "You";
-  const detailSummary = message.responseKind === "refusal" ? "Why I paused here" : "Why this answer";
+        ? uiText.message.scopeNote
+        : uiText.message.coach
+      : uiText.message.you;
+  const detailSummary =
+    message.responseKind === "refusal" ? uiText.message.whyPaused : uiText.message.whyAnswer;
 
   return (
     <article className={toneClass}>
@@ -53,17 +56,17 @@ export function MessageCard({ message }: MessageCardProps) {
           {message.memorySummary ? (
             <section className="message-detail-block">
               <div className="message-detail-header">
-                <h4>Memory used</h4>
+                <h4>{uiText.message.memoryUsed}</h4>
               </div>
               <p className="detail-copy">{message.memorySummary}</p>
             </section>
           ) : null}
 
-          {message.citations?.length ? <CitationList citations={message.citations} /> : null}
+          {message.citations?.length ? <CitationList citations={message.citations} uiText={uiText} /> : null}
 
           {SHOW_DEBUG_PANELS && message.promptPreview ? (
             <details className="prompt-preview">
-              <summary>Developer prompt preview</summary>
+              <summary>{uiText.message.developerPromptPreview}</summary>
               <pre>{message.promptPreview}</pre>
             </details>
           ) : null}

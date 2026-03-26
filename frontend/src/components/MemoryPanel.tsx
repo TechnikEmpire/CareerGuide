@@ -1,4 +1,5 @@
 import type { MemoryItemPayload } from "../api/client";
+import type { UiText } from "../config/ui";
 
 type MemoryPanelProps = {
   userId: string;
@@ -9,6 +10,7 @@ type MemoryPanelProps = {
   onDelete: (item: MemoryItemPayload) => void;
   deletingMemoryId: string | null;
   isBusy: boolean;
+  uiText: UiText;
 };
 
 function renderConfidence(value: number): string {
@@ -24,48 +26,43 @@ export function MemoryPanel({
   onDelete,
   deletingMemoryId,
   isBusy,
+  uiText,
 }: MemoryPanelProps) {
   return (
     <section className="content-card memory-surface">
       <div className="content-card-header">
         <div>
-          <p className="sidebar-eyebrow">Associative memory</p>
-          <h3>Stored profile facts</h3>
+          <p className="sidebar-eyebrow">{uiText.memory.eyebrow}</p>
+          <h3>{uiText.memory.title}</h3>
         </div>
         <button className="toolbar-button" type="button" onClick={onRefresh} disabled={isBusy}>
-          Refresh
+          {uiText.memory.refresh}
         </button>
       </div>
 
       <dl className="meta-grid">
         <div>
-          <dt>Active user</dt>
+          <dt>{uiText.memory.activeUser}</dt>
           <dd>{userId}</dd>
         </div>
         <div>
-          <dt>Stored items</dt>
+          <dt>{uiText.memory.storedItems}</dt>
           <dd>{items.length}</dd>
         </div>
       </dl>
 
-      {isLoading ? <p className="panel-copy">Loading stored memory…</p> : null}
+      {isLoading ? <p className="panel-copy">{uiText.memory.loading}</p> : null}
       {error ? <p className="panel-error">{error}</p> : null}
 
       {!isLoading && !error && items.length === 0 ? (
         <div className="empty-panel">
-          <h4>No stored memory yet</h4>
-          <p>
-            Ask a question that includes a stable preference, goal, or constraint and the
-            backend should store it automatically.
-          </p>
+          <h4>{uiText.memory.emptyTitle}</h4>
+          <p>{uiText.memory.emptyDescription}</p>
         </div>
       ) : null}
 
       {items.length > 0 ? (
-        <p className="panel-copy">
-          This view shows the current long-term facts the backend may reuse in later
-          answers.
-        </p>
+        <p className="panel-copy">{uiText.memory.description}</p>
       ) : null}
 
       <ul className="memory-list">
@@ -74,7 +71,9 @@ export function MemoryPanel({
             <div className="memory-card-header">
               <div className="memory-card-meta">
                 <span className="pill">{item.category}</span>
-                <span className="metric">{renderConfidence(item.confidence)} confidence</span>
+                <span className="metric">
+                  {renderConfidence(item.confidence)} {uiText.memory.confidence}
+                </span>
               </div>
               <button
                 className="toolbar-button secondary memory-delete-button"
@@ -82,7 +81,7 @@ export function MemoryPanel({
                 onClick={() => onDelete(item)}
                 disabled={deletingMemoryId === item.id}
               >
-                {deletingMemoryId === item.id ? "Deleting…" : "Delete"}
+                {deletingMemoryId === item.id ? uiText.memory.deleting : uiText.memory.delete}
               </button>
             </div>
             <p>{item.text}</p>

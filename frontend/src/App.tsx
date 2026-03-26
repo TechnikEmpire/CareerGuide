@@ -13,34 +13,9 @@ import {
 import { CitationList } from "./components/CitationList";
 import { MemoryPanel } from "./components/MemoryPanel";
 import { MessageCard, type ConversationMessage } from "./components/MessageCard";
+import { getUiText, persistUiLanguage, readStoredUiLanguage, type UiLanguage } from "./config/ui";
 
 const MOBILE_SIDEBAR_BREAKPOINT = 980;
-
-const CHAT_PROMPTS = [
-  "Я хочу перейти в аналитику данных, но мне нужен спокойный темп работы.",
-  "I prefer remote work and async collaboration. What career paths fit me?",
-  "Я могу уделять обучению только 5 часов в неделю. С чего начать путь в UX?",
-  "Мне нужна работа без постоянных созвонов. Какие роли стоит рассмотреть?",
-];
-
-const PLAN_PROMPTS = [
-  {
-    goal: "Build a realistic transition plan into data analytics in 6 months",
-    targetRole: "Data Analyst",
-  },
-  {
-    goal: "Составить спокойный план перехода в product management без выгорания",
-    targetRole: "Product Manager",
-  },
-];
-
-const INITIAL_MESSAGE: ConversationMessage = {
-  id: "assistant-welcome",
-  role: "assistant",
-  text:
-    "Расскажите, какой формат работы вам подходит, чего вы хотите избежать и куда хотите двигаться. " +
-    "Я помогу сузить варианты и продолжить разговор по шагам.",
-};
 
 type AppView = "chat" | "plan" | "memory";
 
@@ -58,6 +33,15 @@ type SavedPlanBundle = {
   targetRole: string;
   savedAt: string;
 };
+
+function createInitialMessage(language: UiLanguage): ConversationMessage {
+  const uiText = getUiText(language);
+  return {
+    id: "assistant-welcome",
+    role: "assistant",
+    text: uiText.chat.initialAssistantMessage,
+  };
+}
 
 function isScopeLimitMessage(message: string | null | undefined): boolean {
   if (!message) {
@@ -89,11 +73,11 @@ function normalizeUserId(rawUserId: string): string {
   return normalized.length > 0 ? normalized : "demo-user";
 }
 
-function describeError(error: unknown): string {
+function describeError(error: unknown, fallbackMessage: string): string {
   if (error instanceof Error) {
     return error.message;
   }
-  return "The request failed.";
+  return fallbackMessage;
 }
 
 function conversationStorageKey(userId: string): string {
@@ -104,14 +88,15 @@ function planStorageKey(userId: string): string {
   return `careerguide:plan:${userId}`;
 }
 
-function createConversationSession(): ConversationSession {
+function createConversationSession(language: UiLanguage): ConversationSession {
+  const uiText = getUiText(language);
   const now = new Date().toISOString();
   return {
     id: makeMessageId("conversation"),
-    title: "New chat",
+    title: uiText.chat.newConversationTitle,
     createdAt: now,
     updatedAt: now,
-    messages: [INITIAL_MESSAGE],
+    messages: [createInitialMessage(language)],
   };
 }
 
@@ -145,10 +130,10 @@ function removeStorageKey(key: string): void {
   window.localStorage.removeItem(key);
 }
 
-function loadStoredConversations(userId: string): ConversationSession[] {
+function loadStoredConversations(userId: string, language: UiLanguage): ConversationSession[] {
   const stored = readStorageJson<ConversationSession[]>(conversationStorageKey(userId), []);
   if (!Array.isArray(stored) || stored.length === 0) {
-    return [createConversationSession()];
+    return [createConversationSession(language)];
   }
   return [...stored].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
@@ -157,10 +142,11 @@ function loadStoredPlan(userId: string): SavedPlanBundle | null {
   return readStorageJson<SavedPlanBundle | null>(planStorageKey(userId), null);
 }
 
-function deriveConversationTitle(messages: ConversationMessage[]): string {
+function deriveConversationTitle(messages: ConversationMessage[], language: UiLanguage): string {
+  const uiText = getUiText(language);
   const firstUserMessage = messages.find((message) => message.role === "user");
   if (!firstUserMessage) {
-    return "New chat";
+    return uiText.chat.newConversationTitle;
   }
 
   const normalized = firstUserMessage.text.replace(/\s+/g, " ").trim();
@@ -174,6 +160,7 @@ function updateConversationMessages(
   sessions: ConversationSession[],
   conversationId: string,
   transform: (messages: ConversationMessage[]) => ConversationMessage[],
+  language: UiLanguage,
 ): ConversationSession[] {
   return sessions
     .map((session) => {
@@ -184,7 +171,7 @@ function updateConversationMessages(
       const messages = transform(session.messages);
       return {
         ...session,
-        title: deriveConversationTitle(messages),
+        title: deriveConversationTitle(messages, language),
         updatedAt: new Date().toISOString(),
         messages,
       };
@@ -192,13 +179,13 @@ function updateConversationMessages(
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
 
-function formatTimestamp(value: string): string {
+function formatTimestamp(value: string, locale: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return "";
   }
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -206,12 +193,12 @@ function formatTimestamp(value: string): string {
   }).format(date);
 }
 
-function formatDateValue(value: string): string {
+function formatDateValue(value: string, locale: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -237,11 +224,12 @@ function defaultStudyStartDate(): string {
 function findActiveConversation(
   conversations: ConversationSession[],
   activeConversationId: string | null,
+  language: UiLanguage,
 ): ConversationSession {
   return (
     conversations.find((conversation) => conversation.id === activeConversationId) ??
     conversations[0] ??
-    createConversationSession()
+    createConversationSession(language)
   );
 }
 
@@ -252,14 +240,37 @@ function isMobileSidebarViewport(): boolean {
   return window.innerWidth <= MOBILE_SIDEBAR_BREAKPOINT;
 }
 
+function getStudyTimeLabel(
+  language: UiLanguage,
+  value: StudyPreferences["preferred_study_time"] | string,
+): string {
+  const uiText = getUiText(language);
+  if (value === "morning" || value === "afternoon" || value === "evening") {
+    return uiText.plan.studyTimeOptions[value];
+  }
+  return value;
+}
+
+function getWorkloadLabel(language: UiLanguage, value: string): string {
+  const uiText = getUiText(language);
+  if (value === "low" || value === "medium" || value === "high") {
+    return uiText.plan.workloadLabels[value];
+  }
+  return value;
+}
+
 export default function App() {
+  const [uiLanguage, setUiLanguage] = useState<UiLanguage>(() => readStoredUiLanguage());
+  const uiText = getUiText(uiLanguage);
   const [draftUserId, setDraftUserId] = useState("demo-user");
   const [activeUserId, setActiveUserId] = useState("demo-user");
   const [activeView, setActiveView] = useState<AppView>("chat");
   const [isMobileViewport, setIsMobileViewport] = useState(() => isMobileSidebarViewport());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => isMobileSidebarViewport());
   const [question, setQuestion] = useState("");
-  const [conversations, setConversations] = useState<ConversationSession[]>([createConversationSession()]);
+  const [conversations, setConversations] = useState<ConversationSession[]>([
+    createConversationSession(uiLanguage),
+  ]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isAnswerPending, setIsAnswerPending] = useState(false);
   const [goal, setGoal] = useState("");
@@ -278,7 +289,7 @@ export default function App() {
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
   const conversationEndRef = useRef<HTMLDivElement | null>(null);
 
-  const activeConversation = findActiveConversation(conversations, activeConversationId);
+  const activeConversation = findActiveConversation(conversations, activeConversationId, uiLanguage);
   const messages = activeConversation.messages;
   const hasUserMessages = messages.some((message) => message.role === "user");
   const hasSavedPlan = savedPlanAt !== null;
@@ -301,14 +312,29 @@ export default function App() {
       const items = await fetchMemories(userId);
       setMemories(items);
     } catch (error) {
-      setMemoryError(describeError(error));
+      setMemoryError(describeError(error, uiText.errors.requestFailed));
     } finally {
       setIsMemoryLoading(false);
     }
   }
 
   useEffect(() => {
-    const storedConversations = loadStoredConversations(activeUserId);
+    persistUiLanguage(uiLanguage);
+
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    document.documentElement.lang = uiText.metadata.htmlLang;
+    document.title = uiText.metadata.title;
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+      metaDescription.setAttribute("content", uiText.metadata.description);
+    }
+  }, [uiLanguage, uiText]);
+
+  useEffect(() => {
+    const storedConversations = loadStoredConversations(activeUserId, uiLanguage);
     setConversations(storedConversations);
     setActiveConversationId(storedConversations[0]?.id ?? null);
 
@@ -365,6 +391,39 @@ export default function App() {
   }, [activeUserId, conversations]);
 
   useEffect(() => {
+    setConversations((previous) => {
+      let changed = false;
+      const localizedWelcome = createInitialMessage(uiLanguage);
+      const nextConversations = previous.map((conversation) => {
+        const isDefaultWelcomeConversation =
+          conversation.messages.length === 1 &&
+          conversation.messages[0]?.id === "assistant-welcome" &&
+          conversation.messages[0]?.role === "assistant";
+
+        if (!isDefaultWelcomeConversation) {
+          return conversation;
+        }
+
+        if (
+          conversation.title === uiText.chat.newConversationTitle &&
+          conversation.messages[0].text === localizedWelcome.text
+        ) {
+          return conversation;
+        }
+
+        changed = true;
+        return {
+          ...conversation,
+          title: uiText.chat.newConversationTitle,
+          messages: [localizedWelcome],
+        };
+      });
+
+      return changed ? nextConversations : previous;
+    });
+  }, [uiLanguage, uiText.chat.initialAssistantMessage, uiText.chat.newConversationTitle]);
+
+  useEffect(() => {
     if (activeView !== "chat") {
       return;
     }
@@ -413,7 +472,7 @@ export default function App() {
   }
 
   function handleStartNewChat(): void {
-    const conversation = createConversationSession();
+    const conversation = createConversationSession(uiLanguage);
     setConversations((previous) => [conversation, ...previous]);
     setActiveConversationId(conversation.id);
     setActiveView("chat");
@@ -427,7 +486,7 @@ export default function App() {
     if (!canDeleteAllChats) {
       return;
     }
-    const freshConversation = createConversationSession();
+    const freshConversation = createConversationSession(uiLanguage);
     setConversations([freshConversation]);
     setActiveConversationId(freshConversation.id);
     setActiveView("chat");
@@ -437,7 +496,7 @@ export default function App() {
   function reloadSavedPlan(): void {
     const storedPlan = loadStoredPlan(activeUserId);
     if (!storedPlan) {
-      setPlanError("No saved plan exists for this profile yet.");
+      setPlanError(uiText.plan.noSavedPlanError);
       return;
     }
     setPlan(storedPlan.plan);
@@ -480,10 +539,12 @@ export default function App() {
     setQuestion("");
     setIsAnswerPending(true);
     setConversations((previous) =>
-      updateConversationMessages(previous, conversationId, (messagesBefore) => [
-        ...messagesBefore,
-        userMessage,
-      ]),
+      updateConversationMessages(
+        previous,
+        conversationId,
+        (messagesBefore) => [...messagesBefore, userMessage],
+        uiLanguage,
+      ),
     );
 
     try {
@@ -498,14 +559,16 @@ export default function App() {
         responseKind: response.response_kind === "refusal" ? "refusal" : "answer",
       };
       setConversations((previous) =>
-        updateConversationMessages(previous, conversationId, (messagesBefore) => [
-          ...messagesBefore,
-          assistantMessage,
-        ]),
+        updateConversationMessages(
+          previous,
+          conversationId,
+          (messagesBefore) => [...messagesBefore, assistantMessage],
+          uiLanguage,
+        ),
       );
       await refreshMemories(activeUserId);
     } catch (error) {
-      const errorText = describeError(error);
+      const errorText = describeError(error, uiText.errors.requestFailed);
       const errorMessage: ConversationMessage = {
         id: makeMessageId("assistant-error"),
         role: "assistant",
@@ -514,10 +577,12 @@ export default function App() {
         responseKind: isScopeLimitMessage(errorText) ? "refusal" : "answer",
       };
       setConversations((previous) =>
-        updateConversationMessages(previous, conversationId, (messagesBefore) => [
-          ...messagesBefore,
-          errorMessage,
-        ]),
+        updateConversationMessages(
+          previous,
+          conversationId,
+          (messagesBefore) => [...messagesBefore, errorMessage],
+          uiLanguage,
+        ),
       );
     } finally {
       setIsAnswerPending(false);
@@ -546,7 +611,7 @@ export default function App() {
         savedAt,
       });
     } catch (error) {
-      setPlanError(describeError(error));
+      setPlanError(describeError(error, uiText.errors.requestFailed));
     } finally {
       setIsPlanPending(false);
     }
@@ -557,7 +622,7 @@ export default function App() {
       return;
     }
     if (!plan.calendar_events?.length) {
-      setPlanError("Build or reload a scheduled plan before exporting a calendar file.");
+      setPlanError(uiText.plan.exportRequiresScheduleError);
       return;
     }
 
@@ -574,7 +639,7 @@ export default function App() {
       anchor.remove();
       window.URL.revokeObjectURL(objectUrl);
     } catch (error) {
-      setPlanError(describeError(error));
+      setPlanError(describeError(error, uiText.errors.requestFailed));
     } finally {
       setIsPlanExportPending(false);
     }
@@ -591,7 +656,7 @@ export default function App() {
       await deleteMemory(activeUserId, item.id);
       await refreshMemories(activeUserId);
     } catch (error) {
-      setMemoryError(describeError(error));
+      setMemoryError(describeError(error, uiText.errors.requestFailed));
     } finally {
       setDeletingMemoryId(null);
     }
@@ -617,23 +682,42 @@ export default function App() {
           <div className="brand-lockup">
             <div className="brand-mark">CG</div>
             <div className="brand-copy">
-              <p className="sidebar-eyebrow">CareerGuide</p>
-              <h1 className="sidebar-title">Career coach</h1>
+              <p className="sidebar-eyebrow">{uiText.brand.eyebrow}</p>
+              <h1 className="sidebar-title">{uiText.brand.title}</h1>
             </div>
           </div>
 
           <form className="sidebar-profile-form" onSubmit={handleActivateUser}>
             <label className="sidebar-field">
-              <span>Profile</span>
+              <span>{uiText.sidebar.profileLabel}</span>
               <input
                 value={draftUserId}
                 onChange={(event) => setDraftUserId(event.target.value)}
-                placeholder="demo-user"
+                placeholder={uiText.sidebar.profilePlaceholder}
               />
             </label>
             <button className="sidebar-primary-button" type="submit">
-              Use profile
+              {uiText.sidebar.useProfile}
             </button>
+            <div className="language-toggle-group">
+              <p className="sidebar-eyebrow">{uiText.sidebar.languageLabel}</p>
+              <div className="language-toggle-buttons">
+                <button
+                  className={`toolbar-button ${uiLanguage === "ru" ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setUiLanguage("ru")}
+                >
+                  RU
+                </button>
+                <button
+                  className={`toolbar-button ${uiLanguage === "en" ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setUiLanguage("en")}
+                >
+                  EN
+                </button>
+              </div>
+            </div>
           </form>
         </div>
 
@@ -642,7 +726,7 @@ export default function App() {
             <span className="sidebar-button-icon" aria-hidden="true">
               +
             </span>
-            <span className="sidebar-button-text">New chat</span>
+            <span className="sidebar-button-text">{uiText.sidebar.newChat}</span>
           </button>
           <button
             className="sidebar-action-button secondary"
@@ -653,7 +737,7 @@ export default function App() {
             <span className="sidebar-button-icon" aria-hidden="true">
               -
             </span>
-            <span className="sidebar-button-text">Delete all</span>
+            <span className="sidebar-button-text">{uiText.sidebar.deleteAll}</span>
           </button>
         </div>
 
@@ -671,7 +755,7 @@ export default function App() {
             <span className="sidebar-button-icon" aria-hidden="true">
               C
             </span>
-            <span className="sidebar-button-text">Chat</span>
+            <span className="sidebar-button-text">{uiText.sidebar.chat}</span>
           </button>
           <button
             className={`sidebar-nav-button ${activeView === "plan" ? "active" : ""}`}
@@ -686,7 +770,7 @@ export default function App() {
             <span className="sidebar-button-icon" aria-hidden="true">
               P
             </span>
-            <span className="sidebar-button-text">Plan</span>
+            <span className="sidebar-button-text">{uiText.sidebar.plan}</span>
           </button>
           <button
             className={`sidebar-nav-button ${activeView === "memory" ? "active" : ""}`}
@@ -701,13 +785,13 @@ export default function App() {
             <span className="sidebar-button-icon" aria-hidden="true">
               M
             </span>
-            <span className="sidebar-button-text">Memory</span>
+            <span className="sidebar-button-text">{uiText.sidebar.memory}</span>
           </button>
         </nav>
 
         <section className="sidebar-history">
           <div className="sidebar-section-header">
-            <p className="sidebar-eyebrow">History</p>
+            <p className="sidebar-eyebrow">{uiText.sidebar.history}</p>
             <span>{conversations.length}</span>
           </div>
 
@@ -722,7 +806,9 @@ export default function App() {
                   onClick={() => handleSelectConversation(conversation.id)}
                 >
                   <span className="conversation-title">{conversation.title}</span>
-                  <span className="conversation-time">{formatTimestamp(conversation.updatedAt)}</span>
+                  <span className="conversation-time">
+                    {formatTimestamp(conversation.updatedAt, uiText.metadata.locale)}
+                  </span>
                 </button>
               </li>
             ))}
@@ -731,10 +817,10 @@ export default function App() {
 
         <div className="sidebar-footer">
           <div>
-            <p className="sidebar-eyebrow">Active user</p>
+            <p className="sidebar-eyebrow">{uiText.sidebar.activeUser}</p>
             <strong>{activeUserId}</strong>
           </div>
-          {savedPlanAt ? <span className="sidebar-footnote">Plan saved</span> : null}
+          {savedPlanAt ? <span className="sidebar-footnote">{uiText.sidebar.planSaved}</span> : null}
         </div>
       </aside>
 
@@ -750,30 +836,34 @@ export default function App() {
               <span className="sidebar-button-icon" aria-hidden="true">
                 {isSidebarCollapsed ? "|||" : "<"}
               </span>
-              <span className="sidebar-toggle-text">{isSidebarCollapsed ? "Menu" : "Hide menu"}</span>
+              <span className="sidebar-toggle-text">
+                {isSidebarCollapsed ? uiText.sidebar.menu : uiText.sidebar.hideMenu}
+              </span>
             </button>
 
             <div>
               <p className="workspace-kicker">
                 {activeView === "chat"
-                  ? "Grounded chat"
+                  ? uiText.workspace.chatKicker
                   : activeView === "plan"
-                  ? "Structured planning"
-                  : "Associative memory"}
+                  ? uiText.workspace.planKicker
+                  : uiText.workspace.memoryKicker}
               </p>
               <h2 className="workspace-title">
                 {activeView === "chat"
-                  ? "Career conversation"
+                  ? uiText.workspace.chatTitle
                   : activeView === "plan"
-                  ? "One active plan per profile"
-                  : "Stored user facts"}
+                  ? uiText.workspace.planTitle
+                  : uiText.workspace.memoryTitle}
               </h2>
             </div>
           </div>
           <div className="workspace-meta">
             <span className="workspace-badge">{activeUserId}</span>
             {savedPlanAt && activeView === "plan" ? (
-              <span className="workspace-badge muted">Saved {formatTimestamp(savedPlanAt)}</span>
+              <span className="workspace-badge muted">
+                {uiText.workspace.savedPrefix} {formatTimestamp(savedPlanAt, uiText.metadata.locale)}
+              </span>
             ) : null}
           </div>
         </header>
@@ -783,14 +873,12 @@ export default function App() {
             <div className="chat-scroll">
               {!hasUserMessages ? (
                 <section className="empty-state">
-                  <p className="empty-kicker">Grounded career guidance</p>
-                  <h3>What do you want help figuring out?</h3>
-                  <p>
-                    Ask about role fit, tradeoffs, next steps, constraints, or a safer transition plan.
-                  </p>
+                  <p className="empty-kicker">{uiText.chat.emptyKicker}</p>
+                  <h3>{uiText.chat.emptyTitle}</h3>
+                  <p>{uiText.chat.emptyDescription}</p>
 
                   <div className="suggestion-grid">
-                    {CHAT_PROMPTS.map((prompt) => (
+                    {uiText.chat.prompts.map((prompt) => (
                       <button
                         key={prompt}
                         className="suggestion-card"
@@ -805,12 +893,12 @@ export default function App() {
               ) : (
                 <div className="message-feed">
                   {messages.map((message) => (
-                    <MessageCard key={message.id} message={message} />
+                    <MessageCard key={message.id} message={message} uiText={uiText} />
                   ))}
                   {isAnswerPending ? (
                     <article className="message message-assistant message-loading">
                       <header className="message-header">
-                        <span className="message-role">Coach</span>
+                        <span className="message-role">{uiText.chat.assistantTypingRole}</span>
                       </header>
                       <div className="typing-copy">
                         <span />
@@ -831,14 +919,12 @@ export default function App() {
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
                     rows={3}
-                    placeholder="Describe what fits you, what you want to avoid, or what decision you are trying to make."
+                    placeholder={uiText.chat.composerPlaceholder}
                   />
                   <div className="composer-row">
-                    <span className="composer-hint">
-                      Citations and memory stay available inside each answer.
-                    </span>
+                    <span className="composer-hint">{uiText.chat.composerHint}</span>
                     <button className="composer-submit" type="submit" disabled={!isQuestionReady || isAnswerPending}>
-                      {isAnswerPending ? "Thinking…" : "Send"}
+                      {isAnswerPending ? uiText.chat.thinking : uiText.chat.send}
                     </button>
                   </div>
                 </div>
@@ -852,12 +938,12 @@ export default function App() {
             <section className="content-card">
               <div className="content-card-header">
                 <div>
-                  <p className="sidebar-eyebrow">Planner</p>
-                  <h3>Build or reload the current plan</h3>
+                  <p className="sidebar-eyebrow">{uiText.plan.plannerEyebrow}</p>
+                  <h3>{uiText.plan.plannerTitle}</h3>
                 </div>
                 <div className="toolbar-actions">
                   <button className="toolbar-button" type="button" onClick={reloadSavedPlan} disabled={!hasSavedPlan}>
-                    Reload saved
+                    {uiText.plan.reloadSaved}
                   </button>
                   <button
                     className="toolbar-button"
@@ -865,7 +951,7 @@ export default function App() {
                     onClick={() => void handleExportPlan()}
                     disabled={!plan || isPlanExportPending}
                   >
-                    {isPlanExportPending ? "Exporting…" : "Export .ics"}
+                    {isPlanExportPending ? uiText.plan.exporting : uiText.plan.exportIcs}
                   </button>
                   <button
                     className="toolbar-button secondary"
@@ -873,13 +959,13 @@ export default function App() {
                     onClick={clearSavedPlan}
                     disabled={!hasSavedPlan}
                   >
-                    Clear saved
+                    {uiText.plan.clearSaved}
                   </button>
                 </div>
               </div>
 
               <div className="suggestion-grid compact">
-                {PLAN_PROMPTS.map((prompt) => (
+                {uiText.plan.prompts.map((prompt) => (
                   <button
                     key={`${prompt.goal}-${prompt.targetRole}`}
                     className="suggestion-card compact"
@@ -894,7 +980,7 @@ export default function App() {
 
               <form className="plan-builder" onSubmit={handleBuildPlan}>
                 <label className="sidebar-field">
-                  <span>Goal</span>
+                  <span>{uiText.plan.goalLabel}</span>
                   <textarea
                     value={goal}
                     onChange={(event) => {
@@ -902,23 +988,23 @@ export default function App() {
                       setPlanError(null);
                     }}
                     rows={4}
-                    placeholder="Describe the transition, timeline, or work-life boundary."
+                    placeholder={uiText.plan.goalPlaceholder}
                   />
                 </label>
                 <label className="sidebar-field">
-                  <span>Target role</span>
+                  <span>{uiText.plan.targetRoleLabel}</span>
                   <input
                     value={targetRole}
                     onChange={(event) => {
                       setTargetRole(event.target.value);
                       setPlanError(null);
                     }}
-                    placeholder="Data Analyst"
+                    placeholder={uiText.plan.targetRolePlaceholder}
                   />
                 </label>
                 <div className="plan-settings-grid">
                   <label className="sidebar-field">
-                    <span>Study start date</span>
+                    <span>{uiText.plan.studyStartDate}</span>
                     <input
                       type="date"
                       value={studyStartDate}
@@ -926,18 +1012,18 @@ export default function App() {
                     />
                   </label>
                   <label className="sidebar-field">
-                    <span>Preferred study time</span>
+                    <span>{uiText.plan.preferredStudyTime}</span>
                     <select
                       value={preferredStudyTime}
                       onChange={(event) => setPreferredStudyTime(event.target.value as StudyPreferences["preferred_study_time"])}
                     >
-                      <option value="morning">Morning</option>
-                      <option value="afternoon">Afternoon</option>
-                      <option value="evening">Evening</option>
+                      <option value="morning">{uiText.plan.studyTimeOptions.morning}</option>
+                      <option value="afternoon">{uiText.plan.studyTimeOptions.afternoon}</option>
+                      <option value="evening">{uiText.plan.studyTimeOptions.evening}</option>
                     </select>
                   </label>
                   <label className="sidebar-field">
-                    <span>Sessions per week</span>
+                    <span>{uiText.plan.sessionsPerWeek}</span>
                     <select
                       value={studyFrequencyPerWeek}
                       onChange={(event) => setStudyFrequencyPerWeek(Number(event.target.value))}
@@ -951,18 +1037,16 @@ export default function App() {
                   </label>
                 </div>
                 <div className="toolbar-actions">
-                  <span className="composer-hint">
-                    Generating a new plan overwrites the saved one for this profile and rebuilds the calendar schedule.
-                  </span>
+                  <span className="composer-hint">{uiText.plan.generationHint}</span>
                   <button className="composer-submit" type="submit" disabled={!isPlanReady || isPlanPending}>
-                    {isPlanPending ? "Building…" : "Build plan"}
+                    {isPlanPending ? uiText.plan.buildingPlan : uiText.plan.buildPlan}
                   </button>
                 </div>
               </form>
               {planError ? (
                 planErrorIsScopeLimit ? (
                   <div className="empty-panel scope-panel">
-                    <h4>Unsupported planning request</h4>
+                    <h4>{uiText.plan.unsupportedTitle}</h4>
                     <p>{planError}</p>
                   </div>
                 ) : (
@@ -974,21 +1058,29 @@ export default function App() {
             <section className="content-card">
               <div className="content-card-header">
                 <div>
-                  <p className="sidebar-eyebrow">Saved plan</p>
-                  <h3>{plan?.target_role ?? "No plan yet"}</h3>
+                  <p className="sidebar-eyebrow">{uiText.plan.savedPlanEyebrow}</p>
+                  <h3>{plan?.target_role ?? uiText.plan.noPlanYet}</h3>
                 </div>
-                {savedPlanAt ? <span className="workspace-badge muted">{formatTimestamp(savedPlanAt)}</span> : null}
+                {savedPlanAt ? (
+                  <span className="workspace-badge muted">
+                    {formatTimestamp(savedPlanAt, uiText.metadata.locale)}
+                  </span>
+                ) : null}
               </div>
 
               {plan ? (
                 <div className="plan-result">
                   <p className="plan-goal">{plan.goal}</p>
                   <div className="plan-meta-row">
-                    <span className="pill">Workload: {plan.workload_level ?? "medium"}</span>
-                    <span className="pill">{plan.estimated_weeks ?? 1} week plan</span>
                     <span className="pill">
-                      {plan.study_preferences?.study_frequency_per_week ?? 3} sessions/week ·{" "}
-                      {plan.study_preferences?.preferred_study_time ?? "evening"}
+                      {uiText.plan.workloadPrefix}: {getWorkloadLabel(uiLanguage, plan.workload_level ?? "medium")}
+                    </span>
+                    <span className="pill">{uiText.plan.weekPlanLabel(plan.estimated_weeks ?? 1)}</span>
+                    <span className="pill">
+                      {uiText.plan.sessionsPerWeekLabel(
+                        plan.study_preferences?.study_frequency_per_week ?? 3,
+                        getStudyTimeLabel(uiLanguage, plan.study_preferences?.preferred_study_time ?? "evening"),
+                      )}
                     </span>
                   </div>
                   <ol className="plan-step-list">
@@ -1015,8 +1107,8 @@ export default function App() {
                     <div className="plan-schedule">
                       <div className="content-card-header">
                         <div>
-                          <p className="sidebar-eyebrow">Calendar</p>
-                          <h4>Scheduled study sessions</h4>
+                          <p className="sidebar-eyebrow">{uiText.plan.calendarEyebrow}</p>
+                          <h4>{uiText.plan.calendarTitle}</h4>
                         </div>
                       </div>
                       <ol className="plan-step-list">
@@ -1027,21 +1119,26 @@ export default function App() {
                               <h4>{event.title}</h4>
                               <p>{event.description}</p>
                               <p className="metric">
-                                Step {event.step_index} · Session {event.session_index} of {event.total_sessions} · Week {event.week_index}
+                                {uiText.plan.stepSessionWeekLabel(
+                                  event.step_index,
+                                  event.session_index,
+                                  event.total_sessions,
+                                  event.week_index,
+                                )}
                               </p>
-                              <p className="metric">{formatDateValue(event.starts_at)}</p>
+                              <p className="metric">{formatDateValue(event.starts_at, uiText.metadata.locale)}</p>
                             </div>
                           </li>
                         ))}
                       </ol>
                     </div>
                   ) : null}
-                  <CitationList citations={plan.citations} title="Plan evidence" />
+                  <CitationList citations={plan.citations} title={uiText.plan.planEvidence} uiText={uiText} />
                 </div>
               ) : (
                 <div className="empty-panel">
-                  <h4>No saved plan for this profile</h4>
-                  <p>Build a plan once and it will stay attached to the current profile until you replace it.</p>
+                  <h4>{uiText.plan.noSavedPlanTitle}</h4>
+                  <p>{uiText.plan.noSavedPlanDescription}</p>
                 </div>
               )}
             </section>
@@ -1058,6 +1155,7 @@ export default function App() {
               items={memories}
               onDelete={(item) => void handleDeleteMemory(item)}
               onRefresh={() => void refreshMemories(activeUserId)}
+              uiText={uiText}
               userId={activeUserId}
             />
           </section>

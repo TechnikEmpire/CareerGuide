@@ -1,8 +1,10 @@
 import type { RetrievedChunk } from "../api/client";
+import type { UiText } from "../config/ui";
 
 type CitationListProps = {
   citations: RetrievedChunk[];
   title?: string;
+  uiText: UiText;
 };
 
 function formatScore(chunk: RetrievedChunk): string {
@@ -20,7 +22,7 @@ function pickLine(lines: string[], prefixes: string[]): string {
   return "";
 }
 
-function summarizeCitationText(text: string): string {
+function summarizeCitationText(text: string, uiText: UiText): string {
   const lines = text
     .split("\n")
     .map((line) => line.trim())
@@ -38,18 +40,18 @@ function summarizeCitationText(text: string): string {
   ]);
 
   if (description && essentialSkills) {
-    return `${description}\n\nKey skills: ${essentialSkills}`;
+    return `${description}\n\n${uiText.citation.keySkillsPrefix}: ${essentialSkills}`;
   }
   if (description) {
     return description;
   }
   if (essentialSkills) {
-    return `Key skills: ${essentialSkills}`;
+    return `${uiText.citation.keySkillsPrefix}: ${essentialSkills}`;
   }
   return text;
 }
 
-export function CitationList({ citations, title = "Sources" }: CitationListProps) {
+export function CitationList({ citations, title, uiText }: CitationListProps) {
   if (citations.length === 0) {
     return null;
   }
@@ -57,15 +59,17 @@ export function CitationList({ citations, title = "Sources" }: CitationListProps
   return (
     <section className="citation-block">
       <div className="message-detail-header">
-        <h4>{title}</h4>
-        <span className="detail-kicker">{citations.length} cited chunks</span>
+        <h4>{title ?? uiText.citation.sources}</h4>
+        <span className="detail-kicker">{uiText.citation.citedChunksLabel(citations.length)}</span>
       </div>
       <ul className="citation-list">
         {citations.map((citation, index) => (
           <li key={`${citation.source_url}-${index}`} className="citation-card">
             <div className="citation-meta-row">
               <span className="pill">{citation.source_name}</span>
-              <span className="metric">score {formatScore(citation)}</span>
+              <span className="metric">
+                {uiText.citation.scorePrefix} {formatScore(citation)}
+              </span>
             </div>
             <a
               className="citation-link"
@@ -75,7 +79,7 @@ export function CitationList({ citations, title = "Sources" }: CitationListProps
             >
               {citation.title}
             </a>
-            <p>{summarizeCitationText(citation.text)}</p>
+            <p>{summarizeCitationText(citation.text, uiText)}</p>
           </li>
         ))}
       </ul>
