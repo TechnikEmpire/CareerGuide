@@ -136,7 +136,7 @@ export const uiTextRu = {
   },
   message: {
     scopeNote: "Пояснение по границам",
-    coach: "Коуч",
+    coach: "InspiON",
     you: "Вы",
     whyPaused: "Почему я остановился здесь",
     whyAnswer: "Почему такой ответ",
