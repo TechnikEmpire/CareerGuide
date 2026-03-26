@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
@@ -22,6 +24,25 @@ from backend.app.services.generation.schemas import (
 from backend.app.services.retrieval.faiss_hnsw import RetrievalArtifactsError
 
 router = APIRouter(prefix="", tags=["assistant"])
+
+
+def _build_ascii_filename_stem(target_role: str) -> str:
+    """Return an ASCII-safe filename stem for Content-Disposition fallback."""
+
+    safe_stem = "".join(
+        character.lower() if character.isascii() and character.isalnum() else "-"
+        for character in target_role.strip()
+    ).strip("-")
+    return safe_stem or "career-plan"
+
+
+def _build_content_disposition(file_name: str, *, ascii_fallback: str) -> str:
+    """Build a latin-1-safe attachment header with UTF-8 filename support."""
+
+    return (
+        f'attachment; filename="{ascii_fallback}"; '
+        f"filename*=UTF-8''{quote(file_name)}"
+    )
 
 
 @router.post("/chat/answer", response_model=AnswerResponse)
@@ -53,12 +74,15 @@ def export_career_plan_ics(request: CareerPlanExportRequest) -> Response:
     """Export a saved grounded plan as an iCalendar file."""
 
     ics_body = build_plan_ics(request.plan, user_id=request.user_id)
-    safe_role = "".join(character if character.isalnum() else "-" for character in request.plan.target_role).strip("-")
-    file_stem = safe_role or "career-plan"
+    file_name = f"{request.plan.target_role.strip() or 'career-plan'}.ics"
+    ascii_file_name = f"{_build_ascii_filename_stem(request.plan.target_role)}.ics"
     return Response(
         content=ics_body,
         media_type="text/calendar",
         headers={
-            "Content-Disposition": f'attachment; filename="{file_stem}.ics"',
+            "Content-Disposition": _build_content_disposition(
+                file_name,
+                ascii_fallback=ascii_file_name,
+            ),
         },
     )

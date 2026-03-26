@@ -651,6 +651,46 @@ def test_career_plan_export_ics_returns_calendar_file() -> None:
     assert "BEGIN:VEVENT" in export_response.text
 
 
+def test_career_plan_export_ics_supports_non_ascii_target_role_filename() -> None:
+    """The ICS export header should stay valid when the target role is in Russian."""
+
+    client = TestClient(create_app())
+    plan_response = client.post(
+        "/career/plan",
+        json={
+            "user_id": "ru-plan-export-user",
+            "goal": "Составить реалистичный план перехода в аналитику данных за 6 месяцев",
+            "target_role": "Аналитик данных",
+            "study_preferences": {
+                "study_start_date": "2026-04-06",
+                "preferred_study_time": "evening",
+                "study_frequency_per_week": 2,
+                "session_duration_minutes": 90,
+                "timezone": "America/St_Johns",
+            },
+        },
+    )
+    assert plan_response.status_code == 200
+
+    export_response = client.post(
+        "/career/plan/export-ics",
+        json={
+            "user_id": "ru-plan-export-user",
+            "plan": plan_response.json(),
+        },
+    )
+
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("text/calendar")
+    assert "charset=utf-8" in export_response.headers["content-type"].lower()
+    content_disposition = export_response.headers["content-disposition"]
+    assert 'filename="career-plan.ics"' in content_disposition
+    assert "filename*=UTF-8''" in content_disposition
+    assert "%D0%90%D0%BD%D0%B0%D0%BB%D0%B8%D1%82%D0%B8%D0%BA" in content_disposition
+    assert "BEGIN:VCALENDAR" in export_response.text
+    assert "Аналитик данных" in export_response.text
+
+
 def test_answer_flow_supports_hopfield_topk_mode() -> None:
     """The live answer path should expose Hopfield top-k recall through pytest."""
 
