@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import App from "./App";
 import { getUiText } from "./config/ui";
@@ -52,6 +52,53 @@ describe("frontend UI language behavior", () => {
     await waitFor(() => {
       expect(document.cookie).toContain("careerguide_ui_language=en");
       expect(document.documentElement.lang).toBe("en");
+    });
+  });
+
+  it("submits the chat form when Enter is pressed in the composer", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.mocked(fetch);
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : input instanceof Request ? input.url : String(input);
+
+      if (url.includes("/chat/answer")) {
+        return new Response(
+          JSON.stringify({
+            answer: "Test answer",
+            citations: [],
+            prompt_preview: "",
+            memory_summary: "",
+            response_kind: "answer",
+          }),
+          {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    });
+
+    render(<App />);
+
+    const composer = screen.getByPlaceholderText(
+      "Опишите, что вам подходит, чего вы хотите избежать и какое решение вы сейчас пытаетесь принять.",
+    );
+
+    await user.type(composer, "Тестовый вопрос{enter}");
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Тестовый вопрос").length).toBeGreaterThanOrEqual(2);
+      expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/chat/answer"))).toBe(true);
     });
   });
 });

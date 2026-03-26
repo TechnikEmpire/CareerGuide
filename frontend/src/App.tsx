@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import {
   deleteMemory,
@@ -589,6 +589,15 @@ export default function App() {
     }
   }
 
+  function handleQuestionKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   async function handleBuildPlan(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmedGoal = goal.trim();
@@ -918,6 +927,7 @@ export default function App() {
                   <textarea
                     value={question}
                     onChange={(event) => setQuestion(event.target.value)}
+                    onKeyDown={handleQuestionKeyDown}
                     rows={3}
                     placeholder={uiText.chat.composerPlaceholder}
                   />
