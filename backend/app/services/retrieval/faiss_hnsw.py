@@ -16,8 +16,8 @@ from backend.app.config import settings
 from backend.app.services.generation.schemas import RetrievedChunk
 from backend.app.services.retrieval.embeddings import get_embedding_provider
 from backend.app.services.retrieval.esco_corpus import load_esco_retrieval_chunks
+from backend.db import session as db_session
 from backend.db.models import RetrievalChunkRecord
-from backend.db.session import SessionLocal, init_db
 
 
 @dataclass(frozen=True)
@@ -114,7 +114,7 @@ def _sorted_source_chunks():
 
 
 def _sqlite_corpus_matches(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
-    with SessionLocal() as session:
+    with db_session.SessionLocal() as session:
         existing_count = session.query(RetrievalChunkRecord).count()
         first_row = session.scalars(select(RetrievalChunkRecord).limit(1)).first()
         if existing_count != expected_count or existing_count == 0 or first_row is None:
@@ -171,7 +171,7 @@ def _rewrite_sqlite_rows(
     else:
         payloads = [_embedding_to_bytes(tuple(embedding)) for embedding in embeddings]
 
-    with SessionLocal() as session:
+    with db_session.SessionLocal() as session:
         session.query(RetrievalChunkRecord).delete()
         session.bulk_save_objects(
             [
@@ -196,7 +196,7 @@ def _rewrite_sqlite_rows(
 def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
     """Build or refresh the persisted retrieval corpus and FAISS index."""
 
-    init_db()
+    db_session.init_db()
     settings.retrieval_index_path.parent.mkdir(parents=True, exist_ok=True)
     source_chunks = _sorted_source_chunks()
     embedder = get_embedding_provider()
@@ -235,7 +235,7 @@ def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
                 vector_size=embedder.vector_size,
             )
 
-    with SessionLocal() as session:
+    with db_session.SessionLocal() as session:
         rows = list(
             session.scalars(
                 select(RetrievalChunkRecord).order_by(RetrievalChunkRecord.chunk_id)
@@ -273,7 +273,7 @@ def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
 def inspect_retrieval_artifacts() -> RetrievalArtifactStatus:
     """Return the current retrieval-artifact status without rebuilding them."""
 
-    init_db()
+    db_session.init_db()
     source_chunks = _sorted_source_chunks()
     embedder = get_embedding_provider()
     expected_count = len(source_chunks)
@@ -377,7 +377,7 @@ class FaissHnswRetrievalService:
 
         self._ensure_built_artifacts()
 
-        with SessionLocal() as session:
+        with db_session.SessionLocal() as session:
             rows = list(
                 session.scalars(
                     select(RetrievalChunkRecord).order_by(RetrievalChunkRecord.chunk_id)
@@ -406,7 +406,7 @@ class FaissHnswRetrievalService:
         ]
 
     def _ensure_built_artifacts(self) -> None:
-        init_db()
+        db_session.init_db()
         expected_count = len(_sorted_source_chunks())
         sqlite_current = _sqlite_corpus_matches(
             expected_count,
