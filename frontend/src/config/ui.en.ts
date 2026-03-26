@@ -4,11 +4,11 @@ export const uiTextEn = {
   metadata: {
     htmlLang: "en",
     title: "InspiON",
-    description: "CareerGuide web UI for grounded career guidance with retrieval and associative memory.",
+    description: "InspiON web UI for grounded career guidance with retrieval and associative memory.",
     locale: "en",
   },
   brand: {
-    eyebrow: "CareerGuide",
+    eyebrow: "InspiON",
     title: "Career coach",
   },
   sidebar: {

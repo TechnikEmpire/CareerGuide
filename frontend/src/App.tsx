@@ -680,7 +680,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="brand-lockup">
-            <div className="brand-mark">CG</div>
+            <div className="brand-mark">IN</div>
             <div className="brand-copy">
               <p className="sidebar-eyebrow">{uiText.brand.eyebrow}</p>
               <h1 className="sidebar-title">{uiText.brand.title}</h1>

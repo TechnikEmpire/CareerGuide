@@ -137,6 +137,11 @@ a {
   min-width: 0;
 }
 
+.brand-copy .sidebar-eyebrow {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
 .sidebar-title,
 .workspace-title,
 .content-card h3,

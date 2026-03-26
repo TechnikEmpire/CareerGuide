@@ -4,11 +4,11 @@ export const uiTextRu = {
   metadata: {
     htmlLang: "ru",
     title: "InspiON",
-    description: "CareerGuide — веб-интерфейс для карьерных рекомендаций с grounded retrieval и ассоциативной памятью.",
+    description: "InspiON — веб-интерфейс для карьерных рекомендаций с grounded retrieval и ассоциативной памятью.",
     locale: "ru",
   },
   brand: {
-    eyebrow: "CareerGuide",
+    eyebrow: "InspiON",
     title: "Карьерный помощник",
   },
   sidebar: {
