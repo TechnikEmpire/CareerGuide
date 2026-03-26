@@ -3,7 +3,7 @@ import type { UiText } from "./ui.types";
 export const uiTextRu = {
   metadata: {
     htmlLang: "ru",
-    title: "CareerGuide",
+    title: "InspiON",
     description: "CareerGuide — веб-интерфейс для карьерных рекомендаций с grounded retrieval и ассоциативной памятью.",
     locale: "ru",
   },
