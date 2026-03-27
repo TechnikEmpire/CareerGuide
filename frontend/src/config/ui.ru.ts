@@ -28,7 +28,7 @@ export const uiTextRu = {
     languageLabel: "Язык интерфейса",
   },
   workspace: {
-    chatKicker: "Обоснованный чат",
+    chatKicker: "Текущий чат",
     planKicker: "Структурное планирование",
     memoryKicker: "Ассоциативная память",
     chatTitle: "Чат",
