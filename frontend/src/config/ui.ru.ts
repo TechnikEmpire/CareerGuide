@@ -4,12 +4,12 @@ export const uiTextRu = {
   metadata: {
     htmlLang: "ru",
     title: "InspiON",
-    description: "InspiON — веб-интерфейс для карьерных рекомендаций с grounded retrieval и ассоциативной памятью.",
+    description: "InspiON — AI-ассистент для карьерных рекомендаций с grounded retrieval и ассоциативной памятью.",
     locale: "ru",
   },
   brand: {
     eyebrow: "InspiON",
-    title: "Карьерный помощник",
+    title: "Карьерный консультант",
   },
   sidebar: {
     profileLabel: "Профиль",
@@ -31,7 +31,7 @@ export const uiTextRu = {
     chatKicker: "Обоснованный чат",
     planKicker: "Структурное планирование",
     memoryKicker: "Ассоциативная память",
-    chatTitle: "Карьерный разговор",
+    chatTitle: "Чат",
     planTitle: "Один активный план на профиль",
     memoryTitle: "Сохранённые факты о пользователе",
     savedPrefix: "Сохранено",
