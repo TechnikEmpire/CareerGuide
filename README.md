@@ -20,7 +20,7 @@ Student handoff manuals:
 - [English](README.en.md)
 - [Русский](README.ru.md)
 
-Основные student-manual документы:
+Документация:
 
 - [Student Manual (English)](docs/STUDENT_MANUAL.en.md)
 - [Руководство для студентки (Русский)](docs/STUDENT_MANUAL.ru.md)
