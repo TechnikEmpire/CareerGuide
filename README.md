@@ -15,8 +15,7 @@ Student handoff manuals:
 - [Deployment Guide (English)](docs/DEPLOYMENT.en.md)
 - [Deployment Guide (Русский)](docs/DEPLOYMENT.ru.md)
 
-Этот репозиторий теперь ведет authored top-level documentation в
-language-specific файлах:
+В этом репозитории теперь хранится созданная авторами документация верхнего уровня в файлах, специфичных для каждого языка программирования:
 
 - [English](README.en.md)
 - [Русский](README.ru.md)
