@@ -1,4 +1,4 @@
-# ESCO Preprocessing And Translation
+# ESCO (Европейские навыки, компетенции, квалификации и профессии) Preprocessing And Translation
 
 This document is maintained in language-specific files / Документация на двух языках:
 
