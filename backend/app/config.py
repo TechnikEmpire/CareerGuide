@@ -96,15 +96,15 @@ class AppSettings(BaseSettings):
     esco_bilingual_concepts_path: Path = Field(default_factory=_default_esco_bilingual_path)
     esco_skill_limit_per_occupation: int = 8
     generation_runtime: str = "llama-cpp-python"
-    generation_model_name: str = "Qwen/Qwen3-0.6B"
-    generation_model_artifact: str = "Qwen/Qwen3-0.6B-GGUF:Q8_0"
+    generation_model_name: str = "Qwen/Qwen3.5-2B"
+    generation_model_artifact: str = "bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M"
     generation_base_url: str = "http://127.0.0.1:8080"
-    generation_request_timeout_seconds: float = 120.0
+    generation_request_timeout_seconds: float = 180.0
     generation_temperature: float = 0.2
     generation_top_p: float = 0.9
     generation_answer_max_tokens: int = 512
-    generation_plan_max_tokens: int = 384
-    generation_context_length: int = 32768
+    generation_plan_max_tokens: int = 768
+    generation_context_length: int = 8192
     retrieval_index_path: Path = Field(default_factory=_default_retrieval_index_path)
     retrieval_index_manifest_path: Path = Field(default_factory=_default_retrieval_manifest_path)
     retrieval_vector_size: int = 1024

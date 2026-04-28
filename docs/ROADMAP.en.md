@@ -1,6 +1,6 @@
 # Project Roadmap
 
-Last updated: 2026-03-24
+Last updated: 2026-04-28
 
 ### Purpose
 
@@ -32,7 +32,7 @@ For a more narrative current-state snapshot, use `docs/STATUS.md`.
 | 6. Memory extraction and consolidation | completed | Sentence-level binary BiLSTM extraction, preferred `pySBD` segmentation, and normalized-text dedupe are live. |
 | 7. Hopfield-style memory read | completed | A practical non-trainable embedding-space Hopfield recall with `top1` and `topk` modes is wired into the live answer path. |
 | 8. Joint RAG + memory generation | completed | The live assistant combines dense retrieval with persisted memory and grounded conversational guardrails. |
-| 9. Safety and refusal behavior | completed | The prototype now blocks unsupported or out-of-scope requests with calm grounded refusal behavior. |
+| 9. Safety and scoped guidance behavior | completed | The prototype blocks exploitative/out-of-scope requests, keeps unsupported plans grounded, and gives limited caveated chat guidance for legitimate weakly grounded roles. |
 | 10. Evaluation baseline | completed | Retrieval qrels, answer-eval fixtures, scoring scripts, benchmark outputs, and core regression tests exist for the current prototype scope. |
 | 11. Web UI v1 | completed | The frontend now covers chat, citations, memory, saved plans, study preferences, scheduled sessions, local history, and `.ics` export. |
 | 12. Deployment baseline | completed | The repo now builds, publishes, and automatically deploys a single-image container that serves the frontend and backend together and bakes in the public local runtime models. |

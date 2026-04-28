@@ -110,12 +110,13 @@ def answer_question(
         retrieval_context=retrieval_context,
     )
     if guardrailed_answer is not None:
+        should_persist_guardrailed_memory = guardrailed_answer.response_kind == "answer"
         response_memory_summary = (
             summarize_memory_for_prompt(question=request.question, memory_items=stored_memory_items)
             if guardrailed_answer.response_kind == "refusal"
             else retrieval_context.memory_summary
         )
-        if include_memory and guardrailed_answer.response_kind != "refusal":
+        if include_memory and should_persist_guardrailed_memory:
             _persist_memory_candidates(pending_memory_candidates)
         return AnswerResponse(
             answer=guardrailed_answer.text,

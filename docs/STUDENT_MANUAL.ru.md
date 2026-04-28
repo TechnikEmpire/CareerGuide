@@ -248,10 +248,15 @@ scheduling-логику.
 История разговоров сейчас хранится локально во frontend, а не как server-side
 multi-user infrastructure.
 
+Frontend теперь создает opaque browser-local profile code и отправляет этот
+код как backend `user_id`. Copy/import доступен для осознанной миграции, но
+это не real account system.
+
 Frontend хранит:
 
-- conversations для каждого `user_id`
-- один saved plan на `user_id`
+- conversations для каждого local profile code
+- один saved plan на local profile code
+- один theme choice на local profile code
 
 Это намеренно сделано простым.
 
@@ -345,7 +350,7 @@ exploitative или явно out-of-scope requests.
 
 Request:
 
-- `user_id`
+- `user_id` (browser-local profile code)
 - `question`
 
 Response:
@@ -362,7 +367,7 @@ Endpoint для structured plan.
 
 Request:
 
-- `user_id`
+- `user_id` (browser-local profile code)
 - `goal`
 - `target_role`
 - `study_preferences`
@@ -427,7 +432,7 @@ Debug/inspection-route, который показывает ranked retrieved chu
 
 Важные runtime-models:
 
-- generator: `Qwen/Qwen3-0.6B`
+- generator: `Qwen/Qwen3.5-2B` Q4_K_M GGUF
 - embedder: `Qwen/Qwen3-Embedding-0.6B`
 - memory classifier bundle: [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 

@@ -5,7 +5,7 @@ offline или почти-offline разработки, но не отслежи
 
 Ожидаемое содержимое после запуска локального setup-скрипта:
 
-- `models/Qwen3-0.6B-GGUF/`
+- `models/Qwen_Qwen3.5-2B-GGUF/`
 - `models/Qwen3-Embedding-0.6B/`
 
 Опциональное содержимое для будущих ablation:

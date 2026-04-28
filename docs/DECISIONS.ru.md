@@ -1,6 +1,6 @@
 # Active Decisions
 
-Последнее обновление: 2026-03-24
+Последнее обновление: 2026-04-28
 
 ## D-001 Product Direction
 
@@ -23,9 +23,10 @@
 **Русский**
 
 - Статус: активно
-- Решение: Путь генератора по умолчанию - `Qwen/Qwen3-0.6B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]` является предпочтительной локальной реализацией.
-- Зафиксированный артефакт: `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- Обоснование: Это сохраняет генератор компактным, одновременно переводя его на более сильную линейку Qwen3, выравнивает генератор с тем же семейством Qwen3, которое используется для retrieval, сохраняет простой HTTP-барьер между backend и runtime и избавляет обычный setup-flow от необходимости вручную собирать внешний бинарник `llama.cpp`.
+- Решение: Путь генератора по умолчанию - `Qwen/Qwen3.5-2B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]>=0.3.21` является предпочтительной локальной реализацией.
+- Зафиксированный артефакт: `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M`
+- Решение: Локальное окно контекста по умолчанию ограничено 8192 токенами, а server example использует 4 CPU threads для текущего Linode с 8 GB RAM / 4 vCPU.
+- Обоснование: Это переводит generator на более новую линейку Qwen3.5 и при этом сохраняет runtime достаточно малым для production VPS. Q4_K_M выбран как баланс quality/cost, а backend сохраняет тот же простой HTTP-boundary.
 
 ## D-004 Retrieval Stack
 
@@ -301,7 +302,8 @@
 - Статус: активно
 - Решение: Первый реальный web UI должен быть легким TypeScript React-клиентом на базе Vite в каталоге `frontend/`, а не полным template app-stack для AI.
 - Решение: Frontend должен напрямую работать с существующим FastAPI-backend по HTTP и считать FastAPI единственным источником истины для chat, plan-generation, retrieval-grounding и поведения памяти.
-- Решение: Поверхность frontend v1 намеренно узкая: выбор профиля, чат, citations, “memory used”, structured plan generation и просмотр memory.
+- Решение: Поверхность frontend v1 намеренно узкая: browser-local выбор профиля, чат, citations, “memory used”, structured plan generation, просмотр memory и browser-local выбор темы.
+- Решение: Видимый selector профиля должен использовать opaque browser-local profile code вместо общего human-entered default `user_id`. Copy/import допускается для осознанной миграции, но это не authentication-boundary.
 - Решение: Локальный backend CORS должен явно разрешать стандартные frontend dev-origins на `127.0.0.1` и `localhost` для портов `5173` и `3000`.
 - Обоснование: Репозиторий уже содержит реальную backend-логику и историю evaluation. Добавление второго AI orchestration-layer или большого template app привело бы к дублированию ответственности, размытию границы системы и усложнило бы объяснение и академическую защиту прототипа.
 - Ограничение: Первый UI-slice должен оставаться тонким и быстрым для анализа. Save/reload-flow, более богатое state-management и более продвинутая frontend-polish могут появиться позже, но они не должны заменять прямой backend-контракт.
@@ -324,11 +326,11 @@
 **Русский**
 
 - Статус: активно
-- Решение: Прототип должен отказывать в явных role-seeking и planning-запросах, если текущий grounded-corpus не показывает достаточно сильного совпадения с поддерживаемой ролью или карьерным переходом.
-- Решение: В conversational chat неподдерживаемые explicit role-запросы должны возвращать спокойное refusal-сообщение от ассистента, а не hallucinated generic coaching.
+- Решение: Прототип должен оставлять structured plans только для target roles, где текущий grounded-corpus показывает достаточно сильное совпадение с поддерживаемой ролью или карьерным переходом.
+- Решение: В conversational chat легитимные, но weakly grounded explicit role-запросы должны возвращать ограниченное guidance с caveats, а не refusal и не hallucinated ESCO-grounded coaching.
 - Решение: В structured planning неподдерживаемые target-role должны завершаться чистым user-facing сообщением о границах scope/support, а не генерацией выдуманного плана.
 - Решение: Scope-layer также должен блокировать явно exploitative или illegal work-запросы, а не только crisis-response случаи.
-- Обоснование: Текущий ESCO-centered corpus достаточно силен для стандартного grounded career guidance, но не для любого imaginable role-request. Прототип, который честно отказывает в неподдерживаемых запросах, защищать проще, чем систему, которая импровизирует вводящее в заблуждение advice из слабых evidence.
+- Обоснование: Текущий ESCO-centered corpus достаточно силен для стандартных grounded career plans, но не для любого imaginable role-request. Chat может помогать sanity-check легитимное направление с ясными caveats, а экспортируемые планы остаются grounded и defensible.
 
 ## D-038 Schedule-Aware Career Plans and ICS Export
 
@@ -363,6 +365,16 @@
 - Решение: CI должен быть разделен на verification-workflow и container-image-workflow, причем container-image должен собираться и публиковаться только после успешных core CI-checks на `main`.
 - Решение: Rollout на production-host должен оставаться GitHub-driven и SSH-based. После успешной публикации image на `main` отдельный deploy-workflow должен подключаться к Linode-хосту, тянуть `:latest` и пересоздавать `app` service на месте.
 - Обоснование: Для текущего thesis/demo-scope single-image deployment — это самый быстрый воспроизводимый путь от репозитория до работающего сервера на обычной CPU-VM. Он сохраняет deployment-story понятной, не вводит лишнюю orchestration-сложность и при этом дает реальный deployable artifact через CI.
+
+## D-041 Practical Study Skills For Identifiable Roles
+
+**Русский**
+
+- Статус: активно
+- Решение: Для identifiable ESCO role families backend может добавлять детерминированные practical study topics, например SQL, Python/pandas, JavaScript, React, Git, testing и deployment basics.
+- Решение: Эти topics должны маркироваться и использоваться как practical study suggestions, inferred from role family, а не как прямые ESCO facts.
+- Решение: Career plans и `.ics` calendar events должны передавать эти topics через существующее поле `focus_skills`, без новой API-shape.
+- Обоснование: ESCO occupation records полезны, но часто слишком generic для actionable study progression. Небольшая inspectable expansion-table дает студентке defensible способ получать specific learning plans без overclaiming ESCO-source.
 
 ## Decision Maintenance Rule
 

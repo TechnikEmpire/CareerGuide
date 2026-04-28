@@ -1,6 +1,7 @@
 import type { StudyPreferences } from "../api/client";
 
 export type UiLanguage = "en" | "ru";
+export type ThemeId = "graphite" | "harbor" | "meadow";
 
 export type UiText = {
   metadata: {
@@ -17,6 +18,17 @@ export type UiText = {
     profileLabel: string;
     profilePlaceholder: string;
     useProfile: string;
+    profileCodeLabel: string;
+    copyProfileCode: string;
+    importProfileCode: string;
+    importProfilePlaceholder: string;
+    importProfile: string;
+    profileCodeCopied: string;
+    profileImported: string;
+    profileSaved: string;
+    profileImportInvalid: string;
+    themeLabel: string;
+    themeOptions: Record<ThemeId, string>;
     newChat: string;
     deleteAll: string;
     chat: string;

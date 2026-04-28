@@ -13,8 +13,16 @@ MODELS_DIR = REPO_ROOT / "models"
 CONFIG_DIR = REPO_ROOT / "config"
 ENV_LOCAL_PATH = REPO_ROOT / ".env.local"
 
-GENERATOR_REPO_ID = "ggml-org/Qwen3-0.6B-GGUF"
-GENERATOR_ALLOW_PATTERNS = ["*Q8_0.gguf"]
+GENERATOR_REPO_ID = "bartowski/Qwen_Qwen3.5-2B-GGUF"
+GENERATOR_LOCAL_DIR_NAME = "Qwen_Qwen3.5-2B-GGUF"
+GENERATOR_GGUF_PATTERN = "*Q4_K_M.gguf"
+GENERATOR_ALLOW_PATTERNS = [
+    "*Q4_K_M.gguf",
+    "*.json",
+    "*.jinja",
+    "*.model",
+    "tokenizer*",
+]
 EMBEDDING_REPO_ID = "Qwen/Qwen3-Embedding-0.6B"
 RERANKER_REPO_ID = "Qwen/Qwen3-Reranker-0.6B"
 
@@ -113,7 +121,7 @@ def main() -> None:
 
     generator_dir = _download_snapshot(
         repo_id=GENERATOR_REPO_ID,
-        local_dir=MODELS_DIR / "Qwen3-0.6B-GGUF",
+        local_dir=MODELS_DIR / GENERATOR_LOCAL_DIR_NAME,
         allow_patterns=GENERATOR_ALLOW_PATTERNS,
     )
     embedding_dir = _download_snapshot(
@@ -127,7 +135,7 @@ def main() -> None:
             local_dir=MODELS_DIR / "Qwen3-Reranker-0.6B",
         )
 
-    gguf_path = _find_single_file(generator_dir, "*Q8_0.gguf")
+    gguf_path = _find_single_file(generator_dir, GENERATOR_GGUF_PATTERN)
     local_config_path = _write_server_config(gguf_path=gguf_path)
     _write_env_local(
         embedding_dir=embedding_dir,

@@ -12,7 +12,7 @@ export type ConversationMessage = {
   memorySummary?: string;
   promptPreview?: string;
   isError?: boolean;
-  responseKind?: "answer" | "refusal";
+  responseKind?: "answer" | "refusal" | "limited_unsupported";
 };
 
 type MessageCardProps = {
@@ -21,22 +21,23 @@ type MessageCardProps = {
 };
 
 export function MessageCard({ message, uiText }: MessageCardProps) {
+  const isScopeNote =
+    message.responseKind === "refusal" || message.responseKind === "limited_unsupported";
   const toneClass =
     message.role === "assistant"
       ? message.isError
         ? "message message-assistant message-error"
-        : message.responseKind === "refusal"
+        : isScopeNote
           ? "message message-assistant message-refusal"
         : "message message-assistant"
       : "message message-user";
   const roleLabel =
     message.role === "assistant"
-      ? message.responseKind === "refusal"
+      ? isScopeNote
         ? uiText.message.scopeNote
         : uiText.message.coach
       : uiText.message.you;
-  const detailSummary =
-    message.responseKind === "refusal" ? uiText.message.whyPaused : uiText.message.whyAnswer;
+  const detailSummary = isScopeNote ? uiText.message.whyPaused : uiText.message.whyAnswer;
 
   return (
     <article className={toneClass}>

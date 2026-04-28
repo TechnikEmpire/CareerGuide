@@ -145,7 +145,72 @@ def test_finalize_career_plan_keeps_data_roles_compact_and_filters_low_signal_to
     assert len(response.steps[0].description.split()) < 40
     assert "information structure" not in response.steps[1].description.lower()
     assert "documentation types" not in response.steps[2].description.lower()
-    assert any(topic in response.steps[1].description.lower() for topic in ("business intelligence", "data mining"))
+    all_focus_topics = {
+        topic.casefold()
+        for step in response.steps
+        for topic in step.focus_skills
+    }
+    assert "business intelligence" in all_focus_topics
+    assert "data mining" in all_focus_topics
+    assert "sql" in all_focus_topics
+    assert "python with pandas" in all_focus_topics
+    assert any("SQL" in event.description for event in response.calendar_events)
     clarify_events = [event for event in response.calendar_events if event.step_index == 1]
     assert len(clarify_events) >= 2
     assert clarify_events[0].description != clarify_events[1].description
+
+
+def test_finalize_career_plan_adds_specific_software_study_topics() -> None:
+    request = CareerPlanRequest(
+        user_id="demo-user",
+        goal="Build a study path into web development",
+        target_role="Web Developer",
+        study_preferences=StudyPreferences(
+            study_start_date=date(2026, 4, 6),
+            preferred_study_time="evening",
+            study_frequency_per_week=3,
+            session_duration_minutes=90,
+            timezone="America/St_Johns",
+        ),
+    )
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="occupation-1",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation",
+                title="web developer",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: web developer.\n"
+                    "Description (EN): Web developers create and maintain web applications.\n"
+                    "Essential skills (EN): software design, debug software, develop software prototype."
+                ),
+                score=0.93,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+
+    response = finalize_career_plan(
+        request=request,
+        retrieval_context=retrieval_context,
+        goal=request.goal,
+        target_role=request.target_role,
+        steps=[
+            CareerPlanStep(title="Clarify the target role", description="Choose the closest version of the role."),
+            CareerPlanStep(title="Map current skills", description="Compare your background to the role."),
+            CareerPlanStep(title="Build practice evidence", description="Complete a small work sample."),
+        ],
+    )
+
+    all_focus_topics = {
+        topic.casefold()
+        for step in response.steps
+        for topic in step.focus_skills
+    }
+    assert "javascript" in all_focus_topics
+    assert "react" in all_focus_topics
+    assert "git" in all_focus_topics
+    assert any("JavaScript" in event.description or "React" in event.description for event in response.calendar_events)

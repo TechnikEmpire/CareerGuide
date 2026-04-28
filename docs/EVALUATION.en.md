@@ -43,7 +43,7 @@ The minimal RAG baseline for this repo is:
 - `Qwen/Qwen3-Embedding-0.6B`
 - FAISS HNSW ANN retrieval
 - top-k context selection
-- `Qwen/Qwen3-0.6B` via a local OpenAI-compatible GGUF server, with `llama-cpp-python[server]` as the preferred local runtime
+- `Qwen/Qwen3.5-2B` via a local OpenAI-compatible Q4_K_M GGUF server, with `llama-cpp-python[server]` as the preferred local runtime
 
 This is the baseline that should be optimized first and evaluated honestly.
 

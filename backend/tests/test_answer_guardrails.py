@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from backend.app.services.generation.answer_guardrails import maybe_build_guardrailed_answer
+from backend.app.services.generation.answer_guardrails import (
+    _find_supported_occupation,
+    maybe_build_guardrailed_answer,
+)
 from backend.app.services.generation.schemas import RetrievedChunk
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
@@ -105,7 +108,7 @@ def test_guardrails_answer_external_resources_honestly() -> None:
     assert [chunk.chunk_id for chunk in response.citations] == ["occupation-1"]
 
 
-def test_guardrails_refuse_explicit_unsupported_role_request() -> None:
+def test_guardrails_limit_explicit_unsupported_role_request() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -131,9 +134,49 @@ def test_guardrails_refuse_explicit_unsupported_role_request() -> None:
     )
 
     assert response is not None
-    assert response.response_kind == "refusal"
-    assert "can’t provide grounded career guidance" in response.text
+    assert response.response_kind == "limited_unsupported"
+    assert "limited guidance rather than a grounded career recommendation" in response.text
+    assert "locally regulated" in response.text
+    assert "Transferable adjacent areas" in response.text
     assert response.citations == []
+
+
+def test_guardrails_match_supported_russian_data_analytics_transition() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="occupation-data-analyst",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation/data-analyst",
+                title="аналитик данных / data analyst",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "Russian label: аналитик данных.\n"
+                    "English label: data analyst.\n"
+                    "Description (RU): Аналитики данных импортируют, проверяют, очищают, преобразуют и интерпретируют коллекции данных.\n"
+                    "Essential skills (RU): анализ данных, визуализация данных, бизнес-аналитика."
+                ),
+                score=0.93,
+            )
+        ],
+        memory_summary="No memory.",
+    )
+
+    question = "Я хочу перейти в аналитику данных, но мне нужен спокойный темп работы."
+
+    matched_occupation = _find_supported_occupation(question, retrieval_context)
+    response = maybe_build_guardrailed_answer(question=question, retrieval_context=retrieval_context)
+
+    assert matched_occupation is not None
+    assert matched_occupation.chunk_id == "occupation-data-analyst"
+    assert response is not None
+    assert response.response_kind == "answer"
+    assert "аналитик данных" in response.text.lower()
+    assert "спокойного темпа" in response.text.lower()
+    assert "SQL" in response.text
+    assert "Python" in response.text
+    assert [chunk.chunk_id for chunk in response.citations] == ["occupation-data-analyst"]
 
 
 def test_guardrails_career_fit_answer_uses_role_descriptions_naturally() -> None:

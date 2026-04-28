@@ -1,7 +1,7 @@
 # Project Status
 
 
-Последнее обновление: 2026-03-26
+Последнее обновление: 2026-04-28
 
 ### Текущая фаза
 
@@ -29,17 +29,17 @@
 - Отдает реальный backend API из `backend/app/`.
 - Строит dense retrieval по отслеживаемому ESCO-corpus на базе SQLite + FAISS HNSW.
 - Использует `Qwen/Qwen3-Embedding-0.6B` как активный retrieval embedder.
-- Использует локальный OpenAI-compatible generation server для `Qwen/Qwen3-0.6B`.
+- Использует локальный OpenAI-compatible generation server для `Qwen/Qwen3.5-2B`.
 - Возвращает grounded chat-ответы с citations.
 - Хранит sentence-level user memory в SQLite-таблице `memory_items`.
 - Извлекает memory через отслеживаемый binary BiLSTM classifier bundle.
 - Разбивает user turns на sentence-like segments с `pySBD` как preferred path и regex как fallback.
 - Дедуплицирует memory по normalized text на пользователя.
 - Вызывает memory через нетренируемый Hopfield-style read в embedding-space с режимами `top1` и `topk`.
-- Отказывает в неподдерживаемых или явно out-of-scope запросах вместо того, чтобы выдумывать ответы.
+- Дает limited caveated chat guidance для легитимных weakly grounded ролей, но по-прежнему блокирует clearly out-of-scope requests и unsupported exportable plans.
 - Генерирует structured career plans с study-preferences, workload metadata и датированными calendar sessions.
 - Экспортирует сохраненные планы в `.ics`.
-- Содержит реальный frontend для chat, plan generation, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
+- Содержит реальный frontend для chat, plan generation, browser-local profile codes, browser-local theme presets, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
 - Хранит frontend UI-copy в language-specific config-файлах и позволяет переключать интерфейс между русским и английским, оставляя русский языком по умолчанию.
 - Раздает собранный frontend прямо из backend в single-image deployment-path.
 - Собирает и публикует deployable container-image через GitHub Actions после успешного CI на `main`.
@@ -97,7 +97,7 @@
 ### Текущие риски и честные оговорки
 
 - Ассистент уже функционален, но местами все еще стилистически шероховат,
-  потому что generator маленький, а corpus сильно ESCO-centric.
+  потому что generator все еще маленький, а corpus сильно ESCO-centric.
 - Live memory extractor значительно реальнее старой heuristic-версии, но его
   главные доказательства все еще опираются на synthetic data и targeted runtime
   tests, а не на большой real-chat benchmark.
@@ -111,12 +111,12 @@
 ### Последний проверенный срез
 
 - Retrieval stack: SQLite + FAISS HNSW + `Qwen/Qwen3-Embedding-0.6B`
-- Generator stack: локальный OpenAI-compatible server + `Qwen/Qwen3-0.6B`
+- Generator stack: локальный OpenAI-compatible server + `Qwen/Qwen3.5-2B` Q4_K_M GGUF, 8192-token context
 - Memory store: SQLite `memory_items`
 - Memory extraction: sentence-level binary BiLSTM runtime-path
 - Memory recall: Hopfield-style `top1` и `topk`
 - Plan artifact: structured steps + schedule metadata + calendar events + `.ics`-экспорт
 - Frontend stack: React + Vite + TypeScript
 - Deployment baseline: один Docker-image, same-origin SPA + backend, GHCR publish + Linode rollout через GitHub Actions
-- Frontend surfaces: chat, citations, memory-used display, saved plan, preview календаря, список/удаление memory, local history
+- Frontend surfaces: chat, citations, memory-used display, saved plan, preview календаря, список/удаление memory, local history, browser-local profile codes, theme presets
 - Prototype status: завершен для текущего v1-scope

@@ -340,6 +340,26 @@ def test_answer_flow_extracts_and_persists_russian_memory() -> None:
     assert listed_payload[0]["text"] == "Я предпочитаю удаленную работу и спокойный график."
 
 
+def test_answer_flow_handles_supported_russian_data_analytics_transition() -> None:
+    """A supported Russian transition request should not fall into unsupported guidance."""
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "supported-ru-data-analyst-user",
+            "question": "Я хочу перейти в аналитику данных, но мне нужен спокойный темп работы.",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["response_kind"] == "answer"
+    assert "аналитик данных" in payload["answer"].lower()
+    assert "SQL" in payload["answer"] or "Python" in payload["answer"]
+    assert any("data analyst" in citation["title"].lower() for citation in payload["citations"])
+
+
 def test_answer_flow_dedupes_duplicate_memory_sentences_within_one_request() -> None:
     """One user turn should not persist the same memory twice."""
 
@@ -452,8 +472,8 @@ def test_answer_flow_handles_external_resource_requests_honestly() -> None:
     assert "Scaffold answer" not in payload["answer"]
 
 
-def test_answer_flow_refuses_unsupported_explicit_role_request() -> None:
-    """Explicit unsupported role requests should return a grounded refusal, not fake coaching."""
+def test_answer_flow_limits_unsupported_explicit_role_request_without_persisting_memory() -> None:
+    """Explicit unsupported role requests should get limited guidance without saved memory."""
 
     client = TestClient(create_app())
     user_id = "unsupported-role-user"
@@ -464,8 +484,9 @@ def test_answer_flow_refuses_unsupported_explicit_role_request() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["response_kind"] == "refusal"
-    assert "can’t provide grounded career guidance" in payload["answer"]
+    assert payload["response_kind"] == "limited_unsupported"
+    assert "limited guidance rather than a grounded career recommendation" in payload["answer"]
+    assert "locally regulated" in payload["answer"]
     assert payload["citations"] == []
     listed_memory = client.get("/memory/list", params={"user_id": user_id})
     assert listed_memory.status_code == 200
@@ -585,6 +606,7 @@ def test_career_plan_returns_400_for_unsupported_target_role() -> None:
 
     assert response.status_code == 400
     assert "does not show a strong enough match" in response.json()["detail"]
+    assert "plans and calendars need" in response.json()["detail"]
 
 
 def test_career_plan_returns_schedule_ready_fields() -> None:

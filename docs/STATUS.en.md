@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-03-26
+Last updated: 2026-04-28
 
 ### Current Phase
 
@@ -27,17 +27,17 @@ optional polish, research-extension work, or later thesis-improvement work.
 - Serves a real backend API from `backend/app/`.
 - Builds dense retrieval over the tracked ESCO corpus using SQLite + FAISS HNSW.
 - Uses `Qwen/Qwen3-Embedding-0.6B` as the active retrieval embedder.
-- Uses a local OpenAI-compatible generation server for `Qwen/Qwen3-0.6B`.
+- Uses a local OpenAI-compatible generation server for `Qwen/Qwen3.5-2B`.
 - Returns grounded chat answers with citations.
 - Stores sentence-level user memory in the SQLite `memory_items` table.
 - Extracts memory with the tracked binary BiLSTM classifier bundle.
 - Splits user turns into sentence-like segments with `pySBD` preferred and regex fallback.
 - Deduplicates memory by normalized text per user.
 - Recalls memory through a non-trainable embedding-space Hopfield-style read with `top1` and `topk` modes.
-- Refuses unsupported or clearly out-of-scope requests instead of bluffing.
+- Gives limited caveated chat guidance for legitimate weakly grounded roles, while still blocking clearly out-of-scope requests and unsupported exportable plans.
 - Generates structured career plans with study preferences, workload metadata, and dated calendar sessions.
 - Exports saved plans as `.ics`.
-- Ships a real frontend for chat, plan generation, local conversation history, memory inspection, memory deletion, and refusal/scope UI states.
+- Ships a real frontend for chat, plan generation, browser-local profile codes, browser-local theme presets, local conversation history, memory inspection, memory deletion, and refusal/scope UI states.
 - Stores frontend UI copy in per-language config files and lets the user switch between Russian and English, with Russian as the default.
 - Serves the built frontend from the backend in the single-image deployment path.
 - Builds and publishes a deployable container image through GitHub Actions after CI succeeds on `main`.
@@ -97,7 +97,7 @@ That condition is now satisfied.
 ### Current Risks And Honest Caveats
 
 - The assistant is functional but still stylistically rough in places because
-  the generator is small and the corpus is ESCO-heavy.
+  the generator is still small and the corpus is ESCO-heavy.
 - The live memory extractor is much more real than the old heuristic version,
   but its strongest evidence is still synthetic plus targeted runtime tests
   rather than a large real-chat benchmark.
@@ -111,12 +111,12 @@ That condition is now satisfied.
 ### Latest Verified Snapshot
 
 - Retrieval stack: SQLite + FAISS HNSW + `Qwen/Qwen3-Embedding-0.6B`
-- Generator stack: local OpenAI-compatible server + `Qwen/Qwen3-0.6B`
+- Generator stack: local OpenAI-compatible server + `Qwen/Qwen3.5-2B` Q4_K_M GGUF, 8192-token context
 - Memory store: SQLite `memory_items`
 - Memory extraction: sentence-level binary BiLSTM runtime path
 - Memory recall: Hopfield-style `top1` and `topk`
 - Plan artifact: structured steps + schedule metadata + calendar events + `.ics` export
 - Frontend stack: React + Vite + TypeScript
 - Deployment baseline: one Docker image, same-origin SPA + backend, GHCR publish + Linode rollout via GitHub Actions
-- Frontend surfaces: chat, citations, memory-used display, saved plan, calendar preview, memory list/delete, local history
+- Frontend surfaces: chat, citations, memory-used display, saved plan, calendar preview, memory list/delete, local history, browser-local profile codes, theme presets
 - Prototype status: complete for the current v1 scope

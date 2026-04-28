@@ -49,6 +49,10 @@ The student studies artificial intelligence and business. Her coursework has emp
 - Keep architecture explicit, modular, and inspectable. Favor simple modules and clear data flow over framework cleverness.
 - Use self-documenting names first, then add explanatory comments generously around non-obvious logic, especially retrieval, memory, evaluation, data normalization, and prompt contracts.
 - Avoid comments that only restate syntax.
+- Before editing any Markdown file, check its last Git author with
+  `git log -1 --format=%an -- <path>`. Do not edit Markdown files whose last
+  author is `Junijus`; use another non-protected file or report that the
+  translation/documentation update must be handled by that contributor.
 - Keep enduring repository documentation in paired language-specific files where practical, using English and Russian variants such as `*.en.md` and `*.ru.md`.
 - Keep source code identifiers in English. Keep most inline code comments in English for maintainability. If a short bilingual comment materially helps explain an academic concept, it is acceptable.
 - When changing architecture, scope, model choices, or evaluation policy, update `docs/DECISIONS.md` in the same change.
@@ -66,6 +70,11 @@ The student studies artificial intelligence and business. Her coursework has emp
 - Архитектура должна быть явной, модульной и прозрачной для анализа. Предпочтение отдается простым модулям и понятному потоку данных, а не избыточной framework-сложности.
 - Сначала используйте самодокументируемые имена, а затем щедро добавляйте поясняющие комментарии вокруг неочевидной логики, особенно в retrieval, memory, evaluation, нормализации данных и prompt-контрактах.
 - Избегайте комментариев, которые просто пересказывают синтаксис.
+- Перед редактированием любого Markdown-файла проверяйте последнего автора в Git
+  командой `git log -1 --format=%an -- <path>`. Не редактируйте Markdown-файлы,
+  у которых последний автор — `Junijus`; используйте другой незапрещенный файл
+  или сообщите, что обновление документации/перевода должен выполнить этот
+  участник.
 - Вся долговечная документация репозитория должна вестись в парных language-specific файлах, где это практически возможно, используя английские и русские варианты вроде `*.en.md` и `*.ru.md`.
 - Идентификаторы в исходном коде должны быть на английском языке. Большинство inline-комментариев в коде также должны быть на английском ради сопровождаемости. Если короткий двуязычный комментарий действительно помогает объяснить академическую идею, это допустимо.
 - При изменении архитектуры, границ проекта, выбора моделей или политики evaluation обновляйте `docs/DECISIONS.md` в том же изменении.

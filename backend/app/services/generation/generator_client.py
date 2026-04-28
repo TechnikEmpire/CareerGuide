@@ -151,7 +151,7 @@ class LlamaCppGeneratorClient:
 
         system_prompt = (
             "You are a grounded career guidance assistant. "
-            "Answer only from the supplied evidence and memory summary. "
+            "Answer only from the supplied evidence, practical study topic suggestions, and memory summary. "
             "Return plain text only, not JSON. "
             "Sound like a thoughtful career coach in a normal conversation, not a database search result. "
             "Translate evidence into plain human advice rather than echoing source labels. "

@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 
 from backend.app.services.generation.esco_grounding import extract_description, extract_label, extract_skills
+from backend.app.services.generation.practical_skills import practical_study_topics_for_context
 from backend.app.services.generation.schemas import StudyPreferences
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
@@ -63,6 +64,26 @@ def _format_evidence_block(retrieval_context: RetrievalContext, language_code: s
     return "\n\n".join(sections)
 
 
+def _format_practical_topics_block(
+    retrieval_context: RetrievalContext,
+    language_code: str,
+    *,
+    target_role: str,
+) -> str:
+    topics = practical_study_topics_for_context(
+        retrieval_context,
+        language_code,
+        target_role=target_role,
+    )
+    if not topics:
+        return "No extra practical study topics were inferred."
+    return (
+        "These are practical study suggestions inferred from the identifiable role family, "
+        "not direct ESCO facts: "
+        f"{', '.join(topics)}."
+    )
+
+
 def _required_answer_language(question: str) -> tuple[str, str]:
     if _CYRILLIC_PATTERN.search(question):
         return ("Russian", "ru")
@@ -91,12 +112,15 @@ def build_answer_prompt(question: str, retrieval_context: RetrievalContext) -> s
         f"{_format_memory_summary(retrieval_context)}\n\n"
         "Retrieved evidence:\n"
         f"{_format_evidence_block(retrieval_context, language_code)}\n\n"
+        "Practical study topic suggestions:\n"
+        f"{_format_practical_topics_block(retrieval_context, language_code, target_role=question)}\n\n"
         "Instructions:\n"
         f"- Answer only in {language_name} ({language_code}). Do not switch languages.\n"
         "- Return plain text only. Do not return JSON, Python lists, or code fences.\n"
         "- Write like a helpful career coach in conversation, not like a search engine or encyclopedia.\n"
         "- Use a natural coaching tone that responds directly to the user, not a textbook or database tone.\n"
-        "- Use only the retrieved evidence and the memory summary.\n"
+        "- Use only the retrieved evidence, practical study topic suggestions, and the memory summary.\n"
+        "- You may use the practical study topic suggestions as concrete learning topics, but do not describe them as ESCO facts.\n"
         "- If the evidence is incomplete, say so explicitly.\n"
         "- Do not repeat, paraphrase, or restate the user's question at the start of the answer.\n"
         "- Start with the actual answer or recommendation, not with a reformulation of the request.\n"
@@ -146,6 +170,8 @@ def build_career_plan_prompt(
         f"{_format_memory_summary(retrieval_context)}\n\n"
         "Retrieved evidence:\n"
         f"{_format_evidence_block(retrieval_context, language_code)}\n\n"
+        "Practical study topic suggestions:\n"
+        f"{_format_practical_topics_block(retrieval_context, language_code, target_role=target_role)}\n\n"
         "Instructions:\n"
         f"- Write all string values in {language_name} ({language_code}).\n"
         "- Return valid JSON only.\n"
@@ -153,6 +179,7 @@ def build_career_plan_prompt(
         "- Produce 3 to 5 steps.\n"
         "- Keep every step grounded in the retrieved evidence.\n"
         "- Pull useful details from role descriptions and ESCO skill lists into the step descriptions naturally.\n"
+        "- Use practical study topic suggestions for concrete study progression when they are available, but do not describe them as ESCO facts.\n"
         "- Use the retrieved role description to explain what the work actually involves, not just the role title.\n"
         "- Use focus_skills for the main study topics attached to that step.\n"
         "- estimated_hours should be a realistic small-block study estimate for that step, not full professional training time.\n"

@@ -230,10 +230,14 @@ python -m backend.scripts.setup_local_models
 
 What this does:
 
-- downloads the generator GGUF into `models/Qwen3-0.6B-GGUF/`
+- downloads the generator GGUF into `models/Qwen_Qwen3.5-2B-GGUF/`
 - downloads the retrieval embedding model into `models/Qwen3-Embedding-0.6B/`
 - writes `.env.local` so the backend uses the repo-local embedding model
 - writes `config/llama_cpp_python_server.local.json` with the resolved GGUF path
+
+The default generator artifact is `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M` from
+`bartowski/Qwen_Qwen3.5-2B-GGUF`. The generated local server config caps context
+at 8192 tokens and uses 4 CPU threads for the current 8 GB RAM / 4 vCPU VPS target.
 
 The backend now loads `.env.local` automatically, so you do not need to export
 the local embedding path manually after running the setup helper.
@@ -259,8 +263,17 @@ Install the optional runtime package in your existing environment:
 python -m pip install -r requirements-runtime.txt
 ```
 
+If you previously installed the older runtime, force an upgrade before running
+Qwen3.5 GGUF files:
+
+```bash
+python -m pip install --upgrade --force-reinstall -r requirements-runtime.txt
+```
+
 This package may still compile native `llama.cpp` components during
 installation, or install a prebuilt wheel if one is available. That is expected.
+Qwen3.5 requires `llama-cpp-python>=0.3.21`; older builds fail with
+`unknown model architecture: 'qwen35'`.
 
 Default base URL:
 

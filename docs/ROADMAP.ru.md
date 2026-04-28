@@ -1,7 +1,7 @@
 # Project Roadmap
 
 
-Последнее обновление: 2026-03-24
+Последнее обновление: 2026-04-28
 
 ### Назначение
 
@@ -33,7 +33,7 @@
 | 6. Memory extraction и consolidation | completed | В live-path работают sentence-level binary BiLSTM extraction, preferred `pySBD` segmentation и normalized-text dedupe. |
 | 7. Hopfield-style memory read | completed | Практический нетренируемый embedding-space Hopfield recall с режимами `top1` и `topk` подключен к live answer-path. |
 | 8. Joint RAG + memory generation | completed | Live assistant уже объединяет dense retrieval, persisted memory и grounded conversational guardrails. |
-| 9. Safety и refusal behavior | completed | Прототип уже блокирует unsupported или out-of-scope requests спокойным grounded refusal behavior. |
+| 9. Safety и scoped guidance behavior | completed | Прототип блокирует exploitative/out-of-scope requests, сохраняет unsupported plans grounded и дает limited caveated chat guidance для легитимных weakly grounded ролей. |
 | 10. Evaluation baseline | completed | Для текущего prototype-scope уже существуют retrieval qrels, answer-eval fixtures, scoring scripts, benchmark outputs и ключевые regression tests. |
 | 11. Web UI v1 | completed | Frontend уже покрывает chat, citations, memory, saved plans, study preferences, scheduled sessions, local history и `.ics`-экспорт. |
 | 12. Deployment baseline | completed | Репозиторий теперь собирает, публикует и автоматически выкатывает single-image container, который раздает frontend и backend вместе и включает публичные local runtime models. |

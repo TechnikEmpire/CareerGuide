@@ -41,6 +41,10 @@ that background and a modern retrieval-augmented application.
   around non-obvious logic, especially retrieval, memory, evaluation, data
   normalization, and prompt contracts.
 - Avoid comments that only restate syntax.
+- Before editing any Markdown file, check its last Git author with
+  `git log -1 --format=%an -- <path>`. Do not edit Markdown files whose last
+  author is `Junijus`; use another non-protected file or report that the
+  translation/documentation update must be handled by that contributor.
 - Keep enduring repository documentation in paired language-specific files
   where practical, using English and Russian variants such as `*.en.md` and
   `*.ru.md`.

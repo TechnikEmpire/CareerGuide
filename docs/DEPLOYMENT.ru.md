@@ -30,7 +30,7 @@
 
 Во время image-build теперь скачиваются:
 
-- `ggml-org/Qwen3-0.6B-GGUF`
+- `bartowski/Qwen_Qwen3.5-2B-GGUF` (`Qwen_Qwen3.5-2B-Q4_K_M.gguf`)
 - `Qwen/Qwen3-Embedding-0.6B`
 
 Эти модели не отслеживаются в Git. Они подтягиваются во время image-build, чтобы

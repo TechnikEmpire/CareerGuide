@@ -38,7 +38,7 @@
 3. эмбеддить только входящий query
 4. извлекать dense ANN chunks
 5. собирать grounded prompt
-6. запрашивать ответ у локального Qwen3 GGUF generator
+6. запрашивать ответ у локального Qwen3.5 GGUF generator
 7. score-ить сгенерированный ответ по отслеживаемым answer-eval cases
 
 Активный dense-only runtime-default теперь — `top_k=10`, исходя из текущей
@@ -48,7 +48,7 @@
 
 Даже если retrieval-index уже собран, генерация ответов все равно требует:
 
-- локальный runtime генератора для `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- локальный runtime генератора для `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M`
 - локальную embedding-модель для query-эмбеддинга (`Qwen/Qwen3-Embedding-0.6B`)
 
 Retrieval-index хранит document-векторы, но система все равно должна эмбеддить

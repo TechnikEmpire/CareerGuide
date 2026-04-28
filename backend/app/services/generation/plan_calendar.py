@@ -17,6 +17,10 @@ from backend.app.services.generation.esco_grounding import (
     lower_sentence_start,
     summarize_description,
 )
+from backend.app.services.generation.practical_skills import (
+    merge_study_topics,
+    practical_study_topics_for_context,
+)
 from backend.app.services.generation.schemas import (
     CareerPlanCalendarEvent,
     CareerPlanRequest,
@@ -84,7 +88,18 @@ def finalize_career_plan(
     role_label = extract_label(primary_chunk, language_code) or target_role
     role_description = extract_description(primary_chunk, language_code)
     role_summary = summarize_description(role_description, language_code)
-    focus_topics = extract_focus_topics(retrieval_context, language_code, limit=8)
+    grounded_focus_topics = extract_focus_topics(retrieval_context, language_code, limit=4)
+    practical_focus_topics = practical_study_topics_for_context(
+        retrieval_context,
+        language_code,
+        target_role=target_role,
+        limit=6,
+    )
+    focus_topics = merge_study_topics(
+        grounded_focus_topics,
+        practical_focus_topics,
+        limit=10,
+    )
     workload_level = estimate_workload_level(
         target_role=target_role,
         role_label=role_label,
@@ -155,9 +170,12 @@ def estimate_workload_level(
 
     role_haystack = "\n".join([target_role, role_label, role_description])
     high_signal_topic_count = sum(1 for topic in focus_topics if _HIGH_SIGNAL_TOPIC_PATTERN.search(topic))
-    if _HIGH_WORKLOAD_PATTERN.search(role_haystack) or high_signal_topic_count >= 7:
+    medium_role_match = _MEDIUM_WORKLOAD_PATTERN.search(role_haystack)
+    if _HIGH_WORKLOAD_PATTERN.search(role_haystack):
         return "high"
-    if high_signal_topic_count >= 4 or _MEDIUM_WORKLOAD_PATTERN.search(role_haystack):
+    if high_signal_topic_count >= 7 and not medium_role_match:
+        return "high"
+    if high_signal_topic_count >= 4 or medium_role_match:
         return "medium"
     return "low"
 
@@ -177,10 +195,11 @@ def enrich_plan_steps(
         return []
 
     weights = _weights_for_step_count(len(steps))
+    topics_per_step = 3 if len(focus_topics) >= len(steps) * 3 else 2
     enriched_steps: list[CareerPlanStep] = []
     for index, step in enumerate(steps):
-        start = index * 2
-        focus_slice = focus_topics[start : start + 2] or focus_topics[:1]
+        start = index * topics_per_step
+        focus_slice = focus_topics[start : start + topics_per_step] or focus_topics[:1]
         estimated_hours = round(total_hours * weights[index], 1)
         grounded_detail = _grounded_detail_for_step(
             index=index,

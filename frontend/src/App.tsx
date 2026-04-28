@@ -13,11 +13,21 @@ import {
 import { CitationList } from "./components/CitationList";
 import { MemoryPanel } from "./components/MemoryPanel";
 import { MessageCard, type ConversationMessage } from "./components/MessageCard";
-import { getUiText, persistUiLanguage, readStoredUiLanguage, type UiLanguage } from "./config/ui";
+import { getUiText, persistUiLanguage, readStoredUiLanguage, type ThemeId, type UiLanguage } from "./config/ui";
 
 const MOBILE_SIDEBAR_BREAKPOINT = 980;
+const LEGACY_USER_ID = "demo-user";
+const LOCAL_PROFILE_STORAGE_KEY = "careerguide:local-profile:v1";
+const LOCAL_PROFILE_MIGRATION_KEY = "careerguide:local-profile:migrated-demo-user:v1";
+const DEFAULT_PROFILE_LABEL = "My profile";
+const THEMES: ThemeId[] = ["graphite", "harbor", "meadow"];
 
 type AppView = "chat" | "plan" | "memory";
+
+type LocalProfile = {
+  id: string;
+  label: string;
+};
 
 type ConversationSession = {
   id: string;
@@ -53,10 +63,13 @@ function isScopeLimitMessage(message: string | null | undefined): boolean {
     normalized.includes("can’t assist") ||
     normalized.includes("can’t build a grounded plan") ||
     normalized.includes("can't build a grounded plan") ||
+    normalized.includes("can’t build an exportable study plan") ||
+    normalized.includes("can't build an exportable study plan") ||
     normalized.includes("can’t provide grounded career guidance") ||
     normalized.includes("can't provide grounded career guidance") ||
     normalized.includes("not a crisis-response system") ||
     normalized.includes("не могу надежно дать карьерную рекомендацию") ||
+    normalized.includes("не могу построить экспортируемый учебный план") ||
     normalized.includes("не могу построить надежный план")
   );
 }
@@ -66,11 +79,6 @@ function makeMessageId(prefix: string): string {
     return `${prefix}-${crypto.randomUUID()}`;
   }
   return `${prefix}-${Date.now()}`;
-}
-
-function normalizeUserId(rawUserId: string): string {
-  const normalized = rawUserId.trim();
-  return normalized.length > 0 ? normalized : "demo-user";
 }
 
 function describeError(error: unknown, fallbackMessage: string): string {
@@ -86,6 +94,10 @@ function conversationStorageKey(userId: string): string {
 
 function planStorageKey(userId: string): string {
   return `careerguide:plan:${userId}`;
+}
+
+function themeStorageKey(profileId: string): string {
+  return `careerguide:theme:${profileId}`;
 }
 
 function createConversationSession(language: UiLanguage): ConversationSession {
@@ -140,6 +152,90 @@ function loadStoredConversations(userId: string, language: UiLanguage): Conversa
 
 function loadStoredPlan(userId: string): SavedPlanBundle | null {
   return readStorageJson<SavedPlanBundle | null>(planStorageKey(userId), null);
+}
+
+function makeOpaqueProfileId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `cg-${crypto.randomUUID()}`;
+  }
+  return `cg-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeProfileLabel(rawLabel: string): string {
+  const normalized = rawLabel.trim();
+  return normalized.length > 0 ? normalized : DEFAULT_PROFILE_LABEL;
+}
+
+function normalizeProfileCode(rawCode: string): string | null {
+  const normalized = rawCode.trim();
+  if (!normalized || normalized.length > 64) {
+    return null;
+  }
+  return /^[A-Za-z0-9._:-]+$/.test(normalized) ? normalized : null;
+}
+
+function migrateLegacyLocalProfile(profileId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  if (window.localStorage.getItem(LOCAL_PROFILE_MIGRATION_KEY) === "true") {
+    return;
+  }
+
+  const legacyConversationKey = conversationStorageKey(LEGACY_USER_ID);
+  const nextConversationKey = conversationStorageKey(profileId);
+  if (!window.localStorage.getItem(nextConversationKey)) {
+    const legacyConversations = window.localStorage.getItem(legacyConversationKey);
+    if (legacyConversations) {
+      window.localStorage.setItem(nextConversationKey, legacyConversations);
+    }
+  }
+
+  const legacyPlanKey = planStorageKey(LEGACY_USER_ID);
+  const nextPlanKey = planStorageKey(profileId);
+  if (!window.localStorage.getItem(nextPlanKey)) {
+    const legacyPlan = window.localStorage.getItem(legacyPlanKey);
+    if (legacyPlan) {
+      window.localStorage.setItem(nextPlanKey, legacyPlan);
+    }
+  }
+
+  window.localStorage.setItem(LOCAL_PROFILE_MIGRATION_KEY, "true");
+}
+
+function readStoredLocalProfile(): LocalProfile {
+  const stored = readStorageJson<Partial<LocalProfile> | null>(LOCAL_PROFILE_STORAGE_KEY, null);
+  if (
+    stored &&
+    typeof stored.id === "string" &&
+    normalizeProfileCode(stored.id) &&
+    typeof stored.label === "string"
+  ) {
+    return {
+      id: stored.id,
+      label: normalizeProfileLabel(stored.label),
+    };
+  }
+
+  const profile = {
+    id: makeOpaqueProfileId(),
+    label: DEFAULT_PROFILE_LABEL,
+  };
+  writeStorageJson(LOCAL_PROFILE_STORAGE_KEY, profile);
+  migrateLegacyLocalProfile(profile.id);
+  return profile;
+}
+
+function isThemeId(value: string | null | undefined): value is ThemeId {
+  return value === "graphite" || value === "harbor" || value === "meadow";
+}
+
+function readStoredTheme(profileId: string): ThemeId {
+  if (typeof window === "undefined") {
+    return "graphite";
+  }
+  const stored = window.localStorage.getItem(themeStorageKey(profileId));
+  return isThemeId(stored) ? stored : "graphite";
 }
 
 function deriveConversationTitle(messages: ConversationMessage[], language: UiLanguage): string {
@@ -262,8 +358,12 @@ function getWorkloadLabel(language: UiLanguage, value: string): string {
 export default function App() {
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(() => readStoredUiLanguage());
   const uiText = getUiText(uiLanguage);
-  const [draftUserId, setDraftUserId] = useState("demo-user");
-  const [activeUserId, setActiveUserId] = useState("demo-user");
+  const [activeProfile, setActiveProfile] = useState<LocalProfile>(() => readStoredLocalProfile());
+  const activeUserId = activeProfile.id;
+  const [draftProfileLabel, setDraftProfileLabel] = useState(activeProfile.label);
+  const [importProfileCode, setImportProfileCode] = useState("");
+  const [profileNotice, setProfileNotice] = useState<string | null>(null);
+  const [themeId, setThemeId] = useState<ThemeId>(() => readStoredTheme(activeProfile.id));
   const [activeView, setActiveView] = useState<AppView>("chat");
   const [isMobileViewport, setIsMobileViewport] = useState(() => isMobileSidebarViewport());
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => isMobileSidebarViewport());
@@ -317,6 +417,18 @@ export default function App() {
       setIsMemoryLoading(false);
     }
   }
+
+  useEffect(() => {
+    writeStorageJson(LOCAL_PROFILE_STORAGE_KEY, activeProfile);
+    setDraftProfileLabel(activeProfile.label);
+  }, [activeProfile]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    window.localStorage.setItem(themeStorageKey(activeUserId), themeId);
+  }, [activeUserId, themeId]);
 
   useEffect(() => {
     persistUiLanguage(uiLanguage);
@@ -430,19 +542,47 @@ export default function App() {
     conversationEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [activeView, messages, isAnswerPending]);
 
-  function handleActivateUser(event: FormEvent<HTMLFormElement>): void {
+  function handleSaveProfile(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    const nextUserId = normalizeUserId(draftUserId);
-    setDraftUserId(nextUserId);
+    const nextLabel = normalizeProfileLabel(draftProfileLabel);
+    setActiveProfile((previous) => ({ ...previous, label: nextLabel }));
+    setDraftProfileLabel(nextLabel);
+    setProfileNotice(uiText.sidebar.profileSaved);
     setActiveView("chat");
     if (isMobileViewport) {
       setIsSidebarCollapsed(true);
     }
-    if (nextUserId === activeUserId) {
-      void refreshMemories(nextUserId);
+  }
+
+  function handleImportProfile(event: FormEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    const nextProfileId = normalizeProfileCode(importProfileCode);
+    if (!nextProfileId) {
+      setProfileNotice(uiText.sidebar.profileImportInvalid);
       return;
     }
-    setActiveUserId(nextUserId);
+
+    const nextProfile = {
+      id: nextProfileId,
+      label: normalizeProfileLabel(draftProfileLabel),
+    };
+    setActiveProfile(nextProfile);
+    setThemeId(readStoredTheme(nextProfile.id));
+    setImportProfileCode("");
+    setProfileNotice(uiText.sidebar.profileImported);
+    setActiveView("chat");
+    if (isMobileViewport) {
+      setIsSidebarCollapsed(true);
+    }
+  }
+
+  async function handleCopyProfileCode(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(activeUserId);
+      setProfileNotice(uiText.sidebar.profileCodeCopied);
+    } catch {
+      setProfileNotice(activeUserId);
+    }
   }
 
   function applyChatPrompt(prompt: string): void {
@@ -556,7 +696,10 @@ export default function App() {
         citations: response.citations,
         memorySummary: response.memory_summary,
         promptPreview: response.prompt_preview,
-        responseKind: response.response_kind === "refusal" ? "refusal" : "answer",
+        responseKind:
+          response.response_kind === "refusal" || response.response_kind === "limited_unsupported"
+            ? response.response_kind
+            : "answer",
       };
       setConversations((previous) =>
         updateConversationMessages(
@@ -676,6 +819,7 @@ export default function App() {
       className={`shell-root ${isSidebarCollapsed ? "sidebar-collapsed" : ""} ${
         isMobileViewport ? "sidebar-mobile" : ""
       }`}
+      data-theme={themeId}
     >
       <button
         aria-hidden={isSidebarCollapsed || !isMobileViewport}
@@ -696,18 +840,63 @@ export default function App() {
             </div>
           </div>
 
-          <form className="sidebar-profile-form" onSubmit={handleActivateUser}>
+          <form className="sidebar-profile-form" onSubmit={handleSaveProfile}>
             <label className="sidebar-field">
               <span>{uiText.sidebar.profileLabel}</span>
               <input
-                value={draftUserId}
-                onChange={(event) => setDraftUserId(event.target.value)}
+                value={draftProfileLabel}
+                onChange={(event) => setDraftProfileLabel(event.target.value)}
                 placeholder={uiText.sidebar.profilePlaceholder}
               />
             </label>
             <button className="sidebar-primary-button" type="submit">
               {uiText.sidebar.useProfile}
             </button>
+          </form>
+
+          <div className="sidebar-settings">
+            <div className="profile-code-panel">
+              <p className="sidebar-eyebrow">{uiText.sidebar.profileCodeLabel}</p>
+              <code>{activeUserId}</code>
+              <button className="toolbar-button secondary" type="button" onClick={() => void handleCopyProfileCode()}>
+                {uiText.sidebar.copyProfileCode}
+              </button>
+            </div>
+
+            <form className="profile-import-form" onSubmit={handleImportProfile}>
+              <label className="sidebar-field">
+                <span>{uiText.sidebar.importProfileCode}</span>
+                <input
+                  value={importProfileCode}
+                  onChange={(event) => setImportProfileCode(event.target.value)}
+                  placeholder={uiText.sidebar.importProfilePlaceholder}
+                />
+              </label>
+              <button className="toolbar-button" type="submit">
+                {uiText.sidebar.importProfile}
+              </button>
+            </form>
+
+            {profileNotice ? <p className="profile-notice">{profileNotice}</p> : null}
+
+            <div className="theme-toggle-group">
+              <p className="sidebar-eyebrow">{uiText.sidebar.themeLabel}</p>
+              <div className="theme-toggle-buttons">
+                {THEMES.map((theme) => (
+                  <button
+                    key={theme}
+                    className={`theme-button ${themeId === theme ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setThemeId(theme)}
+                    aria-pressed={themeId === theme}
+                  >
+                    <span className={`theme-swatch theme-swatch-${theme}`} aria-hidden="true" />
+                    <span>{uiText.sidebar.themeOptions[theme]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="language-toggle-group">
               <p className="sidebar-eyebrow">{uiText.sidebar.languageLabel}</p>
               <div className="language-toggle-buttons">
@@ -727,7 +916,7 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </form>
+          </div>
         </div>
 
         <div className="sidebar-actions">
@@ -827,7 +1016,8 @@ export default function App() {
         <div className="sidebar-footer">
           <div>
             <p className="sidebar-eyebrow">{uiText.sidebar.activeUser}</p>
-            <strong>{activeUserId}</strong>
+            <strong>{activeProfile.label}</strong>
+            <span className="sidebar-profile-code">{activeUserId}</span>
           </div>
           {savedPlanAt ? <span className="sidebar-footnote">{uiText.sidebar.planSaved}</span> : null}
         </div>
@@ -868,7 +1058,8 @@ export default function App() {
             </div>
           </div>
           <div className="workspace-meta">
-            <span className="workspace-badge">{activeUserId}</span>
+            <span className="workspace-badge">{activeProfile.label}</span>
+            <span className="workspace-badge muted">{activeUserId}</span>
             {savedPlanAt && activeView === "plan" ? (
               <span className="workspace-badge muted">
                 {uiText.workspace.savedPrefix} {formatTimestamp(savedPlanAt, uiText.metadata.locale)}

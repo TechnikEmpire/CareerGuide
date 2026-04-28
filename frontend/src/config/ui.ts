@@ -5,7 +5,7 @@ import type { UiLanguage, UiText } from "./ui.types";
 const UI_LANGUAGE_COOKIE = "careerguide_ui_language";
 const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
-export type { UiLanguage, UiText } from "./ui.types";
+export type { ThemeId, UiLanguage, UiText } from "./ui.types";
 
 export function normalizeUiLanguage(value: string | null | undefined): UiLanguage {
   return value === "en" ? "en" : "ru";

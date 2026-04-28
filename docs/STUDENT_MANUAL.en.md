@@ -246,10 +246,15 @@ Main files:
 Conversation history is currently frontend-local, not server-side multi-user
 infrastructure.
 
+The frontend now creates an opaque browser-local profile code and sends that
+code as the backend `user_id`. Copy/import is available for deliberate
+migration, but this is not a real account system.
+
 The frontend stores:
 
-- conversations per `user_id`
-- one saved plan per `user_id`
+- conversations per local profile code
+- one saved plan per local profile code
+- one theme choice per local profile code
 
 This is kept simple on purpose.
 
@@ -343,7 +348,7 @@ Main conversational endpoint.
 
 Request:
 
-- `user_id`
+- `user_id` (the browser-local profile code)
 - `question`
 
 Response:
@@ -360,7 +365,7 @@ Structured plan endpoint.
 
 Request:
 
-- `user_id`
+- `user_id` (the browser-local profile code)
 - `goal`
 - `target_role`
 - `study_preferences`
@@ -425,7 +430,7 @@ See [`models/README.en.md`](../models/README.en.md).
 
 Important runtime models:
 
-- generator: `Qwen/Qwen3-0.6B`
+- generator: `Qwen/Qwen3.5-2B` Q4_K_M GGUF
 - embedder: `Qwen/Qwen3-Embedding-0.6B`
 - memory classifier bundle: [`tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt`](../tooling/memory_extraction/models/bilstm_memory_classifier_binary.pt)
 

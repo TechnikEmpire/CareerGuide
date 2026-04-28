@@ -30,7 +30,7 @@ The current single image includes:
 
 The image build now downloads:
 
-- `ggml-org/Qwen3-0.6B-GGUF`
+- `bartowski/Qwen_Qwen3.5-2B-GGUF` (`Qwen_Qwen3.5-2B-Q4_K_M.gguf`)
 - `Qwen/Qwen3-Embedding-0.6B`
 
 Those models are not tracked in Git. They are pulled during the image build so

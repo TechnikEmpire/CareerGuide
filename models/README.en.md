@@ -1,13 +1,13 @@
 # Local Model Cache
 
-Last updated: 2026-03-22
+Last updated: 2026-04-28
 
 This directory stores local runtime model artifacts that are required for
 offline or mostly-offline development, but are not tracked in Git.
 
 Expected contents after running the local setup script:
 
-- `models/Qwen3-0.6B-GGUF/`
+- `models/Qwen_Qwen3.5-2B-GGUF/`
 - `models/Qwen3-Embedding-0.6B/`
 
 Optional contents for future ablations:

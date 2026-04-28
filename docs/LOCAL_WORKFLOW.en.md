@@ -37,7 +37,7 @@ The active baseline is now:
 3. embed only the incoming query
 4. retrieve dense ANN chunks
 5. build a grounded prompt
-6. ask the local Qwen3 GGUF generator for an answer
+6. ask the local Qwen3.5 GGUF generator for an answer
 7. score the generated answer against tracked answer-eval cases
 
 The active dense-only runtime default is now `top_k=10`, based on the current
@@ -123,7 +123,7 @@ k-Nearest Memories with Modern Hopfield Networks"; см.
 
 Even though the retrieval index is already built, answer generation still needs:
 
-- a local generator runtime for `Qwen/Qwen3-0.6B-GGUF:Q8_0`
+- a local generator runtime for `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M`
 - a local embedding model for query embedding (`Qwen/Qwen3-Embedding-0.6B`)
 
 The retrieval index stores document vectors, but the system still needs to
