@@ -16,6 +16,13 @@ export type AnswerResponse = {
   prompt_preview: string;
   memory_summary: string;
   response_kind?: string;
+  plan_update?: PlanUpdateSuggestion | null;
+  plan_handoff?: PlanHandoffSuggestion | null;
+};
+
+export type ChatContextTurn = {
+  role: "assistant" | "user";
+  text: string;
 };
 
 export type CareerPlanStep = {
@@ -35,6 +42,8 @@ export type StudyPreferences = {
 };
 
 export type CareerPlanCalendarEvent = {
+  event_id?: string;
+  event_type?: "study" | "break";
   title: string;
   description: string;
   starts_at: string;
@@ -54,6 +63,19 @@ export type CareerPlanResponse = {
   steps: CareerPlanStep[];
   calendar_events: CareerPlanCalendarEvent[];
   citations: RetrievedChunk[];
+};
+
+export type PlanUpdateSuggestion = {
+  kind: "relax_schedule" | "schedule_preferences" | "add_focus_topic";
+  summary: string;
+  updated_plan: CareerPlanResponse;
+};
+
+export type PlanHandoffSuggestion = {
+  status: "offered" | "accepted" | "declined";
+  target_role: string;
+  goal: string;
+  source: "supported_role_match";
 };
 
 export type MemoryItemPayload = {
@@ -113,12 +135,21 @@ export function getApiBaseUrl(): string {
   return apiBaseUrl;
 }
 
-export function requestAnswer(userId: string, question: string): Promise<AnswerResponse> {
+export function requestAnswer(
+  userId: string,
+  question: string,
+  currentPlan?: CareerPlanResponse | null,
+  conversationContext: ChatContextTurn[] = [],
+  pendingPlanHandoff?: PlanHandoffSuggestion | null,
+): Promise<AnswerResponse> {
   return requestJson<AnswerResponse>("/chat/answer", {
     method: "POST",
     body: JSON.stringify({
       user_id: userId,
       question,
+      current_plan: currentPlan ?? null,
+      conversation_context: conversationContext,
+      pending_plan_handoff: pendingPlanHandoff ?? null,
     }),
   });
 }

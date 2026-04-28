@@ -1,0 +1,333 @@
+Saved plan
+
+data analyst
+Apr 28, 5:49 PM
+Build a realistic transition study plan for data analyst
+
+Workload: medium
+11 week plan
+3 sessions/week · Evening
+1
+Master Data Cleaning and Transformation Techniques
+Work directly on digital data processing and business intelligence. Tie the practice back to data analyst work: data analysts import, inspect, clean, transform, validate, model, or interpret collections of data with regard to the business.... Finish with a small checkable result such as notes, exercises, a mini-case, or a work sample.
+
+digital data processing
+business intelligence
+2
+Learn Business Intelligence Visualization Tools
+Work directly on visual presentation techniques and business intelligence. Tie the practice back to data analyst work: data analysts import, inspect, clean, transform, validate, model, or interpret collections of data with regard to the business.... Finish with a small checkable result such as notes, exercises, a mini-case, or a work sample.
+
+visual presentation techniques
+business intelligence
+3
+Understand Data Mining Algorithms
+Work directly on data mining and information structure. Tie the practice back to data analyst work: data analysts import, inspect, clean, transform, validate, model, or interpret collections of data with regard to the business.... Finish with a small checkable result such as notes, exercises, a mini-case, or a work sample.
+
+data mining
+information structure
+4
+Develop Information Structure Knowledge
+Work directly on information structure and documentation types. Tie the practice back to data analyst work: data analysts import, inspect, clean, transform, validate, model, or interpret collections of data with regard to the business.... Finish with a small checkable result such as notes, exercises, a mini-case, or a work sample.
+
+information structure
+documentation types
+Calendar
+
+Scheduled study sessions
+1.1
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 1 of 6: Review the core ideas for digital data processing and business intelligence and note what must be practiced. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 1 of 6 · Week 1
+
+May 4, 7:00 PM
+
+1.2
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 2 of 6: Complete a short exercise using digital data processing and business intelligence on a small example. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 2 of 6 · Week 1
+
+May 6, 7:00 PM
+
+1.3
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 3 of 6: Apply digital data processing and business intelligence to a small task that resembles real role work. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 3 of 6 · Week 1
+
+May 8, 7:00 PM
+
+1.4
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 4 of 6: Check mistakes, repeat weak spots, and update your notes. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 4 of 6 · Week 2
+
+May 11, 7:00 PM
+
+1.5
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 5 of 6: Create a small artifact that shows progress on this topic. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 5 of 6 · Week 2
+
+May 13, 7:00 PM
+
+1.6
+data analyst: Master Data Cleaning and Transformation Techniques
+Session 6 of 6: Briefly summarize the result, lessons learned, and next step. Focus topics: digital data processing and business intelligence.
+
+Step 1 · Session 6 of 6 · Week 2
+
+May 15, 7:00 PM
+
+2.1
+data analyst: Learn Business Intelligence Visualization Tools
+Session 1 of 7: Review the core ideas for visual presentation techniques and business intelligence and note what must be practiced. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 1 of 7 · Week 3
+
+May 18, 7:00 PM
+
+2.2
+data analyst: Learn Business Intelligence Visualization Tools
+Session 2 of 7: Complete a short exercise using visual presentation techniques and business intelligence on a small example. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 2 of 7 · Week 3
+
+May 20, 7:00 PM
+
+2.3
+data analyst: Learn Business Intelligence Visualization Tools
+Session 3 of 7: Apply visual presentation techniques and business intelligence to a small task that resembles real role work. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 3 of 7 · Week 3
+
+May 22, 7:00 PM
+
+2.4
+data analyst: Learn Business Intelligence Visualization Tools
+Session 4 of 7: Check mistakes, repeat weak spots, and update your notes. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 4 of 7 · Week 4
+
+May 25, 7:00 PM
+
+2.5
+data analyst: Learn Business Intelligence Visualization Tools
+Session 5 of 7: Create a small artifact that shows progress on this topic. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 5 of 7 · Week 4
+
+May 27, 7:00 PM
+
+2.6
+data analyst: Learn Business Intelligence Visualization Tools
+Session 6 of 7: Briefly summarize the result, lessons learned, and next step. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 6 of 7 · Week 4
+
+May 29, 7:00 PM
+
+2.7
+data analyst: Learn Business Intelligence Visualization Tools
+Session 7 of 7: Briefly summarize the result, lessons learned, and next step. Focus topics: visual presentation techniques and business intelligence.
+
+Step 2 · Session 7 of 7 · Week 5
+
+Jun 1, 7:00 PM
+
+3.1
+data analyst: Understand Data Mining Algorithms
+Session 1 of 10: Review the core ideas for data mining and information structure and note what must be practiced. Focus topics: data mining and information structure.
+
+Step 3 · Session 1 of 10 · Week 6
+
+Jun 8, 7:00 PM
+
+3.2
+data analyst: Understand Data Mining Algorithms
+Session 2 of 10: Complete a short exercise using data mining and information structure on a small example. Focus topics: data mining and information structure.
+
+Step 3 · Session 2 of 10 · Week 6
+
+Jun 10, 7:00 PM
+
+3.3
+data analyst: Understand Data Mining Algorithms
+Session 3 of 10: Apply data mining and information structure to a small task that resembles real role work. Focus topics: data mining and information structure.
+
+Step 3 · Session 3 of 10 · Week 6
+
+Jun 12, 7:00 PM
+
+3.4
+data analyst: Understand Data Mining Algorithms
+Session 4 of 10: Check mistakes, repeat weak spots, and update your notes. Focus topics: data mining and information structure.
+
+Step 3 · Session 4 of 10 · Week 7
+
+Jun 15, 7:00 PM
+
+3.5
+data analyst: Understand Data Mining Algorithms
+Session 5 of 10: Create a small artifact that shows progress on this topic. Focus topics: data mining and information structure.
+
+Step 3 · Session 5 of 10 · Week 7
+
+Jun 17, 7:00 PM
+
+3.6
+data analyst: Understand Data Mining Algorithms
+Session 6 of 10: Briefly summarize the result, lessons learned, and next step. Focus topics: data mining and information structure.
+
+Step 3 · Session 6 of 10 · Week 7
+
+Jun 19, 7:00 PM
+
+3.7
+data analyst: Understand Data Mining Algorithms
+Session 7 of 10: Briefly summarize the result, lessons learned, and next step. Focus topics: data mining and information structure.
+
+Step 3 · Session 7 of 10 · Week 8
+
+Jun 22, 7:00 PM
+
+3.8
+data analyst: Understand Data Mining Algorithms
+Session 8 of 10: Briefly summarize the result, lessons learned, and next step. Focus topics: data mining and information structure.
+
+Step 3 · Session 8 of 10 · Week 8
+
+Jun 24, 7:00 PM
+
+3.9
+data analyst: Understand Data Mining Algorithms
+Session 9 of 10: Briefly summarize the result, lessons learned, and next step. Focus topics: data mining and information structure.
+
+Step 3 · Session 9 of 10 · Week 8
+
+Jun 26, 7:00 PM
+
+3.10
+data analyst: Understand Data Mining Algorithms
+Session 10 of 10: Briefly summarize the result, lessons learned, and next step. Focus topics: data mining and information structure.
+
+Step 3 · Session 10 of 10 · Week 9
+
+Jun 29, 7:00 PM
+
+4.1
+data analyst: Develop Information Structure Knowledge
+Session 1 of 6: Review the core ideas for information structure and documentation types and note what must be practiced. Focus topics: information structure and documentation types.
+
+Step 4 · Session 1 of 6 · Week 10
+
+Jul 6, 7:00 PM
+
+4.2
+data analyst: Develop Information Structure Knowledge
+Session 2 of 6: Complete a short exercise using information structure and documentation types on a small example. Focus topics: information structure and documentation types.
+
+Step 4 · Session 2 of 6 · Week 10
+
+Jul 8, 7:00 PM
+
+4.3
+data analyst: Develop Information Structure Knowledge
+Session 3 of 6: Apply information structure and documentation types to a small task that resembles real role work. Focus topics: information structure and documentation types.
+
+Step 4 · Session 3 of 6 · Week 10
+
+Jul 10, 7:00 PM
+
+4.4
+data analyst: Develop Information Structure Knowledge
+Session 4 of 6: Check mistakes, repeat weak spots, and update your notes. Focus topics: information structure and documentation types.
+
+Step 4 · Session 4 of 6 · Week 11
+
+Jul 13, 7:00 PM
+
+4.5
+data analyst: Develop Information Structure Knowledge
+Session 5 of 6: Create a small artifact that shows progress on this topic. Focus topics: information structure and documentation types.
+
+Step 4 · Session 5 of 6 · Week 11
+
+Jul 15, 7:00 PM
+
+4.6
+data analyst: Develop Information Structure Knowledge
+Session 6 of 6: Briefly summarize the result, lessons learned, and next step. Focus topics: information structure and documentation types.
+
+Step 4 · Session 6 of 6 · Week 11
+
+Jul 17, 7:00 PM
+
+Plan evidence
+10 cited chunks
+ESCO
+score 0.710
+аналитик данных / data analyst
+Data analysts import, inspect, clean, transform, validate, model, or interpret collections of data with regard to the business goals of the company. They ensure that the data sources and repositories provide consistent and reliable data. Data analysts use different algorithms and IT tools as demanded by the situation and the current data. They might prepare reports in the form of visualisations such as graphs, charts, and dashboards.
+
+Key skills: digital data processing, information structure, business intelligence, data mining, documentation types, visual presentation techniques, data engineering, data visualisation software.
+
+ESCO
+score 0.660
+научный сотрудник / data scientist
+Data scientists find and interpret rich data sources, manage large amounts of data, merge data sources, ensure consistency of data-sets, and create visualisations to aid in understanding data. They build mathematical models using data, present and communicate data insights and findings to specialists and scientists in their team and if required, to a non-expert audience, and recommend ways to apply the data.
+
+Key skills: mathematical modelling, data mining, visual presentation techniques, data engineering, quantitative analysis, data visualisation software, statistical modeling techniques, information extraction.
+
+ESCO
+score 0.578
+аналитик колл-центра / call centre analyst
+Call centre analysts examine data regarding incoming or outgoing customer calls. They prepare reports and visualisation.
+
+Key skills: call routing, call quality assurance management, call-centre technologies, create solutions to problems, provide objective assessments of calls, gather data, train staff on call quality assurance, perform data analysis.
+
+ESCO
+score 0.565
+инженер данных / data engineer
+Data engineers develop the architecture needed to process, manage, and store large amounts of data which will be used by data scientists for analysis. They design the infrastructure and maintain data pipelines and warehouses to leverage data for strategic advantage.
+
+Key skills: digital data processing, data warehouse, computer science, data analytics, data storage, database management systems, cloud technologies, unstructured data.
+
+ESCO
+score 0.556
+главный сотрудник по данным / chief data officer
+Chief data officers manage companies' enterprise-wide data administration and data mining functions. They ensure data are used as a strategic business asset at the executive level and implement and support a more collaborative and aligned information management infrastructure for the benefit of the organisation at large.
+
+Key skills: information structure, data mining, visual presentation techniques, decision support systems, business processes, data storage, data ethics, data science.
+
+ESCO
+score 0.538
+финансовый аналитик / financial analyst
+Financial analysts conduct economic research and elicit valuable analyses on financial matters such as profitability, liquidity, solvency, and asset management. They provide recommendations on financial matters for decision-making processes. Financial analysts work in both the public and the private sector.
+
+Key skills: digital data processing, investment banking, financial management, quantitative analysis, microeconomics, statistics, economics, business analytics.
+
+ESCO
+score 0.536
+дизайнер хранилища данных / data warehouse designer
+Data warehouse designers are responsible for planning, connecting, designing, scheduling, and deploying data warehouse systems. They develop, monitor and maintain ETL processes, reporting applications and data warehouse design.
+
+Key skills: information structure, data warehouse, database, web programming, ICT security legislation, business process modelling, resource description framework query language, query languages.
+
+ESCO
+score 0.643
+Анализ данных / data analytics
+The science of analysing and making decisions based on raw data collected from various sources. Includes knowledge of techniques using algorithms that derive insights or trends from that data to support decision-making processes.
+
+ESCO
+score 0.585
+использовать специальное программное обеспечение для анализа данных / use specific data analysis software
+Use specific software for data analysis, including statistics, spreadsheets, and databases. Explore possibilities in order to make reports to managers, superiors, or clients.
+
+ESCO
+score 0.578
+выполнять анализ данных / perform data analysis
+Collect data and statistics to test and evaluate in order to generate assertions and pattern predictions, with the aim of discovering useful information in a decision-making process.

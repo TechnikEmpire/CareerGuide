@@ -6,13 +6,18 @@ import {
   fetchMemories,
   requestAnswer,
   requestCareerPlan,
+  type ChatContextTurn,
   type CareerPlanResponse,
+  type CareerPlanCalendarEvent,
   type MemoryItemPayload,
+  type PlanHandoffSuggestion,
+  type PlanUpdateSuggestion,
   type StudyPreferences,
 } from "./api/client";
 import { CitationList } from "./components/CitationList";
 import { MemoryPanel } from "./components/MemoryPanel";
 import { MessageCard, type ConversationMessage } from "./components/MessageCard";
+import { PlanCalendar } from "./components/PlanCalendar";
 import { getUiText, persistUiLanguage, readStoredUiLanguage, type ThemeId, type UiLanguage } from "./config/ui";
 
 const MOBILE_SIDEBAR_BREAKPOINT = 980;
@@ -20,9 +25,10 @@ const LEGACY_USER_ID = "demo-user";
 const LOCAL_PROFILE_STORAGE_KEY = "careerguide:local-profile:v1";
 const LOCAL_PROFILE_MIGRATION_KEY = "careerguide:local-profile:migrated-demo-user:v1";
 const DEFAULT_PROFILE_LABEL = "My profile";
-const THEMES: ThemeId[] = ["graphite", "harbor", "meadow"];
+const THEMES: ThemeId[] = ["slate", "paper", "contrast"];
 
-type AppView = "chat" | "plan" | "memory";
+type AppView = "chat" | "history" | "plan" | "memory";
+type PlanTab = "builder" | "calendar" | "details";
 
 type LocalProfile = {
   id: string;
@@ -35,6 +41,7 @@ type ConversationSession = {
   createdAt: string;
   updatedAt: string;
   messages: ConversationMessage[];
+  pendingPlanHandoff?: PlanHandoffSuggestion | null;
 };
 
 type SavedPlanBundle = {
@@ -151,7 +158,14 @@ function loadStoredConversations(userId: string, language: UiLanguage): Conversa
 }
 
 function loadStoredPlan(userId: string): SavedPlanBundle | null {
-  return readStorageJson<SavedPlanBundle | null>(planStorageKey(userId), null);
+  const storedPlan = readStorageJson<SavedPlanBundle | null>(planStorageKey(userId), null);
+  if (!storedPlan?.plan) {
+    return null;
+  }
+  return {
+    ...storedPlan,
+    plan: normalizePlanForStorage(storedPlan.plan),
+  };
 }
 
 function makeOpaqueProfileId(): string {
@@ -227,15 +241,33 @@ function readStoredLocalProfile(): LocalProfile {
 }
 
 function isThemeId(value: string | null | undefined): value is ThemeId {
-  return value === "graphite" || value === "harbor" || value === "meadow";
+  return value === "slate" || value === "paper" || value === "contrast";
 }
 
 function readStoredTheme(profileId: string): ThemeId {
   if (typeof window === "undefined") {
-    return "graphite";
+    return "slate";
   }
   const stored = window.localStorage.getItem(themeStorageKey(profileId));
-  return isThemeId(stored) ? stored : "graphite";
+  return isThemeId(stored) ? stored : "slate";
+}
+
+function makeEventId(event: CareerPlanCalendarEvent, index: number): string {
+  if (event.event_id) {
+    return event.event_id;
+  }
+  return `evt-local-${index}-${event.starts_at}-${event.title}`.replace(/[^A-Za-z0-9._:-]+/g, "-");
+}
+
+function normalizePlanForStorage(rawPlan: CareerPlanResponse): CareerPlanResponse {
+  return {
+    ...rawPlan,
+    calendar_events: (rawPlan.calendar_events ?? []).map((event, index) => ({
+      ...event,
+      event_id: makeEventId(event, index),
+      event_type: event.event_type === "break" ? "break" : "study",
+    })),
+  };
 }
 
 function deriveConversationTitle(messages: ConversationMessage[], language: UiLanguage): string {
@@ -257,6 +289,7 @@ function updateConversationMessages(
   conversationId: string,
   transform: (messages: ConversationMessage[]) => ConversationMessage[],
   language: UiLanguage,
+  pendingPlanHandoff?: PlanHandoffSuggestion | null,
 ): ConversationSession[] {
   return sessions
     .map((session) => {
@@ -270,9 +303,21 @@ function updateConversationMessages(
         title: deriveConversationTitle(messages, language),
         updatedAt: new Date().toISOString(),
         messages,
+        pendingPlanHandoff:
+          pendingPlanHandoff === undefined ? session.pendingPlanHandoff ?? null : pendingPlanHandoff,
       };
     })
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+}
+
+function buildChatContext(messages: ConversationMessage[], nextMessage: ConversationMessage): ChatContextTurn[] {
+  return [...messages, nextMessage]
+    .filter((message) => !message.isError)
+    .slice(-8)
+    .map((message) => ({
+      role: message.role,
+      text: message.text.slice(0, 1000),
+    }));
 }
 
 function formatTimestamp(value: string, locale: string): string {
@@ -355,6 +400,32 @@ function getWorkloadLabel(language: UiLanguage, value: string): string {
   return value;
 }
 
+function getWorkspaceKicker(activeView: AppView, uiText: ReturnType<typeof getUiText>): string {
+  if (activeView === "chat") {
+    return uiText.workspace.chatKicker;
+  }
+  if (activeView === "history") {
+    return uiText.workspace.historyKicker;
+  }
+  if (activeView === "plan") {
+    return uiText.workspace.planKicker;
+  }
+  return uiText.workspace.memoryKicker;
+}
+
+function getWorkspaceTitle(activeView: AppView, uiText: ReturnType<typeof getUiText>): string {
+  if (activeView === "chat") {
+    return uiText.workspace.chatTitle;
+  }
+  if (activeView === "history") {
+    return uiText.workspace.historyTitle;
+  }
+  if (activeView === "plan") {
+    return uiText.workspace.planTitle;
+  }
+  return uiText.workspace.memoryTitle;
+}
+
 export default function App() {
   const [uiLanguage, setUiLanguage] = useState<UiLanguage>(() => readStoredUiLanguage());
   const uiText = getUiText(uiLanguage);
@@ -383,6 +454,7 @@ export default function App() {
   const [planError, setPlanError] = useState<string | null>(null);
   const [isPlanPending, setIsPlanPending] = useState(false);
   const [isPlanExportPending, setIsPlanExportPending] = useState(false);
+  const [activePlanTab, setActivePlanTab] = useState<PlanTab>("builder");
   const [memories, setMemories] = useState<MemoryItemPayload[]>([]);
   const [isMemoryLoading, setIsMemoryLoading] = useState(false);
   const [memoryError, setMemoryError] = useState<string | null>(null);
@@ -459,6 +531,7 @@ export default function App() {
       setPreferredStudyTime(storedPlan.plan.study_preferences?.preferred_study_time ?? "evening");
       setStudyFrequencyPerWeek(storedPlan.plan.study_preferences?.study_frequency_per_week ?? 3);
       setSavedPlanAt(storedPlan.savedAt);
+      setActivePlanTab("calendar");
     } else {
       setPlan(null);
       setGoal("");
@@ -467,6 +540,7 @@ export default function App() {
       setPreferredStudyTime("evening");
       setStudyFrequencyPerWeek(3);
       setSavedPlanAt(null);
+      setActivePlanTab("builder");
     }
 
     void refreshMemories(activeUserId);
@@ -595,6 +669,7 @@ export default function App() {
 
   function applyPlanPrompt(goalPrompt: string, rolePrompt: string): void {
     setActiveView("plan");
+    setActivePlanTab("builder");
     setGoal(goalPrompt);
     setTargetRole(rolePrompt);
     setPlanError(null);
@@ -629,8 +704,28 @@ export default function App() {
     const freshConversation = createConversationSession(uiLanguage);
     setConversations([freshConversation]);
     setActiveConversationId(freshConversation.id);
-    setActiveView("chat");
+    setActiveView(activeView === "history" ? "history" : "chat");
     removeStorageKey(conversationStorageKey(activeUserId));
+  }
+
+  function savePlanBundle(nextPlan: CareerPlanResponse, nextGoal: string, nextTargetRole: string): void {
+    const normalizedPlan = normalizePlanForStorage(nextPlan);
+    const savedAt = new Date().toISOString();
+    setPlan(normalizedPlan);
+    setGoal(nextGoal);
+    setTargetRole(nextTargetRole);
+    setStudyStartDate(normalizedPlan.study_preferences?.study_start_date ?? defaultStudyStartDate());
+    setPreferredStudyTime(normalizedPlan.study_preferences?.preferred_study_time ?? "evening");
+    setStudyFrequencyPerWeek(normalizedPlan.study_preferences?.study_frequency_per_week ?? 3);
+    setSavedPlanAt(savedAt);
+    setPlanError(null);
+    setActivePlanTab("calendar");
+    writeStorageJson<SavedPlanBundle>(planStorageKey(activeUserId), {
+      plan: normalizedPlan,
+      goal: nextGoal,
+      targetRole: nextTargetRole,
+      savedAt,
+    });
   }
 
   function reloadSavedPlan(): void {
@@ -648,9 +743,13 @@ export default function App() {
     setSavedPlanAt(storedPlan.savedAt);
     setPlanError(null);
     setActiveView("plan");
+    setActivePlanTab("calendar");
   }
 
   function clearSavedPlan(): void {
+    if (!window.confirm(uiText.plan.confirmClearPlan)) {
+      return;
+    }
     removeStorageKey(planStorageKey(activeUserId));
     setPlan(null);
     setGoal("");
@@ -660,6 +759,25 @@ export default function App() {
     setStudyFrequencyPerWeek(3);
     setSavedPlanAt(null);
     setPlanError(null);
+    setActivePlanTab("builder");
+  }
+
+  function handleDeletePlanEvent(event: CareerPlanCalendarEvent): void {
+    if (!plan || !window.confirm(uiText.plan.confirmDeleteSession)) {
+      return;
+    }
+    const eventId = event.event_id ?? `${event.starts_at}-${event.title}`;
+    const nextPlan = normalizePlanForStorage({
+      ...plan,
+      calendar_events: plan.calendar_events.filter((candidate, index) => makeEventId(candidate, index) !== eventId),
+    });
+    savePlanBundle(nextPlan, goal || nextPlan.goal, targetRole || nextPlan.target_role);
+  }
+
+  function applyPlanUpdate(update: PlanUpdateSuggestion): void {
+    const updatedPlan = normalizePlanForStorage(update.updated_plan);
+    savePlanBundle(updatedPlan, updatedPlan.goal, updatedPlan.target_role);
+    setActiveView("plan");
   }
 
   async function handleAskQuestion(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -675,6 +793,8 @@ export default function App() {
       role: "user",
       text: trimmedQuestion,
     };
+    const conversationContext = buildChatContext(messages, userMessage);
+    const pendingPlanHandoff = activeConversation.pendingPlanHandoff ?? null;
 
     setQuestion("");
     setIsAnswerPending(true);
@@ -688,7 +808,13 @@ export default function App() {
     );
 
     try {
-      const response = await requestAnswer(activeUserId, trimmedQuestion);
+      const response = await requestAnswer(
+        activeUserId,
+        trimmedQuestion,
+        plan,
+        conversationContext,
+        pendingPlanHandoff,
+      );
       const assistantMessage: ConversationMessage = {
         id: makeMessageId("assistant"),
         role: "assistant",
@@ -700,15 +826,27 @@ export default function App() {
           response.response_kind === "refusal" || response.response_kind === "limited_unsupported"
             ? response.response_kind
             : "answer",
+        planUpdate: response.plan_update ?? null,
       };
+      const nextPendingPlanHandoff = response.plan_handoff
+        ? response.plan_handoff.status === "offered"
+          ? response.plan_handoff
+          : null
+        : pendingPlanHandoff
+          ? null
+          : undefined;
       setConversations((previous) =>
         updateConversationMessages(
           previous,
           conversationId,
           (messagesBefore) => [...messagesBefore, assistantMessage],
           uiLanguage,
+          nextPendingPlanHandoff,
         ),
       );
+      if (response.plan_handoff?.status === "accepted") {
+        applyPlanPrompt(response.plan_handoff.goal, response.plan_handoff.target_role);
+      }
       await refreshMemories(activeUserId);
     } catch (error) {
       const errorText = describeError(error, uiText.errors.requestFailed);
@@ -753,15 +891,7 @@ export default function App() {
     setPlanError(null);
     try {
       const response = await requestCareerPlan(activeUserId, trimmedGoal, trimmedRole, currentStudyPreferences);
-      const savedAt = new Date().toISOString();
-      setPlan(response);
-      setSavedPlanAt(savedAt);
-      writeStorageJson<SavedPlanBundle>(planStorageKey(activeUserId), {
-        plan: response,
-        goal: trimmedGoal,
-        targetRole: trimmedRole,
-        savedAt,
-      });
+      savePlanBundle(response, trimmedGoal, trimmedRole);
     } catch (error) {
       setPlanError(describeError(error, uiText.errors.requestFailed));
     } finally {
@@ -840,103 +970,94 @@ export default function App() {
             </div>
           </div>
 
-          <form className="sidebar-profile-form" onSubmit={handleSaveProfile}>
-            <label className="sidebar-field">
-              <span>{uiText.sidebar.profileLabel}</span>
-              <input
-                value={draftProfileLabel}
-                onChange={(event) => setDraftProfileLabel(event.target.value)}
-                placeholder={uiText.sidebar.profilePlaceholder}
-              />
-            </label>
-            <button className="sidebar-primary-button" type="submit">
-              {uiText.sidebar.useProfile}
-            </button>
-          </form>
-
           <div className="sidebar-settings">
-            <div className="profile-code-panel">
-              <p className="sidebar-eyebrow">{uiText.sidebar.profileCodeLabel}</p>
-              <code>{activeUserId}</code>
-              <button className="toolbar-button secondary" type="button" onClick={() => void handleCopyProfileCode()}>
-                {uiText.sidebar.copyProfileCode}
-              </button>
-            </div>
-
-            <form className="profile-import-form" onSubmit={handleImportProfile}>
-              <label className="sidebar-field">
-                <span>{uiText.sidebar.importProfileCode}</span>
-                <input
-                  value={importProfileCode}
-                  onChange={(event) => setImportProfileCode(event.target.value)}
-                  placeholder={uiText.sidebar.importProfilePlaceholder}
-                />
-              </label>
-              <button className="toolbar-button" type="submit">
-                {uiText.sidebar.importProfile}
-              </button>
-            </form>
-
-            {profileNotice ? <p className="profile-notice">{profileNotice}</p> : null}
-
-            <div className="theme-toggle-group">
-              <p className="sidebar-eyebrow">{uiText.sidebar.themeLabel}</p>
-              <div className="theme-toggle-buttons">
-                {THEMES.map((theme) => (
-                  <button
-                    key={theme}
-                    className={`theme-button ${themeId === theme ? "active" : ""}`}
-                    type="button"
-                    onClick={() => setThemeId(theme)}
-                    aria-pressed={themeId === theme}
-                  >
-                    <span className={`theme-swatch theme-swatch-${theme}`} aria-hidden="true" />
-                    <span>{uiText.sidebar.themeOptions[theme]}</span>
+            <details className="sidebar-disclosure" open>
+              <summary>{uiText.sidebar.profileSection}</summary>
+              <div className="sidebar-disclosure-body">
+                <form className="sidebar-profile-form" onSubmit={handleSaveProfile}>
+                  <label className="sidebar-field">
+                    <span>{uiText.sidebar.profileLabel}</span>
+                    <input
+                      value={draftProfileLabel}
+                      onChange={(event) => setDraftProfileLabel(event.target.value)}
+                      placeholder={uiText.sidebar.profilePlaceholder}
+                    />
+                  </label>
+                  <button className="sidebar-primary-button" type="submit">
+                    {uiText.sidebar.useProfile}
                   </button>
-                ))}
-              </div>
-            </div>
+                </form>
 
-            <div className="language-toggle-group">
-              <p className="sidebar-eyebrow">{uiText.sidebar.languageLabel}</p>
-              <div className="language-toggle-buttons">
-                <button
-                  className={`toolbar-button ${uiLanguage === "ru" ? "active" : ""}`}
-                  type="button"
-                  onClick={() => setUiLanguage("ru")}
-                >
-                  RU
-                </button>
-                <button
-                  className={`toolbar-button ${uiLanguage === "en" ? "active" : ""}`}
-                  type="button"
-                  onClick={() => setUiLanguage("en")}
-                >
-                  EN
-                </button>
+                <div className="profile-code-panel">
+                  <p className="sidebar-eyebrow">{uiText.sidebar.profileCodeLabel}</p>
+                  <code>{activeUserId}</code>
+                  <button className="toolbar-button secondary" type="button" onClick={() => void handleCopyProfileCode()}>
+                    {uiText.sidebar.copyProfileCode}
+                  </button>
+                </div>
+
+                <form className="profile-import-form" onSubmit={handleImportProfile}>
+                  <label className="sidebar-field">
+                    <span>{uiText.sidebar.importProfileCode}</span>
+                    <input
+                      value={importProfileCode}
+                      onChange={(event) => setImportProfileCode(event.target.value)}
+                      placeholder={uiText.sidebar.importProfilePlaceholder}
+                    />
+                  </label>
+                  <button className="toolbar-button" type="submit">
+                    {uiText.sidebar.importProfile}
+                  </button>
+                </form>
+
+                {profileNotice ? <p className="profile-notice">{profileNotice}</p> : null}
               </div>
-            </div>
+            </details>
+
+            <details className="sidebar-disclosure">
+              <summary>{uiText.sidebar.appearanceSection}</summary>
+              <div className="sidebar-disclosure-body theme-toggle-group">
+                <p className="sidebar-eyebrow">{uiText.sidebar.themeLabel}</p>
+                <div className="theme-toggle-buttons">
+                  {THEMES.map((theme) => (
+                    <button
+                      key={theme}
+                      className={`theme-button ${themeId === theme ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setThemeId(theme)}
+                      aria-pressed={themeId === theme}
+                    >
+                      <span className={`theme-swatch theme-swatch-${theme}`} aria-hidden="true" />
+                      <span>{uiText.sidebar.themeOptions[theme]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </details>
+
+            <details className="sidebar-disclosure">
+              <summary>{uiText.sidebar.languageSection}</summary>
+              <div className="sidebar-disclosure-body language-toggle-group">
+                <p className="sidebar-eyebrow">{uiText.sidebar.languageLabel}</p>
+                <div className="language-toggle-buttons">
+                  <button
+                    className={`toolbar-button ${uiLanguage === "ru" ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setUiLanguage("ru")}
+                  >
+                    RU
+                  </button>
+                  <button
+                    className={`toolbar-button ${uiLanguage === "en" ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setUiLanguage("en")}
+                  >
+                    EN
+                  </button>
+                </div>
+              </div>
+            </details>
           </div>
-        </div>
-
-        <div className="sidebar-actions">
-          <button className="sidebar-action-button" type="button" onClick={handleStartNewChat}>
-            <span className="sidebar-button-icon" aria-hidden="true">
-              +
-            </span>
-            <span className="sidebar-button-text">{uiText.sidebar.newChat}</span>
-          </button>
-          <button
-            className="sidebar-action-button secondary"
-            type="button"
-            onClick={handleDeleteAllChats}
-            disabled={!canDeleteAllChats}
-          >
-            <span className="sidebar-button-icon" aria-hidden="true">
-              -
-            </span>
-            <span className="sidebar-button-text">{uiText.sidebar.deleteAll}</span>
-          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -954,6 +1075,21 @@ export default function App() {
               C
             </span>
             <span className="sidebar-button-text">{uiText.sidebar.chat}</span>
+          </button>
+          <button
+            className={`sidebar-nav-button ${activeView === "history" ? "active" : ""}`}
+            type="button"
+            onClick={() => {
+              setActiveView("history");
+              if (isMobileViewport) {
+                setIsSidebarCollapsed(true);
+              }
+            }}
+          >
+            <span className="sidebar-button-icon" aria-hidden="true">
+              H
+            </span>
+            <span className="sidebar-button-text">{uiText.sidebar.history}</span>
           </button>
           <button
             className={`sidebar-nav-button ${activeView === "plan" ? "active" : ""}`}
@@ -987,32 +1123,6 @@ export default function App() {
           </button>
         </nav>
 
-        <section className="sidebar-history">
-          <div className="sidebar-section-header">
-            <p className="sidebar-eyebrow">{uiText.sidebar.history}</p>
-            <span>{conversations.length}</span>
-          </div>
-
-          <ul className="conversation-list">
-            {conversations.map((conversation) => (
-              <li key={conversation.id}>
-                <button
-                  className={`conversation-item ${
-                    conversation.id === activeConversation.id ? "active" : ""
-                  }`}
-                  type="button"
-                  onClick={() => handleSelectConversation(conversation.id)}
-                >
-                  <span className="conversation-title">{conversation.title}</span>
-                  <span className="conversation-time">
-                    {formatTimestamp(conversation.updatedAt, uiText.metadata.locale)}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
         <div className="sidebar-footer">
           <div>
             <p className="sidebar-eyebrow">{uiText.sidebar.activeUser}</p>
@@ -1042,18 +1152,10 @@ export default function App() {
 
             <div>
               <p className="workspace-kicker">
-                {activeView === "chat"
-                  ? uiText.workspace.chatKicker
-                  : activeView === "plan"
-                  ? uiText.workspace.planKicker
-                  : uiText.workspace.memoryKicker}
+                {getWorkspaceKicker(activeView, uiText)}
               </p>
               <h2 className="workspace-title">
-                {activeView === "chat"
-                  ? uiText.workspace.chatTitle
-                  : activeView === "plan"
-                  ? uiText.workspace.planTitle
-                  : uiText.workspace.memoryTitle}
+                {getWorkspaceTitle(activeView, uiText)}
               </h2>
             </div>
           </div>
@@ -1093,7 +1195,12 @@ export default function App() {
               ) : (
                 <div className="message-feed">
                   {messages.map((message) => (
-                    <MessageCard key={message.id} message={message} uiText={uiText} />
+                    <MessageCard
+                      key={message.id}
+                      message={message}
+                      uiText={uiText}
+                      onApplyPlanUpdate={applyPlanUpdate}
+                    />
                   ))}
                   {isAnswerPending ? (
                     <article className="message message-assistant message-loading">
@@ -1134,8 +1241,73 @@ export default function App() {
           </section>
         ) : null}
 
+        {activeView === "history" ? (
+          <section className="content-stack">
+            <section className="content-card history-card">
+              <div className="content-card-header">
+                <div>
+                  <p className="sidebar-eyebrow">{uiText.sidebar.history}</p>
+                  <h3>{uiText.workspace.historyTitle}</h3>
+                </div>
+                <div className="workspace-meta">
+                  <span className="workspace-badge muted">{conversations.length}</span>
+                </div>
+              </div>
+
+              <div className="toolbar-actions history-actions">
+                <button className="toolbar-button" type="button" onClick={handleStartNewChat}>
+                  {uiText.sidebar.newChat}
+                </button>
+                <button
+                  className="toolbar-button secondary"
+                  type="button"
+                  onClick={handleDeleteAllChats}
+                  disabled={!canDeleteAllChats}
+                >
+                  {uiText.sidebar.deleteAll}
+                </button>
+              </div>
+
+              <ul className="conversation-list history-conversation-list">
+                {conversations.map((conversation) => (
+                  <li key={conversation.id}>
+                    <button
+                      className={`conversation-item ${
+                        conversation.id === activeConversation.id ? "active" : ""
+                      }`}
+                      type="button"
+                      onClick={() => handleSelectConversation(conversation.id)}
+                    >
+                      <span className="conversation-title">{conversation.title}</span>
+                      <span className="conversation-time">
+                        {formatTimestamp(conversation.updatedAt, uiText.metadata.locale)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </section>
+        ) : null}
+
         {activeView === "plan" ? (
           <section className="content-stack">
+            <div className="plan-tab-bar" role="tablist" aria-label={uiText.workspace.planTitle}>
+              {(["builder", "calendar", "details"] as PlanTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  className={`plan-tab-button ${activePlanTab === tab ? "active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={activePlanTab === tab}
+                  onClick={() => setActivePlanTab(tab)}
+                >
+                  {uiText.plan.planTabs[tab]}
+                </button>
+              ))}
+            </div>
+
+            {activePlanTab === "builder" ? (
             <section className="content-card">
               <div className="content-card-header">
                 <div>
@@ -1255,7 +1427,36 @@ export default function App() {
                 )
               ) : null}
             </section>
+            ) : null}
 
+            {activePlanTab === "calendar" ? (
+              <section className="content-card calendar-card">
+                <div className="content-card-header">
+                  <div>
+                    <p className="sidebar-eyebrow">{uiText.plan.calendarEyebrow}</p>
+                    <h3>{plan?.target_role ?? uiText.plan.noPlanYet}</h3>
+                  </div>
+                  <button
+                    className="toolbar-button"
+                    type="button"
+                    onClick={() => void handleExportPlan()}
+                    disabled={!plan || isPlanExportPending}
+                  >
+                    {isPlanExportPending ? uiText.plan.exporting : uiText.plan.exportIcs}
+                  </button>
+                </div>
+                {plan ? (
+                  <PlanCalendar plan={plan} uiText={uiText} onDeleteEvent={handleDeletePlanEvent} />
+                ) : (
+                  <div className="empty-panel">
+                    <h4>{uiText.plan.noSavedPlanTitle}</h4>
+                    <p>{uiText.plan.noSavedPlanDescription}</p>
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {activePlanTab === "details" ? (
             <section className="content-card">
               <div className="content-card-header">
                 <div>
@@ -1343,6 +1544,7 @@ export default function App() {
                 </div>
               )}
             </section>
+            ) : null}
           </section>
         ) : null}
 

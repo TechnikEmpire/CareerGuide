@@ -13,11 +13,23 @@ from backend.app.services.generation.esco_grounding import (
     join_human_list,
     lower_sentence_start,
 )
-from backend.app.services.generation.practical_skills import (
-    merge_study_topics,
-    practical_study_topics_for_chunk,
+from backend.app.services.generation.role_matcher import (
+    find_supported_occupation as shared_find_supported_occupation,
+    first_useful_occupation as shared_first_useful_occupation,
+    has_supported_role_grounding as shared_has_supported_role_grounding,
+    useful_occupations as shared_useful_occupations,
 )
 from backend.app.services.generation.schemas import RetrievedChunk
+from backend.app.services.generation.skill_enrichment import (
+    SkillEnrichment,
+    filter_learner_facing_topic_names,
+    learner_facing_skill_names,
+    merge_skill_names,
+)
+from backend.app.services.generation.study_cadence import (
+    estimate_study_cadence,
+    format_cadence_sentence,
+)
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
@@ -198,6 +210,7 @@ def maybe_build_guardrailed_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
     """Return a deterministic answer for the most failure-prone chat intents."""
 
@@ -208,7 +221,11 @@ def maybe_build_guardrailed_answer(
         _build_skill_answer,
         _build_career_fit_answer,
     ):
-        answer = builder(question=question, retrieval_context=retrieval_context)
+        answer = builder(
+            question=question,
+            retrieval_context=retrieval_context,
+            skill_enrichment=skill_enrichment,
+        )
         if answer is not None:
             return answer
     return None
@@ -246,7 +263,9 @@ def _build_unsupported_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
+    del skill_enrichment
     if not _EXPLICIT_TARGET_REQUEST_PATTERN.search(question):
         return None
     if _find_supported_occupation(question, retrieval_context) is not None:
@@ -306,6 +325,7 @@ def _build_supported_transition_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
     if not _EXPLICIT_TARGET_REQUEST_PATTERN.search(question):
         return None
@@ -319,19 +339,26 @@ def _build_supported_transition_answer(
     language_code = _language_code(question)
     role_label = _extract_label(occupation, language_code)
     role_description = extract_description(occupation, language_code)
-    practical_topics = practical_study_topics_for_chunk(
-        occupation,
-        language_code,
-        target_role=question,
-        limit=6,
-    )
-    study_topics = merge_study_topics(
-        _extract_skills(occupation, language_code),
-        practical_topics,
+    model_topics = learner_facing_skill_names(skill_enrichment, limit=6)
+    study_topics = merge_skill_names(
+        model_topics,
+        filter_learner_facing_topic_names(_extract_skills(occupation, language_code), limit=8)
+        if not model_topics
+        else [],
         limit=8,
     )
     study_summary = _join_list(study_topics[:6], language_code)
-    practical_summary = _join_list(practical_topics[:5], language_code)
+    practical_summary = _join_list(model_topics[:5], language_code)
+    cadence_sentence = format_cadence_sentence(
+        estimate_study_cadence(
+            role_label=role_label,
+            focus_topics=study_topics,
+            workload_level="medium",
+            availability_text=f"{question}\n{retrieval_context.memory_summary}",
+            effort_levels=skill_enrichment.effort_levels() if skill_enrichment is not None else {},
+        ),
+        language_code,
+    )
     calm_pace = _CALM_PACE_PATTERN.search(question) is not None
 
     if language_code == "ru":
@@ -341,8 +368,8 @@ def _build_supported_transition_answer(
             else ""
         )
         pace_sentence = (
-            "С учетом спокойного темпа лучше искать команды с плановой отчетностью, BI-дашбордами, "
-            "очисткой данных и внутренней аналитикой, а не роли с срочными on-call задачами или агрессивными дедлайнами. "
+            "С учетом спокойного темпа лучше искать команды с плановым циклом задач, понятными дедлайнами "
+            "и небольшим количеством срочных прерываний. "
             if calm_pace
             else "Чтобы темп был устойчивым, заранее уточняйте регулярность отчетности, дедлайны и ожидания по срочным запросам. "
         )
@@ -357,7 +384,8 @@ def _build_supported_transition_answer(
                 f"{description_sentence}"
                 f"{pace_sentence}"
                 f"{topic_sentence}"
-                "Хороший следующий шаг — собрать небольшой учебный план вокруг одной спокойной аналитической задачи: взять датасет, очистить его, сделать SQL-выборки, собрать простой dashboard и кратко объяснить выводы."
+                f"{cadence_sentence} "
+                "Хороший следующий шаг — собрать небольшой учебный план вокруг первого практического навыка и зафиксировать проверяемый результат."
             ),
             citations=[occupation],
         )
@@ -368,7 +396,7 @@ def _build_supported_transition_answer(
         else ""
     )
     pace_sentence = (
-        "For a calmer pace, look for planned reporting, BI dashboards, data cleaning, and internal analytics rather than urgent on-call analysis or aggressive deadline-driven roles. "
+        "For a calmer pace, look for teams with planned work cycles, clear deadlines, and limited urgent interruptions. "
         if calm_pace
         else "For a sustainable pace, ask about reporting cadence, deadline pressure, and expectations for urgent requests. "
     )
@@ -383,7 +411,8 @@ def _build_supported_transition_answer(
             f"{description_sentence}"
             f"{pace_sentence}"
             f"{topic_sentence}"
-            "A good next step is to build one calm analytics project: clean a dataset, query it with SQL, make a simple dashboard, and explain the findings briefly."
+            f"{cadence_sentence} "
+            "A good next step is to turn the first practical skill into a small study plan with one checkable result."
         ),
         citations=[occupation],
     )
@@ -393,13 +422,15 @@ def _build_external_resources_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
+    del skill_enrichment
     if _EXTERNAL_RESOURCES_PATTERN.search(question) is None:
         return None
 
     language_code = _language_code(question)
     occupation = _first_useful_occupation(retrieval_context)
-    skills = _extract_skills(occupation, language_code) if occupation else []
+    skills = filter_learner_facing_topic_names(_extract_skills(occupation, language_code), limit=3) if occupation else []
     skill_summary = _join_list(skills[:3], language_code)
     citations = [occupation] if occupation is not None else retrieval_context.chunks[:1]
 
@@ -439,6 +470,7 @@ def _build_skill_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
     if _SKILL_QUESTION_PATTERN.search(question) is None:
         return None
@@ -448,22 +480,31 @@ def _build_skill_answer(
     if occupation is not None:
         role_label = _extract_label(occupation, language_code)
         role_description = extract_description(occupation, language_code)
-        skills = merge_study_topics(
-            _extract_skills(occupation, language_code),
-            practical_study_topics_for_chunk(
-                occupation,
-                language_code,
-                target_role=question,
-                limit=4,
-            ),
+        model_topics = learner_facing_skill_names(skill_enrichment, limit=6)
+        skills = merge_skill_names(
+            model_topics,
+            filter_learner_facing_topic_names(_extract_skills(occupation, language_code), limit=8)
+            if not model_topics
+            else [],
             limit=8,
         )
         if skills:
             skill_summary = _join_list(skills[:6], language_code)
+            cadence_sentence = format_cadence_sentence(
+                estimate_study_cadence(
+                    role_label=role_label,
+                    focus_topics=skills,
+                    workload_level="medium",
+                    availability_text=f"{question}\n{retrieval_context.memory_summary}",
+                    effort_levels=skill_enrichment.effort_levels() if skill_enrichment is not None else {},
+                ),
+                language_code,
+            )
             if language_code == "ru":
                 answer = (
                     f"Для роли {role_label} текущие данные описывают работу так: {lower_sentence_start(role_description) if role_description else role_label}. "
                     f"Из этого наиболее явно следуют такие навыки: {skill_summary}. "
+                    f"{cadence_sentence} "
                     "Это хороший базовый набор, с которого стоит начинать. "
                     "Если хотите, я могу дальше разложить это на начальный уровень, практику и портфолио."
                 )
@@ -471,6 +512,7 @@ def _build_skill_answer(
                 answer = (
                     f"For {role_label}, the current role data points to work that involves {lower_sentence_start(role_description) if role_description else role_label}. "
                     f"That makes the clearest skills to build {skill_summary}. "
+                    f"{cadence_sentence} "
                     "That is a solid baseline to start with. "
                     "If you want, I can break these into beginner study, practical exercises, and portfolio work next."
                 )
@@ -503,7 +545,9 @@ def _build_career_fit_answer(
     *,
     question: str,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> GuardrailedAnswer | None:
+    del skill_enrichment
     if _CAREER_FIT_PATTERN.search(question) is None:
         return None
 
@@ -571,26 +615,11 @@ def _build_career_fit_answer(
 
 
 def _has_supported_role_grounding(text: str, retrieval_context: RetrievalContext) -> bool:
-    role_text = _extract_target_role_phrase(text) or text
-    role_tokens = _extract_role_tokens(role_text)
-    return True if not role_tokens else _find_supported_occupation(text, retrieval_context) is not None
+    return shared_has_supported_role_grounding(text, retrieval_context)
 
 
 def _find_supported_occupation(text: str, retrieval_context: RetrievalContext) -> RetrievedChunk | None:
-    role_text = _extract_target_role_phrase(text) or text
-    role_tokens = _extract_role_tokens(role_text)
-    if not role_tokens:
-        return None
-
-    best_occupation: RetrievedChunk | None = None
-    best_score = 0.0
-    for occupation in _useful_occupations(retrieval_context):
-        score = _role_support_score(role_tokens, occupation)
-        if score > best_score:
-            best_score = score
-            best_occupation = occupation
-
-    return best_occupation if best_score >= 0.5 else None
+    return shared_find_supported_occupation(text, retrieval_context)
 
 
 def _extract_target_role_phrase(text: str) -> str:
@@ -639,20 +668,11 @@ def _language_code(question: str) -> str:
 
 
 def _useful_occupations(retrieval_context: RetrievalContext) -> list[RetrievedChunk]:
-    occupations: list[RetrievedChunk] = []
-    for chunk in retrieval_context.chunks:
-        if chunk.chunk_type != "occupation":
-            continue
-        haystack = f"{chunk.title}\n{chunk.text}"
-        if _META_ROLE_PATTERN.search(haystack):
-            continue
-        occupations.append(chunk)
-    return occupations
+    return shared_useful_occupations(retrieval_context)
 
 
 def _first_useful_occupation(retrieval_context: RetrievalContext) -> RetrievedChunk | None:
-    occupations = _useful_occupations(retrieval_context)
-    return occupations[0] if occupations else None
+    return shared_first_useful_occupation(retrieval_context)
 
 
 def _extract_label(chunk: RetrievedChunk, language_code: str) -> str:

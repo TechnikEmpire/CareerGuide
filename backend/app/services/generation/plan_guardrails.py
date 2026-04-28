@@ -14,6 +14,7 @@ from backend.app.services.generation.esco_grounding import (
 )
 from backend.app.services.generation.plan_calendar import finalize_career_plan
 from backend.app.services.generation.schemas import CareerPlanRequest, CareerPlanResponse, CareerPlanStep
+from backend.app.services.generation.skill_enrichment import SkillEnrichment
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
@@ -23,6 +24,7 @@ def build_fallback_career_plan(
     *,
     request: CareerPlanRequest,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> CareerPlanResponse:
     """Build a small grounded plan without relying on model-structured JSON."""
 
@@ -101,4 +103,5 @@ def build_fallback_career_plan(
         target_role=request.target_role,
         steps=steps,
         citations=retrieval_context.chunks[:3],
+        skill_enrichment=skill_enrichment,
     )

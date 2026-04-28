@@ -7,6 +7,7 @@ from backend.app.services.generation.answer_guardrails import (
     maybe_build_guardrailed_answer,
 )
 from backend.app.services.generation.schemas import RetrievedChunk
+from backend.app.services.generation.skill_enrichment import EnrichedSkill, SkillEnrichment
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 
@@ -164,9 +165,34 @@ def test_guardrails_match_supported_russian_data_analytics_transition() -> None:
     )
 
     question = "Я хочу перейти в аналитику данных, но мне нужен спокойный темп работы."
+    skill_enrichment = SkillEnrichment(
+        role_label="аналитик данных",
+        language_code="ru",
+        used_model=True,
+        skills=[
+            EnrichedSkill(
+                name="SQL",
+                rationale="Fake model output for this test.",
+                study_order=1,
+                effort_level="medium",
+                practice_tasks=["Сделать короткую практическую выборку."],
+            ),
+            EnrichedSkill(
+                name="Python и pandas",
+                rationale="Fake model output for this test.",
+                study_order=2,
+                effort_level="medium",
+                practice_tasks=["Разобрать небольшой набор данных."],
+            ),
+        ],
+    )
 
     matched_occupation = _find_supported_occupation(question, retrieval_context)
-    response = maybe_build_guardrailed_answer(question=question, retrieval_context=retrieval_context)
+    response = maybe_build_guardrailed_answer(
+        question=question,
+        retrieval_context=retrieval_context,
+        skill_enrichment=skill_enrichment,
+    )
 
     assert matched_occupation is not None
     assert matched_occupation.chunk_id == "occupation-data-analyst"
@@ -176,6 +202,8 @@ def test_guardrails_match_supported_russian_data_analytics_transition() -> None:
     assert "спокойного темпа" in response.text.lower()
     assert "SQL" in response.text
     assert "Python" in response.text
+    assert "нед" in response.text
+    assert "ч" in response.text
     assert [chunk.chunk_id for chunk in response.citations] == ["occupation-data-analyst"]
 
 

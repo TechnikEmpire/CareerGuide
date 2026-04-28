@@ -356,8 +356,106 @@ def test_answer_flow_handles_supported_russian_data_analytics_transition() -> No
     payload = response.json()
     assert payload["response_kind"] == "answer"
     assert "аналитик данных" in payload["answer"].lower()
-    assert "SQL" in payload["answer"] or "Python" in payload["answer"]
+    assert "нед" in payload["answer"]
+    assert payload["plan_handoff"]["status"] == "offered"
+    assert "аналитик данных" in payload["plan_handoff"]["target_role"].lower()
     assert any("data analyst" in citation["title"].lower() for citation in payload["citations"])
+
+
+def test_answer_flow_resolves_pending_plan_handoff_replies() -> None:
+    """The next yes/no reply should resolve an offered chat-to-plan handoff."""
+
+    client = TestClient(create_app())
+    pending_handoff = {
+        "status": "offered",
+        "target_role": "Data Analyst",
+        "goal": "Build a realistic transition study plan for Data Analyst",
+        "source": "supported_role_match",
+    }
+
+    accepted = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "handoff-accepted-user",
+            "question": "yes",
+            "pending_plan_handoff": pending_handoff,
+        },
+    )
+    assert accepted.status_code == 200
+    accepted_payload = accepted.json()
+    assert accepted_payload["plan_handoff"]["status"] == "accepted"
+    assert "plan builder" in accepted_payload["answer"]
+
+    declined = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "handoff-declined-user",
+            "question": "no",
+            "pending_plan_handoff": pending_handoff,
+        },
+    )
+    assert declined.status_code == 200
+    assert declined.json()["plan_handoff"]["status"] == "declined"
+
+    ambiguous = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "handoff-ambiguous-user",
+            "question": "maybe later",
+            "pending_plan_handoff": pending_handoff,
+        },
+    )
+    assert ambiguous.status_code == 200
+    ambiguous_payload = ambiguous.json()
+    assert ambiguous_payload["plan_handoff"]["status"] == "offered"
+    assert "clear yes" in ambiguous_payload["answer"]
+
+
+def test_answer_flow_returns_plan_update_without_raw_burnout_memory() -> None:
+    """Chat can propose a safer schedule update without saving raw wellbeing text."""
+
+    client = TestClient(create_app())
+    user_id = "plan-update-user"
+    plan_response = client.post(
+        "/career/plan",
+        json={
+            "user_id": user_id,
+            "goal": "Build a transition plan into data analytics",
+            "target_role": "Data Analyst",
+            "study_preferences": {
+                "study_start_date": "2026-04-06",
+                "preferred_study_time": "evening",
+                "study_frequency_per_week": 3,
+                "session_duration_minutes": 90,
+                "timezone": "America/St_Johns",
+            },
+        },
+    )
+    assert plan_response.status_code == 200
+
+    response = client.post(
+        "/chat/answer",
+        json={
+            "user_id": user_id,
+            "question": "I am struggling with burnout. Please relax the schedule.",
+            "current_plan": plan_response.json(),
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["response_kind"] == "answer"
+    assert payload["plan_update"]["kind"] == "relax_schedule"
+    updated_plan = payload["plan_update"]["updated_plan"]
+    assert updated_plan["study_preferences"]["study_frequency_per_week"] == 2
+    assert updated_plan["study_preferences"]["session_duration_minutes"] == 60
+    assert any(event["event_type"] == "break" for event in updated_plan["calendar_events"])
+
+    listed_memory = client.get("/memory/list", params={"user_id": user_id})
+    assert listed_memory.status_code == 200
+    memory_text = "\n".join(item["text"] for item in listed_memory.json())
+    assert "lower-intensity study schedule" in memory_text
+    assert "burnout" not in memory_text.lower()
 
 
 def test_answer_flow_dedupes_duplicate_memory_sentences_within_one_request() -> None:
@@ -485,6 +583,7 @@ def test_answer_flow_limits_unsupported_explicit_role_request_without_persisting
     assert response.status_code == 200
     payload = response.json()
     assert payload["response_kind"] == "limited_unsupported"
+    assert payload["plan_handoff"] is None
     assert "limited guidance rather than a grounded career recommendation" in payload["answer"]
     assert "locally regulated" in payload["answer"]
     assert payload["citations"] == []

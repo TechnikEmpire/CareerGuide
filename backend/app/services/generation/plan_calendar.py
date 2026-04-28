@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 from math import ceil
 import re
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid5
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from backend.app.services.generation.esco_grounding import (
@@ -17,10 +17,6 @@ from backend.app.services.generation.esco_grounding import (
     lower_sentence_start,
     summarize_description,
 )
-from backend.app.services.generation.practical_skills import (
-    merge_study_topics,
-    practical_study_topics_for_context,
-)
 from backend.app.services.generation.schemas import (
     CareerPlanCalendarEvent,
     CareerPlanRequest,
@@ -28,28 +24,24 @@ from backend.app.services.generation.schemas import (
     CareerPlanStep,
     StudyPreferences,
 )
+from backend.app.services.generation.skill_enrichment import (
+    SkillEnrichment,
+    filter_learner_facing_topic_names,
+    learner_facing_skill_names,
+    merge_skill_names,
+)
+from backend.app.services.generation.study_cadence import estimate_study_cadence
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
-_HIGH_WORKLOAD_PATTERN = re.compile(
-    r"\b(engineer|engineering|developer|scientist|scientific|architect|cyber|security|"
-    r"machine learning|data science|software|backend|frontend|full[- ]stack)\b"
-    r"|инженер|разработ|архитект|кибер|безопас|машинн|дата[- ]сайенс",
+_INTERNAL_SCAFFOLD_PATTERN = re.compile(
+    r"\b(work directly on|tie the practice back|finish with a small checkable result|"
+    r"pin down which version|core work:|keep the study focus|review retrieved career evidence|"
+    r"identify the most relevant role signals)\b"
+    r"|суть роли:|держите фокус|работайте именно над|практическое задание:",
     flags=re.IGNORECASE,
 )
-_MEDIUM_WORKLOAD_PATTERN = re.compile(
-    r"\b(manager|management|analyst|analytics|specialist|coordinator|product|operations|"
-    r"marketing|researcher|designer|consultant)\b"
-    r"|менедж|аналит|специалист|координатор|продукт|операц|маркет|исслед|дизайн|консульт",
-    flags=re.IGNORECASE,
-)
-_HIGH_SIGNAL_TOPIC_PATTERN = re.compile(
-    r"\b(analysis|analytical|data|sql|statistics?|statistical|business intelligence|"
-    r"visuali[sz]ation|engineering|mining|modelling|modeling|research|planning|"
-    r"stakeholder|communication|risk|resource|conflict)\b"
-    r"|аналит|данн|статист|визуализ|инженер|майнинг|исслед|планир|стейкхолдер|коммуник|риск|ресурс|конфликт",
-    flags=re.IGNORECASE,
-)
+_EMPTY_OR_MALFORMED_PATTERN = re.compile(r"^\s*(?:n/?a|none|null|todo|tbd|\\.\\.\\.)\s*$", flags=re.IGNORECASE)
 _DEFAULT_STEP_WEIGHTS = (0.2, 0.25, 0.35, 0.2)
 _STUDY_TIME_SLOTS: dict[str, tuple[int, int]] = {
     "morning": (8, 0),
@@ -65,12 +57,6 @@ _WEEKDAY_PATTERNS: dict[int, tuple[int, ...]] = {
     6: (0, 1, 2, 3, 4, 6),
     7: (0, 1, 2, 3, 4, 5, 6),
 }
-_WORKLOAD_TOTAL_HOURS = {
-    "low": 9.0,
-    "medium": 14.0,
-    "high": 18.0,
-}
-
 
 def finalize_career_plan(
     *,
@@ -80,6 +66,7 @@ def finalize_career_plan(
     target_role: str,
     steps: list[CareerPlanStep],
     citations=None,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> CareerPlanResponse:
     """Normalize a raw plan into a richer response with schedule metadata."""
 
@@ -89,38 +76,41 @@ def finalize_career_plan(
     role_description = extract_description(primary_chunk, language_code)
     role_summary = summarize_description(role_description, language_code)
     grounded_focus_topics = extract_focus_topics(retrieval_context, language_code, limit=4)
-    practical_focus_topics = practical_study_topics_for_context(
-        retrieval_context,
-        language_code,
-        target_role=target_role,
-        limit=6,
-    )
-    focus_topics = merge_study_topics(
-        grounded_focus_topics,
-        practical_focus_topics,
+    enriched_focus_topics = learner_facing_skill_names(skill_enrichment, limit=8)
+    grounded_plan_topics = filter_learner_facing_topic_names(grounded_focus_topics)
+    focus_topics = merge_skill_names(
+        enriched_focus_topics,
+        grounded_plan_topics if not enriched_focus_topics else [],
         limit=10,
     )
     workload_level = estimate_workload_level(
-        target_role=target_role,
-        role_label=role_label,
-        role_description=role_summary,
         focus_topics=focus_topics,
+        skill_enrichment=skill_enrichment,
     )
     preferences = normalize_study_preferences(request.study_preferences)
-    total_hours = _WORKLOAD_TOTAL_HOURS[workload_level]
+    cadence = estimate_study_cadence(
+        role_label=role_label,
+        focus_topics=focus_topics,
+        workload_level=workload_level,
+        study_preferences=preferences,
+        availability_text=f"{goal}\n{target_role}\n{retrieval_context.memory_summary}",
+        effort_levels=skill_enrichment.effort_levels() if skill_enrichment is not None else {},
+    )
     enriched_steps = enrich_plan_steps(
         steps=steps,
         language_code=language_code,
         role_label=role_label,
         role_description=role_summary,
         focus_topics=focus_topics,
-        total_hours=total_hours,
+        total_hours=cadence.total_hours,
+        skill_enrichment=skill_enrichment,
     )
     calendar_events = build_calendar_events(
         target_role=target_role,
         language_code=language_code,
         steps=enriched_steps,
         preferences=preferences,
+        skill_practice_tasks=skill_enrichment.practice_tasks_by_skill() if skill_enrichment is not None else {},
     )
     estimated_weeks = max((event.week_index for event in calendar_events), default=1)
     return CareerPlanResponse(
@@ -161,21 +151,17 @@ def normalize_study_preferences(preferences: StudyPreferences) -> StudyPreferenc
 
 def estimate_workload_level(
     *,
-    target_role: str,
-    role_label: str,
-    role_description: str,
     focus_topics: list[str],
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> str:
-    """Approximate a study workload tier from grounded role text and skill breadth."""
+    """Approximate a study workload tier from skill breadth and model effort levels."""
 
-    role_haystack = "\n".join([target_role, role_label, role_description])
-    high_signal_topic_count = sum(1 for topic in focus_topics if _HIGH_SIGNAL_TOPIC_PATTERN.search(topic))
-    medium_role_match = _MEDIUM_WORKLOAD_PATTERN.search(role_haystack)
-    if _HIGH_WORKLOAD_PATTERN.search(role_haystack):
+    effort_levels = skill_enrichment.effort_levels() if skill_enrichment is not None else {}
+    high_effort_count = sum(1 for topic in focus_topics if effort_levels.get(topic.casefold()) == "high")
+    medium_effort_count = sum(1 for topic in focus_topics if effort_levels.get(topic.casefold()) == "medium")
+    if high_effort_count >= 3 or len(focus_topics) >= 9:
         return "high"
-    if high_signal_topic_count >= 7 and not medium_role_match:
-        return "high"
-    if high_signal_topic_count >= 4 or medium_role_match:
+    if high_effort_count >= 1 or medium_effort_count >= 3 or len(focus_topics) >= 4:
         return "medium"
     return "low"
 
@@ -188,19 +174,26 @@ def enrich_plan_steps(
     role_description: str,
     focus_topics: list[str],
     total_hours: float,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> list[CareerPlanStep]:
     """Attach grounded focus topics and estimated effort to each step."""
 
     if not steps:
         return []
 
-    weights = _weights_for_step_count(len(steps))
+    step_hours = _allocated_step_hours(steps, total_hours)
     topics_per_step = 3 if len(focus_topics) >= len(steps) * 3 else 2
     enriched_steps: list[CareerPlanStep] = []
+    assigned_topics: set[str] = set()
     for index, step in enumerate(steps):
-        start = index * topics_per_step
-        focus_slice = focus_topics[start : start + topics_per_step] or focus_topics[:1]
-        estimated_hours = round(total_hours * weights[index], 1)
+        focus_slice = _focus_topics_for_step(
+            step=step,
+            focus_topics=focus_topics,
+            assigned_topics=assigned_topics,
+            topics_per_step=topics_per_step,
+        )
+        assigned_topics.update(topic.casefold() for topic in focus_slice)
+        estimated_hours = step_hours[index]
         grounded_detail = _grounded_detail_for_step(
             index=index,
             language_code=language_code,
@@ -208,14 +201,23 @@ def enrich_plan_steps(
             role_description=role_description,
             focus_slice=focus_slice,
         )
-        description = _rewrite_step_description(
-            index=index,
-            title=step.title,
-            description=step.description,
-            language_code=language_code,
-            role_label=role_label,
-            role_description=role_description,
+        should_preserve = _should_preserve_step_description(
+            step=step,
             focus_slice=focus_slice,
+            language_code=language_code,
+        )
+        description = (
+            _clean_visible_description(step.description)
+            if should_preserve
+            else _rewrite_step_description(
+                index=index,
+                title=step.title,
+                description=step.description,
+                language_code=language_code,
+                role_label=role_label,
+                role_description=role_description,
+                focus_slice=focus_slice,
+            )
         )
         enriched_steps.append(
             step.model_copy(
@@ -230,12 +232,77 @@ def enrich_plan_steps(
     return enriched_steps
 
 
+def _focus_topics_for_step(
+    *,
+    step: CareerPlanStep,
+    focus_topics: list[str],
+    assigned_topics: set[str],
+    topics_per_step: int,
+) -> list[str]:
+    """Choose topics that match the step text before falling back to sequential allocation."""
+
+    selected = _append_unique_topics([], step.focus_skills)
+    step_text = " ".join([step.title, step.description, *step.focus_skills])
+    matched_topics = [
+        topic
+        for topic in focus_topics
+        if _topic_matches_text(topic, step_text)
+    ]
+    selected = _append_unique_topics(selected, matched_topics)
+    if selected:
+        return selected[:topics_per_step]
+
+    remaining = [
+        topic
+        for topic in focus_topics
+        if topic.casefold() not in assigned_topics and topic.casefold() not in {item.casefold() for item in selected}
+    ]
+    selected = _append_unique_topics(selected, remaining)
+    if selected:
+        return selected[:topics_per_step]
+    return focus_topics[: max(1, min(topics_per_step, len(focus_topics)))]
+
+
+def _append_unique_topics(existing: list[str], incoming: list[str]) -> list[str]:
+    output = [topic for topic in existing if topic.strip()]
+    seen = {topic.casefold() for topic in output}
+    for topic in incoming:
+        cleaned = topic.strip()
+        normalized = cleaned.casefold()
+        if not cleaned or normalized in seen:
+            continue
+        seen.add(normalized)
+        output.append(cleaned)
+    return output
+
+
+def _topic_matches_text(topic: str, text: str) -> bool:
+    topic_tokens = _topic_tokens(topic)
+    text_tokens = set(_topic_tokens(text))
+    if not topic_tokens:
+        return False
+    if set(topic_tokens).issubset(text_tokens):
+        return True
+    if len(topic_tokens) == 1:
+        return topic_tokens[0] in text.casefold()
+    return any(token in text_tokens for token in topic_tokens if len(token) >= 5)
+
+
+def _topic_tokens(value: str) -> list[str]:
+    return [
+        token
+        for token in re.findall(r"[A-Za-zА-Яа-яЁё0-9+#]+", value.casefold().replace("ё", "е"))
+        if token not in {"and", "with", "the", "for", "basic", "basics", "и", "с", "для", "основы"}
+    ]
+
+
 def build_calendar_events(
     *,
     target_role: str,
     language_code: str,
     steps: list[CareerPlanStep],
     preferences: StudyPreferences,
+    skill_practice_tasks: dict[str, list[str]] | None = None,
 ) -> list[CareerPlanCalendarEvent]:
     """Expand a structured plan into dated calendar sessions."""
 
@@ -272,9 +339,18 @@ def build_calendar_events(
                 step_index=step_index,
                 session_index=session_index,
                 total_sessions=session_count,
+                skill_practice_tasks=skill_practice_tasks or {},
             )
             events.append(
                 CareerPlanCalendarEvent(
+                    event_id=_build_event_id(
+                        event_type="study",
+                        title=title,
+                        starts_at=start_at.isoformat(),
+                        step_index=step_index,
+                        session_index=session_index,
+                    ),
+                    event_type="study",
                     title=title,
                     description=description,
                     starts_at=start_at.isoformat(),
@@ -288,6 +364,67 @@ def build_calendar_events(
             cursor_date = event_date + timedelta(days=1)
 
     return events
+
+
+def rebuild_plan_schedule(plan: CareerPlanResponse, *, add_weekly_breaks: bool = False) -> CareerPlanResponse:
+    """Rebuild calendar events for an already-grounded plan after preference changes."""
+
+    language_code = "ru" if _CYRILLIC_PATTERN.search(f"{plan.goal}\n{plan.target_role}") else "en"
+    preferences = normalize_study_preferences(plan.study_preferences)
+    focus_topics = _plan_focus_topics(plan.steps)
+    cadence = estimate_study_cadence(
+        role_label=plan.target_role,
+        focus_topics=focus_topics,
+        workload_level=plan.workload_level,
+        study_preferences=preferences,
+        availability_text=plan.goal,
+    )
+    steps = _redistribute_step_hours(plan.steps, cadence.total_hours)
+    study_events = build_calendar_events(
+        target_role=plan.target_role,
+        language_code=language_code,
+        steps=steps,
+        preferences=preferences,
+    )
+    calendar_events = study_events
+    if add_weekly_breaks:
+        calendar_events = sorted(
+            [*study_events, *_build_weekly_break_events(study_events, preferences, language_code)],
+            key=lambda event: event.starts_at,
+        )
+    estimated_weeks = max((event.week_index for event in calendar_events), default=1)
+    return plan.model_copy(
+        update={
+            "estimated_weeks": estimated_weeks,
+            "study_preferences": preferences,
+            "steps": steps,
+            "calendar_events": calendar_events,
+        }
+    )
+
+
+def _plan_focus_topics(steps: list[CareerPlanStep]) -> list[str]:
+    topics: list[str] = []
+    seen: set[str] = set()
+    for step in steps:
+        for topic in step.focus_skills:
+            cleaned = topic.strip()
+            normalized = cleaned.casefold()
+            if not cleaned or normalized in seen:
+                continue
+            seen.add(normalized)
+            topics.append(cleaned)
+    return topics
+
+
+def _redistribute_step_hours(steps: list[CareerPlanStep], total_hours: float) -> list[CareerPlanStep]:
+    if not steps:
+        return []
+    allocated_hours = _allocated_step_hours(steps, total_hours)
+    return [
+        step.model_copy(update={"estimated_hours": allocated_hours[index]})
+        for index, step in enumerate(steps)
+    ]
 
 
 def build_plan_ics(plan: CareerPlanResponse, *, user_id: str) -> str:
@@ -308,7 +445,7 @@ def build_plan_ics(plan: CareerPlanResponse, *, user_id: str) -> str:
     for event in plan.calendar_events:
         starts_at = datetime.fromisoformat(event.starts_at)
         ends_at = datetime.fromisoformat(event.ends_at)
-        uid = f"{uuid4()}@careerguide.local"
+        uid = f"{event.event_id}@careerguide.local"
         lines.extend(
             [
                 "BEGIN:VEVENT",
@@ -327,10 +464,88 @@ def build_plan_ics(plan: CareerPlanResponse, *, user_id: str) -> str:
     return "\r\n".join(lines) + "\r\n"
 
 
+def _build_event_id(
+    *,
+    event_type: str,
+    title: str,
+    starts_at: str,
+    step_index: int,
+    session_index: int,
+) -> str:
+    raw_value = f"{event_type}|{title}|{starts_at}|{step_index}|{session_index}"
+    return f"evt-{uuid5(NAMESPACE_URL, raw_value)}"
+
+
+def _build_weekly_break_events(
+    study_events: list[CareerPlanCalendarEvent],
+    preferences: StudyPreferences,
+    language_code: str,
+) -> list[CareerPlanCalendarEvent]:
+    if not study_events or preferences.study_start_date is None:
+        return []
+
+    break_events: list[CareerPlanCalendarEvent] = []
+    max_week = max(event.week_index for event in study_events)
+    slot_hour, slot_minute = _STUDY_TIME_SLOTS[preferences.preferred_study_time]
+    break_start_hour = min(slot_hour + 1, 20)
+    for week_index in range(1, max_week + 1):
+        week_start = preferences.study_start_date + timedelta(days=(week_index - 1) * 7)
+        event_date = _next_weekday_on_or_after(week_start, 6)
+        start_at = datetime.combine(event_date, time(hour=break_start_hour, minute=slot_minute))
+        end_at = start_at + timedelta(minutes=30)
+        if language_code == "ru":
+            title = "Перерыв на восстановление"
+            description = "Короткий запланированный перерыв: восстановиться, снизить нагрузку и не превращать учебный план в ежедневное давление."
+        else:
+            title = "Recovery break"
+            description = "A short scheduled break: recover, lower pressure, and keep the study plan sustainable."
+        break_events.append(
+            CareerPlanCalendarEvent(
+                event_id=_build_event_id(
+                    event_type="break",
+                    title=title,
+                    starts_at=start_at.isoformat(),
+                    step_index=0,
+                    session_index=week_index,
+                ),
+                event_type="break",
+                title=title,
+                description=description,
+                starts_at=start_at.isoformat(),
+                ends_at=end_at.isoformat(),
+                week_index=week_index,
+                step_index=1,
+                session_index=week_index,
+                total_sessions=max_week,
+            )
+        )
+    return break_events
+
+
 def _weights_for_step_count(step_count: int) -> list[float]:
     if step_count == len(_DEFAULT_STEP_WEIGHTS):
         return list(_DEFAULT_STEP_WEIGHTS)
     return [1.0 / step_count for _ in range(step_count)]
+
+
+def _allocated_step_hours(steps: list[CareerPlanStep], total_hours: float) -> list[float]:
+    if not steps:
+        return []
+    raw_hours = [
+        float(step.estimated_hours)
+        if step.estimated_hours is not None and step.estimated_hours > 0
+        else 0.0
+        for step in steps
+    ]
+    if any(value > 0 for value in raw_hours):
+        positive_values = [value for value in raw_hours if value > 0]
+        default_missing = sum(positive_values) / len(positive_values)
+        raw_hours = [value if value > 0 else default_missing for value in raw_hours]
+        raw_total = sum(raw_hours)
+        return [round(total_hours * value / raw_total, 1) for value in raw_hours]
+
+    weights = _weights_for_step_count(len(steps))
+    return [round(total_hours * weights[index], 1) for index, _step in enumerate(steps)]
 
 
 def _grounded_detail_for_step(
@@ -372,6 +587,7 @@ def _build_event_description(
     step_index: int,
     session_index: int,
     total_sessions: int,
+    skill_practice_tasks: dict[str, list[str]],
 ) -> str:
     description_parts = [
         _build_session_objective(
@@ -380,6 +596,7 @@ def _build_event_description(
             step_index=step_index,
             session_index=session_index,
             total_sessions=total_sessions,
+            skill_practice_tasks=skill_practice_tasks,
         )
     ]
     if step.focus_skills:
@@ -427,12 +644,22 @@ def _rewrite_step_description(
 ) -> str:
     focus_summary = join_human_list(focus_slice, language_code)
     lowered_title = title.casefold()
+    title_is_scaffold = _is_scaffold_step_title(lowered_title, language_code)
+
+    if not title_is_scaffold and focus_summary:
+        return _specific_step_description(
+            title=title,
+            language_code=language_code,
+            role_label=role_label,
+            role_description=role_description,
+            focus_summary=focus_summary,
+        )
 
     if language_code == "ru":
         if index == 0 or "уточн" in lowered_title:
             return (
-                f"Определите, какой вариант роли {role_label} лучше всего подходит под ваш срок и формат работы. "
-                f"{_grounded_detail_for_step(index=index, language_code=language_code, role_label=role_label, role_description=role_description, focus_slice=focus_slice)}"
+                f"Уточните, какой вариант роли {role_label} подходит под ваш срок и формат работы. "
+                f"{'Сделайте первый результат по темам ' + focus_summary + '.' if focus_summary else 'Зафиксируйте критерии выбора роли.'}"
             ).strip()
         if index == 1 or "сопостав" in lowered_title:
             return (
@@ -451,8 +678,8 @@ def _rewrite_step_description(
 
     if index == 0 or "clarify" in lowered_title:
         return (
-            f"Pin down which version of {role_label} best matches your timeline and preferred work style. "
-            f"{_grounded_detail_for_step(index=index, language_code=language_code, role_label=role_label, role_description=role_description, focus_slice=focus_slice)}"
+            f"Clarify which version of {role_label} fits your timeline and preferred work style. "
+            f"{'Create a first result around ' + focus_summary + '.' if focus_summary else 'Write down the role criteria you want to use.'}"
         ).strip()
     if index == 1 or "map" in lowered_title:
         return (
@@ -470,6 +697,85 @@ def _rewrite_step_description(
     ).strip()
 
 
+def _is_scaffold_step_title(lowered_title: str, language_code: str) -> bool:
+    if language_code == "ru":
+        return re.search(r"уточн|сопостав|проект|доказательств|результат", lowered_title) is not None
+    return re.search(r"\b(clarify|map|baseline|practice project|build practice|turn .*proof|proof)\b", lowered_title) is not None
+
+
+def _specific_step_description(
+    *,
+    title: str,
+    language_code: str,
+    role_label: str,
+    role_description: str,
+    focus_summary: str,
+) -> str:
+    del title
+    del role_description
+    if language_code == "ru":
+        return (
+            f"Сфокусируйтесь на {focus_summary} для роли {role_label}. "
+            "Сделайте небольшой результат, который можно проверить: упражнение, мини-кейс, заметки или рабочий артефакт."
+        ).strip()
+    return (
+        f"Focus on {focus_summary} for {role_label}. "
+        "Produce a small checkable result such as an exercise, mini-case, notes, or work sample."
+    ).strip()
+
+
+def _should_preserve_step_description(
+    *,
+    step: CareerPlanStep,
+    focus_slice: list[str],
+    language_code: str,
+) -> bool:
+    title = step.title.strip()
+    description = step.description.strip()
+    if not title or not description:
+        return False
+    if _EMPTY_OR_MALFORMED_PATTERN.search(description):
+        return False
+    if _INTERNAL_SCAFFOLD_PATTERN.search(description):
+        return False
+    if _is_scaffold_step_title(title.casefold(), language_code):
+        return False
+    if focus_slice and not _text_mentions_all_focus(description, focus_slice):
+        return False
+    return True
+
+
+def _text_mentions_all_focus(text: str, focus_slice: list[str]) -> bool:
+    return all(_text_mentions_topic(text, topic) for topic in focus_slice)
+
+
+def _text_mentions_topic(text: str, topic: str) -> bool:
+    haystack_tokens = set(_topic_tokens(text))
+    topic_tokens = _topic_tokens(topic)
+    return bool(topic_tokens and any(_topic_token_in_text(token, haystack_tokens) for token in topic_tokens))
+
+
+def _topic_token_in_text(token: str, haystack_tokens: set[str]) -> bool:
+    if len(token) < 3:
+        return False
+    singular = token.rstrip("s")
+    for candidate in haystack_tokens:
+        candidate_singular = candidate.rstrip("s")
+        if token == candidate or singular == candidate_singular:
+            return True
+        if len(singular) >= 5 and candidate_singular.startswith(singular):
+            return True
+        if len(candidate_singular) >= 5 and singular.startswith(candidate_singular):
+            return True
+    return False
+
+
+def _clean_visible_description(description: str) -> str:
+    cleaned = " ".join(description.split()).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned
+
+
 def _compact_event_summary(description: str, language_code: str) -> str:
     sentences = re.split(r"(?<=[.!?])\s+", description.strip())
     primary = sentences[0].strip() if sentences and sentences[0].strip() else description.strip()
@@ -483,8 +789,31 @@ def _build_session_objective(
     step_index: int,
     session_index: int,
     total_sessions: int,
+    skill_practice_tasks: dict[str, list[str]],
 ) -> str:
     focus_summary = join_human_list(step.focus_skills[:2], language_code)
+    practice_task = _practice_task_for_focus(
+        step.focus_skills,
+        skill_practice_tasks,
+        session_index=session_index,
+        total_sessions=total_sessions,
+        language_code=language_code,
+    )
+    if practice_task:
+        if total_sessions > 1:
+            if language_code == "ru":
+                return f"Сессия {session_index} из {total_sessions}: {practice_task}"
+            return f"Session {session_index} of {total_sessions}: {practice_task}"
+        return practice_task
+
+    if focus_summary and not _is_scaffold_step_title(step.title.casefold(), language_code):
+        templates = _specific_session_templates(focus_summary, language_code)
+        template = _select_session_template(templates, session_index=session_index, language_code=language_code)
+        if total_sessions > 1:
+            if language_code == "ru":
+                return f"Сессия {session_index} из {total_sessions}: {template}"
+            return f"Session {session_index} of {total_sessions}: {template}"
+        return template
 
     if language_code == "ru":
         if step_index == 1:
@@ -541,9 +870,90 @@ def _build_session_objective(
                 "Choose the next step for the following 1 to 2 weeks.",
             ]
 
-    template = templates[min(session_index - 1, len(templates) - 1)]
+    template = _select_session_template(templates, session_index=session_index, language_code=language_code)
     if total_sessions > 1:
         if language_code == "ru":
             return f"Сессия {session_index} из {total_sessions}: {template}"
         return f"Session {session_index} of {total_sessions}: {template}"
     return template
+
+
+def _practice_task_for_focus(
+    focus_skills: list[str],
+    skill_practice_tasks: dict[str, list[str]],
+    *,
+    session_index: int,
+    total_sessions: int,
+    language_code: str,
+) -> str:
+    if not skill_practice_tasks:
+        return ""
+    for skill in focus_skills:
+        tasks = skill_practice_tasks.get(skill.casefold(), [])
+        if tasks:
+            task = tasks[(session_index - 1) % len(tasks)]
+            if total_sessions <= len(tasks):
+                return task
+            return _with_session_phase(task, session_index=session_index, language_code=language_code)
+    return ""
+
+
+def _select_session_template(templates: list[str], *, session_index: int, language_code: str) -> str:
+    if session_index <= len(templates):
+        return templates[session_index - 1]
+    template = templates[(session_index - 1) % len(templates)]
+    phase = _continuation_phase(session_index, language_code)
+    return f"{phase}: {lower_sentence_start(template)}"
+
+
+def _with_session_phase(task: str, *, session_index: int, language_code: str) -> str:
+    phases_en = (
+        "Start",
+        "Continue",
+        "Apply",
+        "Review",
+        "Package",
+        "Reflect",
+        "Extend",
+        "Check",
+    )
+    phases_ru = (
+        "Начните",
+        "Продолжите",
+        "Примените",
+        "Проверьте",
+        "Оформите",
+        "Зафиксируйте",
+        "Расширьте",
+        "Сверьте",
+    )
+    phases = phases_ru if language_code == "ru" else phases_en
+    phase = phases[(session_index - 1) % len(phases)]
+    return f"{phase}: {lower_sentence_start(task.rstrip('.'))}."
+
+
+def _continuation_phase(session_index: int, language_code: str) -> str:
+    phases_ru = ("Продолжение", "Углубление", "Проверка", "Закрепление")
+    phases_en = ("Continue", "Deepen", "Check", "Reinforce")
+    phases = phases_ru if language_code == "ru" else phases_en
+    return phases[(session_index - 1) % len(phases)]
+
+
+def _specific_session_templates(focus_summary: str, language_code: str) -> list[str]:
+    if language_code == "ru":
+        return [
+            f"Разберите базовые понятия по теме {focus_summary} и выпишите, что нужно применить на практике.",
+            f"Сделайте короткое упражнение по теме {focus_summary} на небольшом примере.",
+            f"Примените {focus_summary} к маленькой задаче, похожей на рабочую ситуацию.",
+            "Проверьте ошибки, повторите слабые места и обновите заметки.",
+            "Соберите небольшой артефакт, который показывает прогресс по этой теме.",
+            "Кратко зафиксируйте результат, выводы и следующий шаг.",
+        ]
+    return [
+        f"Review the core ideas for {focus_summary} and note what must be practiced.",
+        f"Complete a short exercise using {focus_summary} on a small example.",
+        f"Apply {focus_summary} to a small task that resembles real role work.",
+        "Check mistakes, repeat weak spots, and update your notes.",
+        "Create a small artifact that shows progress on this topic.",
+        "Record the result, lessons learned, and next step in a short note.",
+    ]

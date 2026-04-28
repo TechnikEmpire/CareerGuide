@@ -6,6 +6,7 @@ from backend.app.services.generation.generator_client import _extract_answer_pay
 from backend.app.services.generation.generator_client import _extract_json_object
 from backend.app.services.generation.generator_client import _strip_think_tags
 from backend.app.services.generation.generator_client import LlamaCppGeneratorClient
+from backend.app.services.generation.skill_enrichment import clear_skill_enrichment_cache
 from backend.app.services.generation.schemas import CareerPlanRequest
 from backend.app.services.generation.schemas import RetrievedChunk
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
@@ -294,3 +295,101 @@ def test_generate_career_plan_falls_back_when_model_returns_invalid_json(
     assert len(response.steps) == 4
     assert response.calendar_events
     assert response.estimated_weeks >= 1
+
+
+def test_generate_skill_enrichment_uses_model_json_and_cache(monkeypatch) -> None:
+    clear_skill_enrichment_cache()
+    occupation = RetrievedChunk(
+        chunk_id="occupation-1",
+        chunk_type="occupation",
+        source_name="ESCO",
+        source_url="http://example.com/occupation",
+        title="data analyst",
+        text=(
+            "ESCO concept kind: occupation.\n"
+            "English label: data analyst.\n"
+            "Description (EN): Data analysts inspect and interpret collections of data.\n"
+            "Essential skills (EN): business intelligence, data analytics."
+        ),
+        score=0.93,
+    )
+    client = LlamaCppGeneratorClient()
+    calls = {"count": 0}
+
+    def fake_chat_completion(**_: object) -> str:
+        calls["count"] += 1
+        return (
+            '{"role_label":"data analyst","skills":[{"name":"Query practice",'
+            '"rationale":"Fake model output.","study_order":1,"effort_level":"medium",'
+            '"practice_tasks":["Complete one small query exercise."]}],"notes":"Starter list."}'
+        )
+
+    monkeypatch.setattr(client, "_chat_completion", fake_chat_completion)
+
+    first = client.generate_skill_enrichment(
+        occupation=occupation,
+        target_role="data analyst",
+        language_code="en",
+        user_goal="Build a plan.",
+    )
+    second = client.generate_skill_enrichment(
+        occupation=occupation,
+        target_role="data analyst",
+        language_code="en",
+        user_goal="Build a plan.",
+    )
+
+    assert calls["count"] == 1
+    assert first == second
+    assert first.used_model is True
+    assert first.skill_names() == ["Query practice"]
+
+
+def test_generate_skill_enrichment_repairs_abstract_model_output(monkeypatch) -> None:
+    clear_skill_enrichment_cache()
+    occupation = RetrievedChunk(
+        chunk_id="occupation-repair",
+        chunk_type="occupation",
+        source_name="ESCO",
+        source_url="http://example.com/occupation",
+        title="data analyst",
+        text=(
+            "ESCO concept kind: occupation.\n"
+            "English label: data analyst.\n"
+            "Description (EN): Data analysts inspect and interpret collections of data.\n"
+            "Essential skills (EN): business intelligence, information structure, documentation types."
+        ),
+        score=0.93,
+    )
+    client = LlamaCppGeneratorClient()
+    responses = iter(
+        [
+            (
+                '{"role_label":"data analyst","skills":[{"name":"business intelligence",'
+                '"study_order":1,"effort_level":"medium","practice_tasks":[]},'
+                '{"name":"information structure","study_order":2,"effort_level":"medium",'
+                '"practice_tasks":[]}],"notes":"Abstract list."}'
+            ),
+            (
+                '{"role_label":"data analyst","skills":[{"name":"Spreadsheet report cleanup",'
+                '"rationale":"Concrete beginner practice.","study_order":1,"effort_level":"medium",'
+                '"practice_tasks":["Clean a small spreadsheet and write a three-line data quality note."]}],'
+                '"notes":"Repaired list."}'
+            ),
+        ]
+    )
+
+    monkeypatch.setattr(client, "_chat_completion", lambda **_: next(responses))
+
+    enrichment = client.generate_skill_enrichment(
+        occupation=occupation,
+        target_role="data analyst",
+        language_code="en",
+        user_goal="Build a plan.",
+    )
+
+    assert enrichment.used_model is True
+    assert enrichment.skill_names() == ["Spreadsheet report cleanup"]
+    assert enrichment.practice_tasks_by_skill()["spreadsheet report cleanup"] == [
+        "Clean a small spreadsheet and write a three-line data quality note."
+    ]

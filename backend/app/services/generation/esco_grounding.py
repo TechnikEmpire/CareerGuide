@@ -17,13 +17,6 @@ _LOW_SIGNAL_SKILL_PATTERN = re.compile(
     r"|структур[аы] информации|типы документац|техник[аи] визуальн",
     flags=re.IGNORECASE,
 )
-_HIGH_SIGNAL_SKILL_PATTERN = re.compile(
-    r"\b(analysis|analytical|data|sql|statistics?|statistical|business intelligence|"
-    r"visuali[sz]ation|visualization|engineering|mining|modelling|modeling|research|"
-    r"planning|stakeholder|communication|risk|resource|conflict|design|operations)\b"
-    r"|аналит|данн|статист|визуализ|инженер|майнинг|исслед|планир|стейкхолдер|коммуник|риск|ресурс|конфликт|дизайн|операц",
-    flags=re.IGNORECASE,
-)
 _SENTENCE_SPLIT_PATTERN = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -150,9 +143,8 @@ def extract_focus_topics(retrieval_context: RetrievalContext, language_code: str
                 continue
             seen.add(normalized)
             topics.append(candidate)
-    ranked_topics = sorted(topics, key=_focus_topic_rank)
-    preferred_topics = [topic for topic in ranked_topics if not _LOW_SIGNAL_SKILL_PATTERN.search(topic)]
-    fallback_topics = [topic for topic in ranked_topics if _LOW_SIGNAL_SKILL_PATTERN.search(topic)]
+    preferred_topics = [topic for topic in topics if not _LOW_SIGNAL_SKILL_PATTERN.search(topic)]
+    fallback_topics = [topic for topic in topics if _LOW_SIGNAL_SKILL_PATTERN.search(topic)]
     return preferred_topics[:limit] if preferred_topics else fallback_topics[:limit]
 
 
@@ -187,10 +179,3 @@ def _pick_chunk_line(lines: list[str], prefixes: tuple[str, ...]) -> str:
             if line.startswith(prefix):
                 return line
     return ""
-
-
-def _focus_topic_rank(topic: str) -> tuple[int, int, str]:
-    normalized = topic.casefold()
-    low_signal_penalty = 1 if _LOW_SIGNAL_SKILL_PATTERN.search(normalized) else 0
-    high_signal_bonus = 0 if _HIGH_SIGNAL_SKILL_PATTERN.search(normalized) else 1
-    return (low_signal_penalty, high_signal_bonus, normalized)

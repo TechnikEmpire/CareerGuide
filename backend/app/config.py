@@ -104,6 +104,7 @@ class AppSettings(BaseSettings):
     generation_top_p: float = 0.9
     generation_answer_max_tokens: int = 512
     generation_plan_max_tokens: int = 768
+    generation_skill_enrichment_max_tokens: int = 384
     generation_context_length: int = 8192
     retrieval_index_path: Path = Field(default_factory=_default_retrieval_index_path)
     retrieval_index_manifest_path: Path = Field(default_factory=_default_retrieval_manifest_path)

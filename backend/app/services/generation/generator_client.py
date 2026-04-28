@@ -22,6 +22,17 @@ from backend.app.services.generation.schemas import (
     CareerPlanStep,
     RetrievedChunk,
 )
+from backend.app.services.generation.skill_enrichment import (
+    SkillEnrichment,
+    build_skill_enrichment_cache_key,
+    build_skill_enrichment_prompt,
+    build_skill_enrichment_repair_prompt,
+    fallback_skill_enrichment,
+    get_cached_skill_enrichment,
+    normalize_skill_enrichment_payload,
+    skill_enrichment_needs_repair,
+    store_cached_skill_enrichment,
+)
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _THINK_TAG_PATTERN = re.compile(r"<think>.*?</think>\s*", flags=re.DOTALL)
@@ -47,6 +58,16 @@ class GenerationClientError(RuntimeError):
 class GeneratorClient(Protocol):
     """Common interface for generation backends."""
 
+    def generate_skill_enrichment(
+        self,
+        *,
+        occupation: RetrievedChunk,
+        target_role: str,
+        language_code: str,
+        user_goal: str,
+    ) -> SkillEnrichment:
+        """Generate practical study skills for a supported occupation."""
+
     def generate_answer(
         self,
         *,
@@ -63,12 +84,30 @@ class GeneratorClient(Protocol):
         request: CareerPlanRequest,
         prompt: str,
         retrieval_context: RetrievalContext,
+        skill_enrichment: SkillEnrichment | None = None,
     ) -> CareerPlanResponse:
         """Generate a grounded structured career plan."""
 
 
 class StubGeneratorClient:
     """Deterministic generation client used during scaffold and test runs."""
+
+    def generate_skill_enrichment(
+        self,
+        *,
+        occupation: RetrievedChunk,
+        target_role: str,
+        language_code: str,
+        user_goal: str,
+    ) -> SkillEnrichment:
+        """Return ESCO-only skills in stub mode without hidden role maps."""
+
+        del user_goal
+        return fallback_skill_enrichment(
+            occupation=occupation,
+            language_code=language_code,
+            target_role=target_role,
+        )
 
     def generate_answer(
         self,
@@ -101,6 +140,7 @@ class StubGeneratorClient:
         request: CareerPlanRequest,
         prompt: str,
         retrieval_context: RetrievalContext,
+        skill_enrichment: SkillEnrichment | None = None,
     ) -> CareerPlanResponse:
         """Return a small structured plan placeholder."""
 
@@ -126,6 +166,7 @@ class StubGeneratorClient:
                 ),
             ],
             citations=retrieval_context.chunks,
+            skill_enrichment=skill_enrichment,
         )
 
 
@@ -136,6 +177,94 @@ class LlamaCppGeneratorClient:
         self.base_url = settings.generation_base_url.rstrip("/")
         self.model_ref = settings.generation_model_artifact
         self.timeout = settings.generation_request_timeout_seconds
+
+    def generate_skill_enrichment(
+        self,
+        *,
+        occupation: RetrievedChunk,
+        target_role: str,
+        language_code: str,
+        user_goal: str,
+    ) -> SkillEnrichment:
+        """Ask the local model for practical skills, with ESCO-only fallback."""
+
+        cache_key = build_skill_enrichment_cache_key(
+            model_artifact=self.model_ref,
+            occupation=occupation,
+            language_code=language_code,
+            target_role=target_role,
+        )
+        cached = get_cached_skill_enrichment(cache_key)
+        if cached is not None:
+            return cached
+
+        fallback = fallback_skill_enrichment(
+            occupation=occupation,
+            language_code=language_code,
+            target_role=target_role,
+        )
+        prompt = build_skill_enrichment_prompt(
+            occupation=occupation,
+            target_role=target_role,
+            language_code=language_code,
+            user_goal=user_goal,
+        )
+        system_prompt = (
+            "You enrich ESCO-grounded career evidence with practical beginner study skills. "
+            "Return valid JSON only. Do not include markdown fences or commentary. "
+            "Practical skills are model suggestions, not ESCO facts."
+        )
+        try:
+            raw_text = self._chat_completion(
+                system_prompt=system_prompt,
+                user_prompt=prompt,
+                max_tokens=settings.generation_skill_enrichment_max_tokens,
+            )
+            payload = _extract_json_object(raw_text)
+            enrichment = normalize_skill_enrichment_payload(
+                payload,
+                occupation=occupation,
+                language_code=language_code,
+                target_role=target_role,
+            )
+            if skill_enrichment_needs_repair(
+                enrichment,
+                occupation=occupation,
+                language_code=language_code,
+            ):
+                repair_prompt = build_skill_enrichment_repair_prompt(
+                    occupation=occupation,
+                    target_role=target_role,
+                    language_code=language_code,
+                    user_goal=user_goal,
+                    previous_enrichment=enrichment,
+                )
+                repaired_text = self._chat_completion(
+                    system_prompt=system_prompt,
+                    user_prompt=repair_prompt,
+                    max_tokens=settings.generation_skill_enrichment_max_tokens,
+                )
+                repaired_payload = _extract_json_object(repaired_text)
+                repaired_enrichment = normalize_skill_enrichment_payload(
+                    repaired_payload,
+                    occupation=occupation,
+                    language_code=language_code,
+                    target_role=target_role,
+                )
+                enrichment = (
+                    fallback
+                    if skill_enrichment_needs_repair(
+                        repaired_enrichment,
+                        occupation=occupation,
+                        language_code=language_code,
+                    )
+                    else repaired_enrichment
+                )
+        except GenerationClientError:
+            enrichment = fallback
+
+        store_cached_skill_enrichment(cache_key, enrichment)
+        return enrichment
 
     def generate_answer(
         self,
@@ -151,7 +280,7 @@ class LlamaCppGeneratorClient:
 
         system_prompt = (
             "You are a grounded career guidance assistant. "
-            "Answer only from the supplied evidence, practical study topic suggestions, and memory summary. "
+            "Answer only from the supplied evidence, model-enriched practical skill suggestions, and memory summary. "
             "Return plain text only, not JSON. "
             "Sound like a thoughtful career coach in a normal conversation, not a database search result. "
             "Translate evidence into plain human advice rather than echoing source labels. "
@@ -187,6 +316,7 @@ class LlamaCppGeneratorClient:
         request: CareerPlanRequest,
         prompt: str,
         retrieval_context: RetrievalContext,
+        skill_enrichment: SkillEnrichment | None = None,
     ) -> CareerPlanResponse:
         """Generate a grounded structured career plan from the generation server."""
 
@@ -208,6 +338,7 @@ class LlamaCppGeneratorClient:
             return build_fallback_career_plan(
                 request=request,
                 retrieval_context=retrieval_context,
+                skill_enrichment=skill_enrichment,
             )
 
         try:
@@ -218,6 +349,7 @@ class LlamaCppGeneratorClient:
             return build_fallback_career_plan(
                 request=request,
                 retrieval_context=retrieval_context,
+                skill_enrichment=skill_enrichment,
             )
 
         try:
@@ -241,11 +373,13 @@ class LlamaCppGeneratorClient:
             return build_fallback_career_plan(
                 request=request,
                 retrieval_context=retrieval_context,
+                skill_enrichment=skill_enrichment,
             )
         if not steps:
             return build_fallback_career_plan(
                 request=request,
                 retrieval_context=retrieval_context,
+                skill_enrichment=skill_enrichment,
             )
 
         raw_response = CareerPlanResponse(
@@ -278,6 +412,7 @@ class LlamaCppGeneratorClient:
             target_role=raw_response.target_role,
             steps=raw_response.steps,
             citations=raw_response.citations,
+            skill_enrichment=skill_enrichment,
         )
 
     def _chat_completion(self, *, system_prompt: str, user_prompt: str, max_tokens: int) -> str:

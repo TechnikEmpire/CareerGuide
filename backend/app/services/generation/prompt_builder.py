@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import re
 
-from backend.app.services.generation.esco_grounding import extract_description, extract_label, extract_skills
-from backend.app.services.generation.practical_skills import practical_study_topics_for_context
-from backend.app.services.generation.schemas import StudyPreferences
+from backend.app.services.generation.esco_grounding import extract_description, extract_focus_topics, extract_label, extract_skills
+from backend.app.services.generation.schemas import CareerPlanResponse, StudyPreferences
+from backend.app.services.generation.skill_enrichment import SkillEnrichment, format_skill_enrichment_block, merge_skill_names
+from backend.app.services.generation.study_cadence import estimate_study_cadence, format_cadence_block
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
@@ -64,23 +65,81 @@ def _format_evidence_block(retrieval_context: RetrievalContext, language_code: s
     return "\n\n".join(sections)
 
 
-def _format_practical_topics_block(
+def _format_study_cadence_block(
     retrieval_context: RetrievalContext,
     language_code: str,
     *,
     target_role: str,
+    availability_text: str,
+    skill_enrichment: SkillEnrichment | None = None,
+    study_preferences: StudyPreferences | None = None,
+    current_plan: CareerPlanResponse | None = None,
 ) -> str:
-    topics = practical_study_topics_for_context(
-        retrieval_context,
-        language_code,
-        target_role=target_role,
+    topics = (
+        skill_enrichment.skill_names(limit=8)
+        if skill_enrichment is not None
+        else extract_focus_topics(retrieval_context, language_code, limit=8)
     )
-    if not topics:
-        return "No extra practical study topics were inferred."
-    return (
-        "These are practical study suggestions inferred from the identifiable role family, "
-        "not direct ESCO facts: "
-        f"{', '.join(topics)}."
+    effort_levels = skill_enrichment.effort_levels() if skill_enrichment is not None else {}
+    workload_level = "medium"
+    if current_plan is not None:
+        workload_level = current_plan.workload_level
+        current_plan_topics = [
+            topic
+            for step in current_plan.steps
+            for topic in step.focus_skills
+            if topic
+        ]
+        topics = merge_skill_names(topics, current_plan_topics, limit=8)
+        study_preferences = current_plan.study_preferences
+
+    estimate = estimate_study_cadence(
+        role_label=target_role,
+        focus_topics=topics,
+        workload_level=workload_level,
+        study_preferences=study_preferences,
+        availability_text=availability_text,
+        effort_levels=effort_levels,
+    )
+    return format_cadence_block(estimate, language_code)
+
+
+def _format_current_plan_block(current_plan: CareerPlanResponse | None) -> str:
+    if current_plan is None:
+        return "No active study plan was supplied."
+
+    preferences = current_plan.study_preferences
+    focus_topics: list[str] = []
+    for step in current_plan.steps:
+        for topic in step.focus_skills:
+            if topic and topic not in focus_topics:
+                focus_topics.append(topic)
+
+    upcoming_events = sorted(
+        current_plan.calendar_events,
+        key=lambda event: event.starts_at,
+    )[:5]
+    event_lines = [
+        f"- {event.starts_at}: {event.title} ({event.event_type})"
+        for event in upcoming_events
+    ]
+    step_lines = [
+        f"- {step.title}: {', '.join(step.focus_skills[:4]) or 'no focus topics'}"
+        for step in current_plan.steps[:5]
+    ]
+    return "\n".join(
+        [
+            f"Target role: {current_plan.target_role}",
+            f"Workload: {current_plan.workload_level}",
+            f"Study preferences: {preferences.study_frequency_per_week} sessions/week, "
+            f"{preferences.session_duration_minutes} minutes, {preferences.preferred_study_time}, "
+            f"timezone {preferences.timezone}",
+            f"Focus topics: {', '.join(focus_topics[:8]) or 'none listed'}",
+            "Steps:",
+            *(step_lines or ["- No steps listed."]),
+            "Upcoming sessions:",
+            *(event_lines or ["- No calendar sessions listed."]),
+        ]
     )
 
 
@@ -94,10 +153,18 @@ def _needs_follow_up_question(question: str) -> bool:
     return _EXPLORATORY_FIT_PATTERN.search(question) is not None
 
 
-def build_answer_prompt(question: str, retrieval_context: RetrievalContext) -> str:
+def build_answer_prompt(
+    question: str,
+    retrieval_context: RetrievalContext,
+    *,
+    current_plan: CareerPlanResponse | None = None,
+    skill_enrichment: SkillEnrichment | None = None,
+) -> str:
     """Build the grounded answer prompt sent to the generation backend."""
 
     language_name, language_code = _required_answer_language(question)
+    memory_summary = _format_memory_summary(retrieval_context)
+    availability_text = f"{question}\n{memory_summary}"
     follow_up_instruction = (
         "- End with one short follow-up question that keeps the dialogue moving.\n"
         if _needs_follow_up_question(question)
@@ -109,18 +176,23 @@ def build_answer_prompt(question: str, retrieval_context: RetrievalContext) -> s
         "Required answer language:\n"
         f"{language_name} ({language_code})\n\n"
         "User memory summary:\n"
-        f"{_format_memory_summary(retrieval_context)}\n\n"
+        f"{memory_summary}\n\n"
         "Retrieved evidence:\n"
         f"{_format_evidence_block(retrieval_context, language_code)}\n\n"
-        "Practical study topic suggestions:\n"
-        f"{_format_practical_topics_block(retrieval_context, language_code, target_role=question)}\n\n"
+        "Model-enriched practical skill suggestions:\n"
+        f"{format_skill_enrichment_block(skill_enrichment)}\n\n"
+        "Study cadence guidance:\n"
+        f"{_format_study_cadence_block(retrieval_context, language_code, target_role=question, availability_text=availability_text, current_plan=current_plan, skill_enrichment=skill_enrichment)}\n\n"
+        "Current active study plan, if supplied:\n"
+        f"{_format_current_plan_block(current_plan)}\n\n"
         "Instructions:\n"
         f"- Answer only in {language_name} ({language_code}). Do not switch languages.\n"
         "- Return plain text only. Do not return JSON, Python lists, or code fences.\n"
         "- Write like a helpful career coach in conversation, not like a search engine or encyclopedia.\n"
         "- Use a natural coaching tone that responds directly to the user, not a textbook or database tone.\n"
-        "- Use only the retrieved evidence, practical study topic suggestions, and the memory summary.\n"
-        "- You may use the practical study topic suggestions as concrete learning topics, but do not describe them as ESCO facts.\n"
+        "- Use only the retrieved evidence, model-enriched practical skill suggestions, and the memory summary.\n"
+        "- You may use model-enriched practical skill suggestions as concrete learning topics, but do not describe them as ESCO facts.\n"
+        "- When concrete learning topics are available, include one light study-cadence estimate using the cadence guidance.\n"
         "- If the evidence is incomplete, say so explicitly.\n"
         "- Do not repeat, paraphrase, or restate the user's question at the start of the answer.\n"
         "- Start with the actual answer or recommendation, not with a reformulation of the request.\n"
@@ -140,6 +212,8 @@ def build_answer_prompt(question: str, retrieval_context: RetrievalContext) -> s
         "- Cite only the evidence references that directly support the final answer.\n"
         "- Do not include every retrieved chunk by default.\n"
         "- Prefer 1 to 3 cited references. Omit inline citations only if no evidence supports the answer.\n"
+        "- If the user asks to modify the active study plan, discuss the requested change against the supplied current plan. "
+        "Do not claim it has been saved unless the application presents an explicit apply action.\n"
     )
 
 
@@ -149,10 +223,13 @@ def build_career_plan_prompt(
     target_role: str,
     study_preferences: StudyPreferences,
     retrieval_context: RetrievalContext,
+    skill_enrichment: SkillEnrichment | None = None,
 ) -> str:
     """Build the structured career-plan prompt for the generation backend."""
 
     language_name, language_code = _required_answer_language(goal)
+    memory_summary = _format_memory_summary(retrieval_context)
+    availability_text = f"{goal}\n{target_role}\n{memory_summary}"
     return (
         "Goal:\n"
         f"{goal}\n\n"
@@ -167,19 +244,23 @@ def build_career_plan_prompt(
         "Required answer language:\n"
         f"{language_name} ({language_code})\n\n"
         "User memory summary:\n"
-        f"{_format_memory_summary(retrieval_context)}\n\n"
+        f"{memory_summary}\n\n"
         "Retrieved evidence:\n"
         f"{_format_evidence_block(retrieval_context, language_code)}\n\n"
-        "Practical study topic suggestions:\n"
-        f"{_format_practical_topics_block(retrieval_context, language_code, target_role=target_role)}\n\n"
+        "Model-enriched practical skill suggestions:\n"
+        f"{format_skill_enrichment_block(skill_enrichment)}\n\n"
+        "Study cadence guidance:\n"
+        f"{_format_study_cadence_block(retrieval_context, language_code, target_role=target_role, availability_text=availability_text, study_preferences=study_preferences, skill_enrichment=skill_enrichment)}\n\n"
         "Instructions:\n"
         f"- Write all string values in {language_name} ({language_code}).\n"
         "- Return valid JSON only.\n"
         '- Use exactly this shape: {"goal": "...", "target_role": "...", "steps": [{"title": "...", "description": "...", "focus_skills": ["..."], "grounded_detail": "...", "estimated_hours": 4.5}]}.\n'
         "- Produce 3 to 5 steps.\n"
         "- Keep every step grounded in the retrieved evidence.\n"
-        "- Pull useful details from role descriptions and ESCO skill lists into the step descriptions naturally.\n"
-        "- Use practical study topic suggestions for concrete study progression when they are available, but do not describe them as ESCO facts.\n"
+        "- Use retrieved role descriptions to keep the plan within the supported occupation boundary.\n"
+        "- Do not turn abstract ESCO taxonomy labels into milestone titles or primary focus_skills unless they are rewritten as concrete learner-facing study topics.\n"
+        "- Use model-enriched practical skill suggestions for concrete study progression when they are available, but do not describe them as ESCO facts.\n"
+        "- Use the study cadence guidance to make estimated_hours realistic and schedule-ready.\n"
         "- Use the retrieved role description to explain what the work actually involves, not just the role title.\n"
         "- Use focus_skills for the main study topics attached to that step.\n"
         "- estimated_hours should be a realistic small-block study estimate for that step, not full professional training time.\n"

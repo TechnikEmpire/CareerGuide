@@ -12,6 +12,7 @@ import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIN_LLAMA_CPP_PYTHON_VERSION = "0.3.21"
+FORCE_FLASH_ATTENTION = True
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,6 +66,25 @@ def ensure_supported_llama_cpp_python() -> None:
         )
 
 
+def prepare_runtime_config(config_file: Path) -> tuple[Path, dict]:
+    """Load a llama.cpp server config and force runtime-only safety defaults."""
+
+    payload = json.loads(config_file.read_text(encoding="utf-8"))
+    force_flash_attention(payload)
+    runtime_config_path = config_file.with_name(f"{config_file.stem}.runtime.json")
+    runtime_config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return runtime_config_path, payload
+
+
+def force_flash_attention(payload: dict) -> dict:
+    """Force llama.cpp flash attention on every configured model entry."""
+
+    for model_config in payload.get("models", []):
+        if isinstance(model_config, dict):
+            model_config["flash_attn"] = FORCE_FLASH_ATTENTION
+    return payload
+
+
 def main() -> None:
     args = parse_args()
     if not args.config_file.exists():
@@ -73,7 +93,7 @@ def main() -> None:
             "Run `python -m backend.scripts.setup_local_models` first."
         )
 
-    payload = json.loads(args.config_file.read_text(encoding="utf-8"))
+    runtime_config_path, payload = prepare_runtime_config(args.config_file)
     try:
         configured_model_path = Path(payload["models"][0]["model"])
     except (KeyError, IndexError, TypeError) as exc:
@@ -101,7 +121,7 @@ def main() -> None:
         "-m",
         "llama_cpp.server",
         "--config_file",
-        str(args.config_file),
+        str(runtime_config_path),
     ]
     os.execvpe(command[0], command, env)
 

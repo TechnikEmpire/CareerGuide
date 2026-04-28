@@ -1,7 +1,7 @@
 import type { StudyPreferences } from "../api/client";
 
 export type UiLanguage = "en" | "ru";
-export type ThemeId = "graphite" | "harbor" | "meadow";
+export type ThemeId = "slate" | "paper" | "contrast";
 
 export type UiText = {
   metadata: {
@@ -27,6 +27,9 @@ export type UiText = {
     profileImported: string;
     profileSaved: string;
     profileImportInvalid: string;
+    profileSection: string;
+    appearanceSection: string;
+    languageSection: string;
     themeLabel: string;
     themeOptions: Record<ThemeId, string>;
     newChat: string;
@@ -43,9 +46,11 @@ export type UiText = {
   };
   workspace: {
     chatKicker: string;
+    historyKicker: string;
     planKicker: string;
     memoryKicker: string;
     chatTitle: string;
+    historyTitle: string;
     planTitle: string;
     memoryTitle: string;
     savedPrefix: string;
@@ -77,6 +82,11 @@ export type UiText = {
     exportIcs: string;
     exporting: string;
     clearSaved: string;
+    planTabs: {
+      builder: string;
+      calendar: string;
+      details: string;
+    };
     goalLabel: string;
     goalPlaceholder: string;
     targetRoleLabel: string;
@@ -95,6 +105,18 @@ export type UiText = {
     noSavedPlanDescription: string;
     calendarEyebrow: string;
     calendarTitle: string;
+    calendarPrevious: string;
+    calendarNext: string;
+    calendarToday: string;
+    calendarStudy: string;
+    calendarBreak: string;
+    calendarAgenda: string;
+    calendarSelectedEvent: string;
+    calendarNoEvents: string;
+    calendarNoEventSelected: string;
+    deleteSession: string;
+    confirmDeleteSession: string;
+    confirmClearPlan: string;
     planEvidence: string;
     workloadPrefix: string;
     weekPlanLabel: (weeks: number) => string;
@@ -126,6 +148,8 @@ export type UiText = {
     whyAnswer: string;
     memoryUsed: string;
     developerPromptPreview: string;
+    planUpdateSuggested: string;
+    applyPlanUpdate: string;
   };
   citation: {
     sources: string;

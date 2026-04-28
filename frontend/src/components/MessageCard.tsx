@@ -1,4 +1,4 @@
-import type { RetrievedChunk } from "../api/client";
+import type { PlanUpdateSuggestion, RetrievedChunk } from "../api/client";
 import type { UiText } from "../config/ui";
 import { CitationList } from "./CitationList";
 
@@ -13,14 +13,16 @@ export type ConversationMessage = {
   promptPreview?: string;
   isError?: boolean;
   responseKind?: "answer" | "refusal" | "limited_unsupported";
+  planUpdate?: PlanUpdateSuggestion | null;
 };
 
 type MessageCardProps = {
   message: ConversationMessage;
   uiText: UiText;
+  onApplyPlanUpdate?: (update: PlanUpdateSuggestion) => void;
 };
 
-export function MessageCard({ message, uiText }: MessageCardProps) {
+export function MessageCard({ message, uiText, onApplyPlanUpdate }: MessageCardProps) {
   const isScopeNote =
     message.responseKind === "refusal" || message.responseKind === "limited_unsupported";
   const toneClass =
@@ -48,6 +50,16 @@ export function MessageCard({ message, uiText }: MessageCardProps) {
       <div className="message-copy">
         <p>{message.text}</p>
       </div>
+
+      {message.role === "assistant" && message.planUpdate ? (
+        <div className="plan-update-callout">
+          <p className="sidebar-eyebrow">{uiText.message.planUpdateSuggested}</p>
+          <p>{message.planUpdate.summary}</p>
+          <button className="toolbar-button" type="button" onClick={() => onApplyPlanUpdate?.(message.planUpdate!)}>
+            {uiText.message.applyPlanUpdate}
+          </button>
+        </div>
+      ) : null}
 
       {message.role === "assistant" &&
       (message.memorySummary || message.citations?.length || (SHOW_DEBUG_PANELS && message.promptPreview)) ? (

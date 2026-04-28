@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Literal
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
@@ -21,7 +23,10 @@ class RetrievedChunk(BaseModel):
 
 class AnswerRequest(BaseModel):
     user_id: str = "demo-user"
-    question: str = Field(min_length=3)
+    question: str = Field(min_length=1)
+    current_plan: "CareerPlanResponse | None" = None
+    conversation_context: list["ChatContextTurn"] = Field(default_factory=list, max_length=8)
+    pending_plan_handoff: "PlanHandoffSuggestion | None" = None
 
 
 class AnswerResponse(BaseModel):
@@ -30,6 +35,20 @@ class AnswerResponse(BaseModel):
     prompt_preview: str
     memory_summary: str
     response_kind: str = "answer"
+    plan_update: "PlanUpdateSuggestion | None" = None
+    plan_handoff: "PlanHandoffSuggestion | None" = None
+
+
+class ChatContextTurn(BaseModel):
+    role: Literal["assistant", "user"]
+    text: str = Field(min_length=1, max_length=1000)
+
+
+class PlanHandoffSuggestion(BaseModel):
+    status: Literal["offered", "accepted", "declined"]
+    target_role: str
+    goal: str
+    source: Literal["supported_role_match"] = "supported_role_match"
 
 
 class CareerPlanRequest(BaseModel):
@@ -56,6 +75,8 @@ class CareerPlanStep(BaseModel):
 
 
 class CareerPlanCalendarEvent(BaseModel):
+    event_id: str = Field(default_factory=lambda: str(uuid4()))
+    event_type: Literal["study", "break"] = "study"
     title: str
     description: str
     starts_at: str
@@ -75,6 +96,12 @@ class CareerPlanResponse(BaseModel):
     steps: list[CareerPlanStep]
     calendar_events: list[CareerPlanCalendarEvent] = Field(default_factory=list)
     citations: list[RetrievedChunk]
+
+
+class PlanUpdateSuggestion(BaseModel):
+    kind: Literal["relax_schedule", "schedule_preferences", "add_focus_topic"]
+    summary: str
+    updated_plan: CareerPlanResponse
 
 
 class CareerPlanExportRequest(BaseModel):

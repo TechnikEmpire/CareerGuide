@@ -25,6 +25,7 @@ GENERATOR_ALLOW_PATTERNS = [
 ]
 EMBEDDING_REPO_ID = "Qwen/Qwen3-Embedding-0.6B"
 RERANKER_REPO_ID = "Qwen/Qwen3-Reranker-0.6B"
+FORCE_FLASH_ATTENTION = True
 
 
 def parse_args() -> argparse.Namespace:
@@ -110,8 +111,18 @@ def _write_server_config(*, gguf_path: Path) -> Path:
     local_config_path = CONFIG_DIR / "llama_cpp_python_server.local.json"
     payload = json.loads(example_path.read_text(encoding="utf-8"))
     payload["models"][0]["model"] = str(gguf_path.resolve())
+    force_flash_attention(payload)
     local_config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return local_config_path
+
+
+def force_flash_attention(payload: dict) -> dict:
+    """Force llama.cpp flash attention on every configured model entry."""
+
+    for model_config in payload.get("models", []):
+        if isinstance(model_config, dict):
+            model_config["flash_attn"] = FORCE_FLASH_ATTENTION
+    return payload
 
 
 def main() -> None:
