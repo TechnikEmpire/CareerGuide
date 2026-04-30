@@ -9,7 +9,7 @@ export const uiTextEn = {
   },
   brand: {
     eyebrow: "InspiON",
-    title: "Career coach",
+    title: "AI-assistant",
   },
   sidebar: {
     profileLabel: "Profile name",
