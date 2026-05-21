@@ -1,4 +1,4 @@
-# CareerGuide
+# InspiON
 
 This repository now maintains its authored top-level documentation in
 language-specific files:
