@@ -1,6 +1,6 @@
-# CareerGuide
+# InspiON
 
-CareerGuide is an academic proof-of-concept web application for grounded
+InspiON is an academic proof-of-concept web application for grounded
 career guidance.
 
 The current prototype already includes:
