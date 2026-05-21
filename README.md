@@ -8,9 +8,9 @@ language-specific files / В этом репозитории теперь хра
 
 Student handoff manuals / Документация:
 
-- [Student Manual (English)](docs/STUDENT_MANUAL.en.md)
-- [Руководство для студентки (Русский)](docs/STUDENT_MANUAL.ru.md)
-- [Student Memory Guide (English)](docs/STUDENT_MEMORY_GUIDE.en.md)
-- [Memory Guide для(Русский)](docs/STUDENT_MEMORY_GUIDE.ru.md)
+- [Manual (English)](docs/STUDENT_MANUAL.en.md)
+- [Руководство (Русский)](docs/STUDENT_MANUAL.ru.md)
+- [Memory Guide (English)](docs/STUDENT_MEMORY_GUIDE.en.md)
+- [Memory Guide(Русский)](docs/STUDENT_MEMORY_GUIDE.ru.md)
 - [Deployment Guide (English)](docs/DEPLOYMENT.en.md)
 - [Deployment Guide (Русский)](docs/DEPLOYMENT.ru.md)
