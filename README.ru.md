@@ -1,7 +1,6 @@
-# CareerGuide
+# InspiON
 
-CareerGuide — это академическое proof-of-concept веб-приложение для grounded
-career guidance.
+InspiON — это минимально жизнеспособный продукт, разработанный для сдуенческой ВКР.
 
 Текущий прототип уже включает:
 
