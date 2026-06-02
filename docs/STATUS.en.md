@@ -111,7 +111,7 @@ That condition is now satisfied.
 ### Latest Verified Snapshot
 
 - Retrieval stack: SQLite + FAISS HNSW + `Qwen/Qwen3-Embedding-0.6B`
-- Generator stack: local OpenAI-compatible server + `Qwen/Qwen3.5-2B` Q4_K_M GGUF, 8192-token context
+- Generator stack: local OpenAI-compatible server + `Qwen/Qwen3.5-2B` Unsloth UD-Q4_K_XL GGUF, 8192-token context
 - Memory store: SQLite `memory_items`
 - Memory extraction: sentence-level binary BiLSTM runtime path
 - Memory recall: Hopfield-style `top1` and `topk`

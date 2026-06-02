@@ -5,6 +5,7 @@
 # `tooling/translation/requirements.txt`.
 # Real local GGUF generation runtime dependencies live in `requirements-runtime.txt`
 # so the main app environment does not force a native inference build by default.
+-r requirements-torch-cpu.txt
 faiss-cpu
 fastapi
 huggingface-hub>=1.3,<2
@@ -16,7 +17,6 @@ pydantic-settings
 pytest
 sentence-transformers>=2.7.0
 sqlalchemy
-torch>=2.6,<3
 tqdm
 transformers>=4.51.0
 uvicorn[standard]

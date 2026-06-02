@@ -97,7 +97,7 @@ class AppSettings(BaseSettings):
     esco_skill_limit_per_occupation: int = 8
     generation_runtime: str = "llama-cpp-python"
     generation_model_name: str = "Qwen/Qwen3.5-2B"
-    generation_model_artifact: str = "bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M"
+    generation_model_artifact: str = "unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL"
     generation_base_url: str = "http://127.0.0.1:8080"
     generation_request_timeout_seconds: float = 180.0
     generation_temperature: float = 0.2

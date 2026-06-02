@@ -32,7 +32,7 @@ RUN apt-get update \
         libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements-runtime.txt ./
+COPY requirements.txt requirements-runtime.txt requirements-torch-cpu.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --upgrade pip \
     && python -m pip install -r requirements.txt -r requirements-runtime.txt
@@ -48,7 +48,7 @@ RUN --mount=type=cache,target=/root/.cache/huggingface \
 EXPOSE 8000
 VOLUME ["/app/data/runtime"]
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=5 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=600s --retries=5 \
   CMD curl --fail --silent http://127.0.0.1:8000/health || exit 1
 
 CMD ["python", "-m", "backend.scripts.run_local_app_stack", "--host", "0.0.0.0", "--port", "8000"]

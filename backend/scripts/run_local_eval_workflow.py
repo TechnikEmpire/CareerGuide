@@ -14,6 +14,7 @@ from backend.scripts._local_runtime import (
     ensure_local_env_exists,
     generation_base_url,
     generation_server_ready,
+    generation_startup_timeout_seconds,
     terminate_process,
     wait_for_generation_server,
 )
@@ -80,7 +81,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--generator-startup-timeout",
         type=float,
-        default=120.0,
+        default=generation_startup_timeout_seconds(),
         help="Seconds to wait for the local generation server to become ready when auto-starting it.",
     )
     parser.set_defaults(start_generator_server=True)

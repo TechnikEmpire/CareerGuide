@@ -6,6 +6,9 @@ import argparse
 from dataclasses import dataclass
 from pathlib import PurePath
 
+import pytest
+
+from backend.scripts import _local_runtime
 from backend.scripts.run_backend_dev_server import build_uvicorn_command, ensure_retrieval_artifacts
 
 
@@ -74,3 +77,26 @@ def test_ensure_retrieval_artifacts_rebuilds_when_artifacts_are_stale() -> None:
     assert command[1:] == ["-m", "backend.scripts.build_retrieval_index"]
     assert kwargs["check"] is True
     assert kwargs["env"] == env
+
+
+def test_generation_startup_timeout_defaults_to_slow_cpu_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(_local_runtime.GENERATION_STARTUP_TIMEOUT_ENV, raising=False)
+
+    assert _local_runtime.generation_startup_timeout_seconds() == 600.0
+
+
+def test_generation_startup_timeout_accepts_environment_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(_local_runtime.GENERATION_STARTUP_TIMEOUT_ENV, "900")
+
+    assert _local_runtime.generation_startup_timeout_seconds() == 900.0
+
+
+def test_generation_startup_timeout_rejects_invalid_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(_local_runtime.GENERATION_STARTUP_TIMEOUT_ENV, "0")
+
+    with pytest.raises(SystemExit):
+        _local_runtime.generation_startup_timeout_seconds()

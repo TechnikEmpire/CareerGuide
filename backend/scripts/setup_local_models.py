@@ -13,11 +13,11 @@ MODELS_DIR = REPO_ROOT / "models"
 CONFIG_DIR = REPO_ROOT / "config"
 ENV_LOCAL_PATH = REPO_ROOT / ".env.local"
 
-GENERATOR_REPO_ID = "bartowski/Qwen_Qwen3.5-2B-GGUF"
-GENERATOR_LOCAL_DIR_NAME = "Qwen_Qwen3.5-2B-GGUF"
-GENERATOR_GGUF_PATTERN = "*Q4_K_M.gguf"
+GENERATOR_REPO_ID = "unsloth/Qwen3.5-2B-GGUF"
+GENERATOR_LOCAL_DIR_NAME = "Qwen3.5-2B-GGUF"
+GENERATOR_GGUF_PATTERN = "*UD-Q4_K_XL.gguf"
 GENERATOR_ALLOW_PATTERNS = [
-    "*Q4_K_M.gguf",
+    "*UD-Q4_K_XL.gguf",
     "*.json",
     "*.jinja",
     "*.model",

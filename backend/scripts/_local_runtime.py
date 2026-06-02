@@ -13,6 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_LOCAL_PATH = REPO_ROOT / ".env.local"
 GENERATOR_CONFIG_PATH = REPO_ROOT / "config" / "llama_cpp_python_server.local.json"
 DEFAULT_GENERATION_BASE_URL = "http://127.0.0.1:8080"
+DEFAULT_GENERATION_STARTUP_TIMEOUT_SECONDS = 600.0
+GENERATION_STARTUP_TIMEOUT_ENV = "CAREERGUIDE_GENERATION_STARTUP_TIMEOUT_SECONDS"
 
 
 def load_env_local() -> dict[str, str]:
@@ -57,6 +59,24 @@ def generation_base_url(env: dict[str, str]) -> str:
     """Return the configured generation base URL from child-process env."""
 
     return env.get("CAREERGUIDE_GENERATION_BASE_URL", DEFAULT_GENERATION_BASE_URL).rstrip("/")
+
+
+def generation_startup_timeout_seconds() -> float:
+    """Return the generation-server startup timeout for slow CPU hosts."""
+
+    raw_value = os.environ.get(GENERATION_STARTUP_TIMEOUT_ENV)
+    if raw_value is None or raw_value.strip() == "":
+        return DEFAULT_GENERATION_STARTUP_TIMEOUT_SECONDS
+
+    try:
+        timeout_seconds = float(raw_value)
+    except ValueError as exc:
+        raise SystemExit(
+            f"{GENERATION_STARTUP_TIMEOUT_ENV} must be a positive number of seconds."
+        ) from exc
+    if timeout_seconds <= 0:
+        raise SystemExit(f"{GENERATION_STARTUP_TIMEOUT_ENV} must be greater than zero.")
+    return timeout_seconds
 
 
 def wait_for_generation_server(

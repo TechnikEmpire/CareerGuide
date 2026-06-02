@@ -11,7 +11,7 @@ from pathlib import Path
 import sys
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-MIN_LLAMA_CPP_PYTHON_VERSION = "0.3.21"
+MIN_LLAMA_CPP_PYTHON_VERSION = "0.3.25"
 FORCE_FLASH_ATTENTION = True
 
 

@@ -23,10 +23,10 @@
 **Русский**
 
 - Статус: активно
-- Решение: Путь генератора по умолчанию - `Qwen/Qwen3.5-2B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]>=0.3.21` является предпочтительной локальной реализацией.
-- Зафиксированный артефакт: `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M`
+- Решение: Путь генератора по умолчанию - `Qwen/Qwen3.5-2B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]>=0.3.25` является предпочтительной локальной реализацией.
+- Зафиксированный артефакт: `unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL`
 - Решение: Локальное окно контекста по умолчанию ограничено 8192 токенами, а server example использует 4 CPU threads для текущего Linode с 8 GB RAM / 4 vCPU.
-- Обоснование: Это переводит generator на более новую линейку Qwen3.5 и при этом сохраняет runtime достаточно малым для production VPS. Q4_K_M выбран как баланс quality/cost, а backend сохраняет тот же простой HTTP-boundary.
+- Обоснование: Это сохраняет generator на более новой линейке Qwen3.5 и использует Unsloth GGUF-артефакт, рекомендованный для llama.cpp-compatible local inference. `llama-cpp-python` закреплен на более новой нижней границе, чтобы embedded llama.cpp runtime мог загрузить hybrid architecture Qwen3.5, а backend сохраняет тот же простой HTTP-boundary.
 
 ## D-004 Retrieval Stack
 

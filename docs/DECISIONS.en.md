@@ -23,10 +23,10 @@ Last updated: 2026-04-28
 **English**
 
 - Status: active
-- Decision: The default generator path is `Qwen/Qwen3.5-2B` served through an OpenAI-compatible local GGUF server, with `llama-cpp-python[server]>=0.3.21` as the preferred local implementation.
-- Pinned artifact: `bartowski/Qwen_Qwen3.5-2B-GGUF:Q4_K_M`
+- Decision: The default generator path is `Qwen/Qwen3.5-2B` served through an OpenAI-compatible local GGUF server, with `llama-cpp-python[server]>=0.3.25` as the preferred local implementation.
+- Pinned artifact: `unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL`
 - Decision: The default local context window is capped at 8192 tokens and the server example uses 4 CPU threads for the current 8 GB RAM / 4 vCPU Linode target.
-- Rationale: This moves the generator to the newer Qwen3.5 line while keeping the runtime small enough for the production VPS. Q4_K_M is the chosen quality/cost point, and the backend remains isolated behind the same simple HTTP boundary.
+- Rationale: This keeps the generator on the newer Qwen3.5 line while using the Unsloth GGUF artifact recommended for llama.cpp-compatible local inference. `llama-cpp-python` is pinned to a newer floor so the embedded llama.cpp runtime can load the Qwen3.5 hybrid architecture, and the backend remains isolated behind the same simple HTTP boundary.
 
 ## D-004 Retrieval Stack
 

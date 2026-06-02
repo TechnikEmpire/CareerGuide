@@ -1,0 +1,4 @@
+# CPU-only PyTorch wheel for the main app and deployment image.
+# GPU-oriented tooling has separate requirements under tooling/.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
