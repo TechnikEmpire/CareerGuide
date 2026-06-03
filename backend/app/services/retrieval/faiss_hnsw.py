@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
+import hashlib
 import json
 from pathlib import Path
 
@@ -79,12 +80,19 @@ def _bytes_to_embedding(payload: bytes) -> np.ndarray:
     return np.frombuffer(payload, dtype=np.float32)
 
 
-def _manifest_payload(*, chunk_count: int, embedding_model: str, vector_size: int) -> dict[str, object]:
+def _manifest_payload(
+    *,
+    chunk_count: int,
+    embedding_model: str,
+    vector_size: int,
+    source_corpus_hash: str,
+) -> dict[str, object]:
     return {
         "built_at": datetime.now(UTC).isoformat(),
         "chunk_count": chunk_count,
         "embedding_model": embedding_model,
         "vector_size": vector_size,
+        "source_corpus_hash": source_corpus_hash,
         "faiss_hnsw_m": settings.faiss_hnsw_m,
         "faiss_hnsw_ef_construction": settings.faiss_hnsw_ef_construction,
     }
@@ -113,19 +121,76 @@ def _sorted_source_chunks():
     return sorted(load_esco_retrieval_chunks(), key=lambda chunk: chunk.chunk_id)
 
 
-def _sqlite_corpus_matches(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
+def _source_corpus_hash(source_chunks, *, include_embedding_text: bool) -> str:
+    digest = hashlib.sha256()
+    for chunk in source_chunks:
+        values = [
+            getattr(chunk, "chunk_id", ""),
+            getattr(chunk, "concept_uri", ""),
+            getattr(chunk, "concept_kind", ""),
+            getattr(chunk, "source_name", ""),
+            getattr(chunk, "source_url", ""),
+            getattr(chunk, "title", ""),
+            getattr(chunk, "text", ""),
+            getattr(chunk, "chunk_type", ""),
+        ]
+        if include_embedding_text:
+            values.append(getattr(chunk, "embedding_text", ""))
+        for value in values:
+            digest.update(str(value).encode("utf-8"))
+            digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _sqlite_rows_hash(rows: list[RetrievalChunkRecord]) -> str:
+    digest = hashlib.sha256()
+    for row in rows:
+        values = [
+            row.chunk_id,
+            row.concept_uri,
+            row.concept_kind,
+            row.source_name,
+            row.source_url,
+            row.title,
+            row.text,
+            row.chunk_type,
+        ]
+        for value in values:
+            digest.update(str(value).encode("utf-8"))
+            digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _sqlite_corpus_matches(
+    expected_count: int,
+    *,
+    embedding_model: str,
+    vector_size: int,
+    source_corpus_hash: str,
+) -> bool:
     with db_session.SessionLocal() as session:
-        existing_count = session.query(RetrievalChunkRecord).count()
+        rows = list(session.scalars(select(RetrievalChunkRecord).order_by(RetrievalChunkRecord.chunk_id)))
+        existing_count = len(rows)
         first_row = session.scalars(select(RetrievalChunkRecord).limit(1)).first()
         if existing_count != expected_count or existing_count == 0 or first_row is None:
             return False
         first_dim = len(_bytes_to_embedding(first_row.embedding))
         stored_model = _normalize_embedding_model_id(first_row.embedding_model)
         expected_model = _normalize_embedding_model_id(embedding_model)
-        return first_dim == vector_size and stored_model == expected_model
+        return (
+            first_dim == vector_size
+            and stored_model == expected_model
+            and _sqlite_rows_hash(rows) == source_corpus_hash
+        )
 
 
-def _faiss_artifacts_match(expected_count: int, *, embedding_model: str, vector_size: int) -> bool:
+def _faiss_artifacts_match(
+    expected_count: int,
+    *,
+    embedding_model: str,
+    vector_size: int,
+    source_corpus_hash: str,
+) -> bool:
     manifest = _read_manifest(settings.retrieval_index_manifest_path)
     index_path = settings.retrieval_index_path
     if manifest is None or not index_path.exists():
@@ -135,6 +200,7 @@ def _faiss_artifacts_match(expected_count: int, *, embedding_model: str, vector_
         "chunk_count": expected_count,
         "embedding_model": embedding_model,
         "vector_size": vector_size,
+        "source_corpus_hash": source_corpus_hash,
         "faiss_hnsw_m": settings.faiss_hnsw_m,
         "faiss_hnsw_ef_construction": settings.faiss_hnsw_ef_construction,
     }
@@ -201,39 +267,37 @@ def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
     source_chunks = _sorted_source_chunks()
     embedder = get_embedding_provider()
     expected_count = len(source_chunks)
+    sqlite_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=False)
+    faiss_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=True)
 
     sqlite_current = _sqlite_corpus_matches(
         expected_count,
         embedding_model=embedder.model_id,
         vector_size=embedder.vector_size,
+        source_corpus_hash=sqlite_source_hash,
     )
     faiss_current = _faiss_artifacts_match(
         expected_count,
         embedding_model=embedder.model_id,
         vector_size=embedder.vector_size,
+        source_corpus_hash=faiss_source_hash,
     )
 
     rebuilt_sqlite = force or not sqlite_current
     rebuilt_faiss = force or not faiss_current
 
-    if rebuilt_sqlite:
-        if rebuilt_faiss:
-            embeddings = embedder.embed_documents([chunk.embedding_text for chunk in source_chunks])
-            _rewrite_sqlite_rows(
-                source_chunks=source_chunks,
-                embedding_model=embedder.model_id,
-                embeddings=embeddings,
-                vector_size=embedder.vector_size,
-            )
-        else:
-            # When the tracked FAISS artifact is already current, restoring the
-            # SQLite metadata rows should not force a second full embedding pass.
-            _rewrite_sqlite_rows(
-                source_chunks=source_chunks,
-                embedding_model=embedder.model_id,
-                embeddings=None,
-                vector_size=embedder.vector_size,
-            )
+    if rebuilt_sqlite or rebuilt_faiss:
+        embeddings = (
+            embedder.embed_documents([chunk.embedding_text for chunk in source_chunks])
+            if rebuilt_faiss
+            else None
+        )
+        _rewrite_sqlite_rows(
+            source_chunks=source_chunks,
+            embedding_model=embedder.model_id,
+            embeddings=embeddings,
+            vector_size=embedder.vector_size,
+        )
 
     with db_session.SessionLocal() as session:
         rows = list(
@@ -252,6 +316,7 @@ def build_retrieval_index(force: bool = False) -> RetrievalBuildStats:
                     chunk_count=len(rows),
                     embedding_model=embedder.model_id,
                     vector_size=embedder.vector_size,
+                    source_corpus_hash=faiss_source_hash,
                 ),
                 handle,
                 ensure_ascii=False,
@@ -277,16 +342,20 @@ def inspect_retrieval_artifacts() -> RetrievalArtifactStatus:
     source_chunks = _sorted_source_chunks()
     embedder = get_embedding_provider()
     expected_count = len(source_chunks)
+    sqlite_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=False)
+    faiss_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=True)
 
     sqlite_current = _sqlite_corpus_matches(
         expected_count,
         embedding_model=embedder.model_id,
         vector_size=embedder.vector_size,
+        source_corpus_hash=sqlite_source_hash,
     )
     faiss_current = _faiss_artifacts_match(
         expected_count,
         embedding_model=embedder.model_id,
         vector_size=embedder.vector_size,
+        source_corpus_hash=faiss_source_hash,
     )
     return RetrievalArtifactStatus(
         chunk_count=expected_count,
@@ -407,16 +476,21 @@ class FaissHnswRetrievalService:
 
     def _ensure_built_artifacts(self) -> None:
         db_session.init_db()
-        expected_count = len(_sorted_source_chunks())
+        source_chunks = _sorted_source_chunks()
+        expected_count = len(source_chunks)
+        sqlite_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=False)
+        faiss_source_hash = _source_corpus_hash(source_chunks, include_embedding_text=True)
         sqlite_current = _sqlite_corpus_matches(
             expected_count,
             embedding_model=self.embedder.model_id,
             vector_size=self.embedder.vector_size,
+            source_corpus_hash=sqlite_source_hash,
         )
         faiss_current = _faiss_artifacts_match(
             expected_count,
             embedding_model=self.embedder.model_id,
             vector_size=self.embedder.vector_size,
+            source_corpus_hash=faiss_source_hash,
         )
         if sqlite_current and faiss_current:
             return
@@ -433,11 +507,13 @@ class FaissHnswRetrievalService:
             expected_count,
             embedding_model=self.embedder.model_id,
             vector_size=self.embedder.vector_size,
+            source_corpus_hash=sqlite_source_hash,
         )
         faiss_current = _faiss_artifacts_match(
             expected_count,
             embedding_model=self.embedder.model_id,
             vector_size=self.embedder.vector_size,
+            source_corpus_hash=faiss_source_hash,
         )
         if sqlite_current and faiss_current:
             return

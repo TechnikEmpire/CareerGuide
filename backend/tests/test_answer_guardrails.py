@@ -1,4 +1,4 @@
-"""Tests for deterministic answer guardrails."""
+"""Tests for legacy answer guardrail boundaries."""
 
 from __future__ import annotations
 
@@ -7,11 +7,10 @@ from backend.app.services.generation.answer_guardrails import (
     maybe_build_guardrailed_answer,
 )
 from backend.app.services.generation.schemas import RetrievedChunk
-from backend.app.services.generation.skill_enrichment import EnrichedSkill, SkillEnrichment
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 
-def test_guardrails_return_clarifying_fit_answer_when_only_skill_evidence_exists() -> None:
+def test_guardrails_do_not_intercept_normal_career_fit_chat() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -36,13 +35,10 @@ def test_guardrails_return_clarifying_fit_answer_when_only_skill_evidence_exists
         retrieval_context=retrieval_context,
     )
 
-    assert response is not None
-    assert "not enough for me to name the best role matches honestly" in response.text
-    assert "Which kind of work sounds closer to you" in response.text
-    assert [chunk.chunk_id for chunk in response.citations] == ["skill-1"]
+    assert response is None
 
 
-def test_guardrails_build_clean_skill_answer_without_pm2_artifact() -> None:
+def test_guardrails_do_not_intercept_normal_skill_chat() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -68,16 +64,10 @@ def test_guardrails_build_clean_skill_answer_without_pm2_artifact() -> None:
         retrieval_context=retrieval_context,
     )
 
-    assert response is not None
-    assert "risk management" in response.text
-    assert "stakeholder communication" in response.text
-    assert "resource planning" in response.text
-    assert "conflict resolution" in response.text
-    assert "PM²" not in response.text
-    assert [chunk.chunk_id for chunk in response.citations] == ["occupation-1"]
+    assert response is None
 
 
-def test_guardrails_answer_external_resources_honestly() -> None:
+def test_guardrails_do_not_intercept_external_resource_chat() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -103,13 +93,10 @@ def test_guardrails_answer_external_resources_honestly() -> None:
         retrieval_context=retrieval_context,
     )
 
-    assert response is not None
-    assert "I can’t honestly point you to external courses or websites" in response.text
-    assert "study plan or a search checklist" in response.text
-    assert [chunk.chunk_id for chunk in response.citations] == ["occupation-1"]
+    assert response is None
 
 
-def test_guardrails_limit_explicit_unsupported_role_request() -> None:
+def test_guardrails_do_not_intercept_explicit_unsupported_role_chat() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -134,15 +121,10 @@ def test_guardrails_limit_explicit_unsupported_role_request() -> None:
         retrieval_context=retrieval_context,
     )
 
-    assert response is not None
-    assert response.response_kind == "limited_unsupported"
-    assert "limited guidance rather than a grounded career recommendation" in response.text
-    assert "locally regulated" in response.text
-    assert "Transferable adjacent areas" in response.text
-    assert response.citations == []
+    assert response is None
 
 
-def test_guardrails_match_supported_russian_data_analytics_transition() -> None:
+def test_guardrails_match_supported_russian_data_analytics_without_intercepting() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -165,49 +147,62 @@ def test_guardrails_match_supported_russian_data_analytics_transition() -> None:
     )
 
     question = "Я хочу перейти в аналитику данных, но мне нужен спокойный темп работы."
-    skill_enrichment = SkillEnrichment(
-        role_label="аналитик данных",
-        language_code="ru",
-        used_model=True,
-        skills=[
-            EnrichedSkill(
-                name="SQL",
-                rationale="Fake model output for this test.",
-                study_order=1,
-                effort_level="medium",
-                practice_tasks=["Сделать короткую практическую выборку."],
-            ),
-            EnrichedSkill(
-                name="Python и pandas",
-                rationale="Fake model output for this test.",
-                study_order=2,
-                effort_level="medium",
-                practice_tasks=["Разобрать небольшой набор данных."],
-            ),
-        ],
-    )
-
     matched_occupation = _find_supported_occupation(question, retrieval_context)
     response = maybe_build_guardrailed_answer(
         question=question,
         retrieval_context=retrieval_context,
-        skill_enrichment=skill_enrichment,
     )
 
     assert matched_occupation is not None
     assert matched_occupation.chunk_id == "occupation-data-analyst"
-    assert response is not None
-    assert response.response_kind == "answer"
-    assert "аналитик данных" in response.text.lower()
-    assert "спокойного темпа" in response.text.lower()
-    assert "SQL" in response.text
-    assert "Python" in response.text
-    assert "нед" in response.text
-    assert "ч" in response.text
-    assert [chunk.chunk_id for chunk in response.citations] == ["occupation-data-analyst"]
+    assert response is None
 
 
-def test_guardrails_career_fit_answer_uses_role_descriptions_naturally() -> None:
+def test_supported_role_matching_prefers_exact_alternate_label() -> None:
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="occupation-piano-maker",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation/piano-maker",
+                title="piano maker",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: piano maker.\n"
+                    "English alternate labels: piano technician, piano builder.\n"
+                    "Description (EN): Piano makers create and assemble parts to make pianos."
+                ),
+                score=0.93,
+            ),
+            RetrievedChunk(
+                chunk_id="occupation-musician",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/occupation/musician",
+                title="musician",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: musician.\n"
+                    "English alternate labels: orchestra musician, guitarist, pianist, violinist.\n"
+                    "Description (EN): Musicians perform music for audiences or recordings."
+                ),
+                score=0.88,
+            ),
+        ],
+        memory_summary="No memory.",
+    )
+
+    matched_occupation = _find_supported_occupation(
+        "So, what about being a pianist?",
+        retrieval_context,
+    )
+
+    assert matched_occupation is not None
+    assert matched_occupation.chunk_id == "occupation-musician"
+
+
+def test_guardrails_do_not_intercept_career_fit_chat() -> None:
     retrieval_context = RetrievalContext(
         chunks=[
             RetrievedChunk(
@@ -245,6 +240,4 @@ def test_guardrails_career_fit_answer_uses_role_descriptions_naturally() -> None
         retrieval_context=retrieval_context,
     )
 
-    assert response is not None
-    assert "data analyst: work that involves analyse datasets and prepare reports" in response.text.lower()
-    assert "project coordinator: work that involves coordinate delivery timelines and stakeholder updates" in response.text.lower()
+    assert response is None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from backend.app.config import settings
 from backend.app.services.generation.generator_client import _extract_answer_payload
 from backend.app.services.generation.generator_client import _extract_json_object
 from backend.app.services.generation.generator_client import _strip_think_tags
@@ -15,6 +16,164 @@ from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 def test_strip_think_tags_removes_reasoning_block() -> None:
     text = "<think>hidden reasoning</think>\nFinal answer"
     assert _strip_think_tags(text) == "Final answer"
+
+
+def test_strip_think_tags_keeps_response_after_visible_thinking_leak() -> None:
+    text = (
+        "Thinking Process:\n\n"
+        "1. Analyze the request.\n"
+        "*Self-Correction during drafting:* Keep this out of the answer.\n\n"
+        "*Drafting response:*\n"
+        "Both are excellent hands-on careers, but plumber is the broader target."
+    )
+
+    assert (
+        _strip_think_tags(text)
+        == "Both are excellent hands-on careers, but plumber is the broader target."
+    )
+
+
+def test_strip_think_tags_keeps_final_answer_after_visible_thinking_leak() -> None:
+    text = (
+        "Thinking Process:\n\n"
+        "I should compare the roles briefly.\n\n"
+        "Final Answer:\n"
+        "Plumber is the stronger long-term career target."
+    )
+
+    assert _strip_think_tags(text) == "Plumber is the stronger long-term career target."
+
+
+def test_strip_think_tags_keeps_revised_draft_after_visible_thinking_leak() -> None:
+    text = (
+        "Thinking Process:\n\n"
+        "1. **Analyze the Request:** compare two trades.\n"
+        "2. **Review Evidence:** plumber and drain technician are occupations.\n"
+        "7. **Final Polish:** remove scratchpad text.\n\n"
+        "Revised Draft:\n"
+        "Plumber is the broader beginner target, while drain technician is more specialized."
+    )
+
+    assert (
+        _strip_think_tags(text)
+        == "Plumber is the broader beginner target, while drain technician is more specialized."
+    )
+
+
+def test_strip_think_tags_drops_visible_reasoning_without_final_marker() -> None:
+    text = "Thinking Process:\n\n1. Analyze only, but never reach a final answer."
+
+    assert _strip_think_tags(text) == ""
+
+
+def test_llama_cpp_chat_completion_sends_qwen35_anti_loop_sampling(
+    monkeypatch,
+) -> None:
+    captured_payload: dict[str, object] = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"choices": [{"message": {"content": "Final answer"}}]}
+
+    class FakeHttpClient:
+        def __init__(self, *, timeout: float) -> None:
+            self.timeout = timeout
+
+        def __enter__(self) -> "FakeHttpClient":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def post(self, endpoint: str, *, json: dict[str, object]) -> FakeResponse:
+            captured_payload.update(json)
+            return FakeResponse()
+
+    monkeypatch.setattr("backend.app.services.generation.generator_client.httpx.Client", FakeHttpClient)
+
+    client = LlamaCppGeneratorClient()
+    text = client._chat_completion(
+        system_prompt="system",
+        user_prompt="user",
+        max_tokens=settings.generation_answer_max_tokens,
+    )
+
+    assert text == "Final answer"
+    assert captured_payload["temperature"] == 0.7
+    assert captured_payload["top_p"] == 0.95
+    assert captured_payload["top_k"] == 20
+    assert captured_payload["min_p"] == 0.0
+    assert captured_payload["presence_penalty"] == 1.5
+    assert captured_payload["repeat_penalty"] == 1.15
+
+
+def test_llama_cpp_answer_falls_back_when_thinking_cleanup_removes_completion(
+    monkeypatch,
+) -> None:
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "Thinking Process:\n\n1. Analyze only and never provide a final answer."
+                        }
+                    }
+                ]
+            }
+
+    class FakeHttpClient:
+        def __init__(self, *, timeout: float) -> None:
+            self.timeout = timeout
+
+        def __enter__(self) -> "FakeHttpClient":
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def post(self, endpoint: str, *, json: dict[str, object]) -> FakeResponse:
+            return FakeResponse()
+
+    monkeypatch.setattr("backend.app.services.generation.generator_client.httpx.Client", FakeHttpClient)
+
+    retrieval_context = RetrievalContext(
+        chunks=[
+            RetrievedChunk(
+                chunk_id="plumber",
+                chunk_type="occupation",
+                source_name="ESCO",
+                source_url="http://example.com/plumber",
+                title="plumber",
+                text=(
+                    "ESCO concept kind: occupation.\n"
+                    "English label: plumber.\n"
+                    "Description (EN): Plumbers maintain and install water, gas, and sewage systems."
+                ),
+                score=0.9,
+            )
+        ],
+        memory_summary="No stored user memory yet.",
+    )
+
+    response = LlamaCppGeneratorClient().generate_answer(
+        question="I want to become a plumber.",
+        prompt="Question:\nI want to become a plumber.",
+        retrieval_context=retrieval_context,
+        memory_items=[],
+    )
+
+    assert "plumber" in response.answer.lower()
+    assert response.answer.startswith("Plumber is")
+    assert "role involves plumbers maintain" not in response.answer.lower()
+    assert "Thinking Process" not in response.answer
+    assert [citation.chunk_id for citation in response.citations] == ["plumber"]
 
 
 def test_extract_json_object_reads_fenced_json() -> None:

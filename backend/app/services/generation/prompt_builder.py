@@ -159,12 +159,15 @@ def build_answer_prompt(
     *,
     current_plan: CareerPlanResponse | None = None,
     skill_enrichment: SkillEnrichment | None = None,
+    recent_conversation_context: str = "",
+    proposed_plan_update_summary: str = "",
 ) -> str:
     """Build the grounded answer prompt sent to the generation backend."""
 
     language_name, language_code = _required_answer_language(question)
     memory_summary = _format_memory_summary(retrieval_context)
-    availability_text = f"{question}\n{memory_summary}"
+    recent_context = recent_conversation_context.strip() or "No recent chat context."
+    proposed_update = proposed_plan_update_summary.strip() or "No plan update is being proposed."
     follow_up_instruction = (
         "- End with one short follow-up question that keeps the dialogue moving.\n"
         if _needs_follow_up_question(question)
@@ -177,22 +180,28 @@ def build_answer_prompt(
         f"{language_name} ({language_code})\n\n"
         "User memory summary:\n"
         f"{memory_summary}\n\n"
+        "Recent conversation context:\n"
+        f"{recent_context}\n\n"
         "Retrieved evidence:\n"
         f"{_format_evidence_block(retrieval_context, language_code)}\n\n"
         "Model-enriched practical skill suggestions:\n"
         f"{format_skill_enrichment_block(skill_enrichment)}\n\n"
-        "Study cadence guidance:\n"
-        f"{_format_study_cadence_block(retrieval_context, language_code, target_role=question, availability_text=availability_text, current_plan=current_plan, skill_enrichment=skill_enrichment)}\n\n"
         "Current active study plan, if supplied:\n"
         f"{_format_current_plan_block(current_plan)}\n\n"
+        "Proposed plan update, if any:\n"
+        f"{proposed_update}\n\n"
         "Instructions:\n"
         f"- Answer only in {language_name} ({language_code}). Do not switch languages.\n"
         "- Return plain text only. Do not return JSON, Python lists, or code fences.\n"
-        "- Write like a helpful career coach in conversation, not like a search engine or encyclopedia.\n"
-        "- Use a natural coaching tone that responds directly to the user, not a textbook or database tone.\n"
-        "- Use only the retrieved evidence, model-enriched practical skill suggestions, and the memory summary.\n"
+        "- This is exploratory career chat: help the user compare options, clarify fit, and narrow toward a concrete supported path.\n"
+        "- Write like a helpful career coach in a normal conversation, not like a search engine, encyclopedia, or database report.\n"
+        "- Respond directly to the user's latest turn, while using recent context only when it genuinely clarifies a follow-up.\n"
+        "- Use only the retrieved evidence, model-enriched practical skill suggestions, recent conversation context, memory summary, and proposed plan update when supplied.\n"
+        "- Treat the current question as authoritative; use recent conversation context only to resolve follow-ups like 'that role' or 'specific career title'.\n"
         "- You may use model-enriched practical skill suggestions as concrete learning topics, but do not describe them as ESCO facts.\n"
-        "- When concrete learning topics are available, include one light study-cadence estimate using the cadence guidance.\n"
+        "- Do not turn normal chat into a study schedule or estimate study hours/weeks unless a supplied active plan is being adjusted.\n"
+        "- Do not ask to move into the plan builder yourself; the application will add that offer when appropriate.\n"
+        "- If a proposed plan update is supplied, explain it supportively as an applyable suggestion and do not claim it has been saved.\n"
         "- If the evidence is incomplete, say so explicitly.\n"
         "- Do not repeat, paraphrase, or restate the user's question at the start of the answer.\n"
         "- Start with the actual answer or recommendation, not with a reformulation of the request.\n"
@@ -201,15 +210,16 @@ def build_answer_prompt(
         "- Keep the answer concise, practical, and grounded.\n"
         "- Keep the answer under 170 words.\n"
         "- Finish the answer cleanly. Do not stop mid-sentence.\n"
-        "- Prefer one short paragraph followed by 2 to 4 compact bullet points when helpful.\n"
+        "- Prefer one short paragraph; use 2 to 4 compact bullets only when comparing options or next steps.\n"
+        "- If the user is vague, guide them toward a clearer path with 2 to 4 plausible role directions and one useful follow-up question.\n"
         "- If the user asks which career paths or roles fit them, name 2 to 4 role options instead of echoing evidence titles.\n"
         "- Never present a skill, task, or counseling service as if it were itself a career path.\n"
         "- If the evidence mostly covers skills rather than occupations, say that briefly and pivot to a clarifying question instead of pretending the skill names are job titles.\n"
         "- If the current evidence is too generic to support confident role suggestions, say that briefly and ask one short follow-up question about the user's strengths, interests, or preferred industries.\n"
         "- If you name possible roles, frame them as tentative options worth exploring, not as a final verdict.\n"
         f"{follow_up_instruction}"
-        "- Cite supporting evidence inline using bracketed references like [1] or [2].\n"
-        "- Cite only the evidence references that directly support the final answer.\n"
+        "- Cite concrete occupation or skill claims inline using bracketed references like [1] or [2].\n"
+        "- Cite only evidence references that directly support concrete claims; do not force citations onto ordinary coaching language.\n"
         "- Do not include every retrieved chunk by default.\n"
         "- Prefer 1 to 3 cited references. Omit inline citations only if no evidence supports the answer.\n"
         "- If the user asks to modify the active study plan, discuss the requested change against the supplied current plan. "

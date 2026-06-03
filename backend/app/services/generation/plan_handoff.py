@@ -5,7 +5,12 @@ from __future__ import annotations
 import re
 
 from backend.app.services.generation.esco_grounding import extract_label
-from backend.app.services.generation.role_matcher import find_singular_supported_occupation
+from backend.app.services.generation.role_matcher import (
+    extract_role_tokens,
+    extract_target_role_phrase,
+    find_singular_supported_occupation,
+    find_supported_occupation,
+)
 from backend.app.services.generation.schemas import (
     ChatContextTurn,
     PlanHandoffSuggestion,
@@ -15,13 +20,30 @@ from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _CYRILLIC_PATTERN = re.compile(r"[А-Яа-яЁё]")
 _AFFIRMATIVE_PATTERN = re.compile(
-    r"^\s*(yes|yeah|yep|sure|ok|okay|please|do it|let'?s do it|sounds good|go ahead|"
-    r"that works|start planning)\b|^\s*(да|ага|угу|ок|окей|хорошо|давай|давайте|соглас|можно)\b",
+    r"^\s*(?:yes|yeah|yep|sure|ok|okay|please|do it|let'?s do it|sounds good|go ahead|"
+    r"that works|start planning|да|ага|угу|ок|окей|хорошо|давай|давайте|согласен|согласна|можно)"
+    r"\s*[.!?…]*\s*$",
     flags=re.IGNORECASE,
 )
 _NEGATIVE_PATTERN = re.compile(
-    r"^\s*(no|nope|not now|later|keep chatting|continue chatting|don'?t|do not)\b"
-    r"|^\s*(нет|не сейчас|потом|позже|не надо|продолжим|оставим)\b",
+    r"^\s*(?:no|nope|no thanks|no thank you|not now|later|keep chatting|continue chatting|"
+    r"don'?t|do not|нет|не сейчас|потом|позже|не надо|продолжим|оставим)\s*[.!?…]*\s*$",
+    flags=re.IGNORECASE,
+)
+_AMBIGUOUS_PATTERN = re.compile(
+    r"^\s*(?:maybe|maybe later|not sure|i'?m not sure|unclear|может быть|пока не знаю|не уверен|не уверена)"
+    r"\s*[.!?…]*\s*$",
+    flags=re.IGNORECASE,
+)
+_PLAN_REQUEST_PATTERN = re.compile(
+    r"\b(?:study plan|learning plan|training plan|plan builder|build(?: me)?(?: a)? plan|"
+    r"make(?: me)?(?: a)? plan|create(?: me)?(?: a)? plan|do(?: a)? study plan|"
+    r"let'?s do(?: a)? study plan|move this into(?: a)? study plan|open(?: the)? plan)\b"
+    r"|учебн.*план|план обуч|состав.*план|откр.*план|перенес.*план",
+    flags=re.IGNORECASE,
+)
+_CONTENTFUL_NEGATIVE_PATTERN = re.compile(
+    r"^\s*(?:no|nope|no thanks|no thank you|not now|don'?t|do not|нет|не сейчас|не надо)\b",
     flags=re.IGNORECASE,
 )
 
@@ -50,11 +72,28 @@ def answer_pending_plan_handoff(
             accepted,
         )
 
+    if _is_contentful_plan_acceptance(question, pending_handoff):
+        accepted = pending_handoff.model_copy(update={"status": "accepted"})
+        if language_code == "ru":
+            return (
+                f"Хорошо. Открою конструктор плана с ролью {accepted.target_role}. "
+                "Проверьте цель и настройки, затем постройте план.",
+                accepted,
+            )
+        return (
+            f"Okay. I’ll open the plan builder with {accepted.target_role} filled in. "
+            "Review the goal and settings, then build the plan when you’re ready.",
+            accepted,
+        )
+
     if _NEGATIVE_PATTERN.search(question):
         declined = pending_handoff.model_copy(update={"status": "declined"})
         if language_code == "ru":
             return ("Хорошо, продолжим разбирать это в чате без перехода к плану.", declined)
         return ("Okay, we can keep narrowing this in chat without moving to a plan yet.", declined)
+
+    if not _AMBIGUOUS_PATTERN.search(question):
+        return None
 
     if language_code == "ru":
         return (
@@ -79,13 +118,19 @@ def maybe_offer_plan_handoff(
     """Append a natural plan-handoff question when a single supported role is clear."""
 
     combined_context = _build_context_text(question, conversation_context)
-    occupation = find_singular_supported_occupation(combined_context, retrieval_context)
+    occupation = (
+        find_supported_occupation(question, retrieval_context)
+        if extract_target_role_phrase(question)
+        else None
+    )
+    if occupation is None:
+        occupation = find_singular_supported_occupation(combined_context, retrieval_context)
     if occupation is None:
         occupation = find_singular_supported_occupation(question, retrieval_context)
     if occupation is None:
         return None
 
-    language_code = _language_code(f"{question}\n{current_answer}")
+    language_code = _language_code(question)
     role_label = _role_label(occupation, language_code)
     goal = _build_goal(role_label, language_code)
     handoff = PlanHandoffSuggestion(
@@ -98,7 +143,8 @@ def maybe_offer_plan_handoff(
         question_text = f" Хотите, я перенесу это в учебный план для роли {role_label}?"
     else:
         question_text = f" Would you like me to move this into a study plan for {role_label}?"
-    return (current_answer.rstrip() + question_text, handoff)
+    answer_text = _ensure_terminal_punctuation(current_answer)
+    return (answer_text + question_text, handoff)
 
 
 def _build_context_text(question: str, conversation_context: list[ChatContextTurn]) -> str:
@@ -118,6 +164,30 @@ def _build_goal(role_label: str, language_code: str) -> str:
     if language_code == "ru":
         return f"Составить реалистичный учебный план перехода в роль {role_label}"
     return f"Build a realistic transition study plan for {role_label}"
+
+
+def _is_contentful_plan_acceptance(question: str, pending_handoff: PlanHandoffSuggestion) -> bool:
+    if _CONTENTFUL_NEGATIVE_PATTERN.search(question):
+        return False
+    if not _PLAN_REQUEST_PATTERN.search(question):
+        return False
+
+    requested_role = extract_target_role_phrase(question)
+    if not requested_role:
+        return True
+
+    requested_tokens = set(extract_role_tokens(requested_role))
+    target_tokens = set(extract_role_tokens(pending_handoff.target_role))
+    return bool(requested_tokens and target_tokens and requested_tokens & target_tokens)
+
+
+def _ensure_terminal_punctuation(text: str) -> str:
+    stripped = text.rstrip()
+    if not stripped:
+        return stripped
+    if stripped[-1] in ".!?…":
+        return stripped
+    return stripped + "."
 
 
 def _language_code(text: str) -> str:

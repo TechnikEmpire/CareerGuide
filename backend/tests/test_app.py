@@ -187,6 +187,145 @@ def _write_test_esco_fixture(directory: Path) -> None:
             },
             "classification": {"code": "1219", "isco_group": "1219"},
         },
+        {
+            "record_type": "concept",
+            "dataset": "esco",
+            "dataset_version": "test",
+            "source_language": "en",
+            "concept_kind": "occupation",
+            "raw_concept_type": "Occupation",
+            "concept_uri": "http://data.europa.eu/esco/occupation/plumber",
+            "status": "released",
+            "source_text": {
+                "preferred_label": "plumber",
+                "alt_labels": ["domestic plumber", "gas fitter"],
+                "hidden_labels": [],
+                "description": "Plumbers maintain and install water, gas, and sewage systems.",
+                "definition": None,
+                "scope_note": None,
+                "regulated_profession_note": None,
+            },
+            "translations": {
+                "ru": {
+                    "preferred_label": "сантехник",
+                    "alt_labels": ["водопроводчик"],
+                    "hidden_labels": [],
+                    "description": "Сантехники обслуживают и устанавливают водопроводные, газовые и канализационные системы.",
+                    "definition": None,
+                    "scope_note": None,
+                    "regulated_profession_note": None,
+                    "translation_meta": {"model_name": "test-fixture"},
+                }
+            },
+            "classification": {"code": "7126", "isco_group": "7126"},
+        },
+        {
+            "record_type": "concept",
+            "dataset": "esco",
+            "dataset_version": "test",
+            "source_language": "en",
+            "concept_kind": "occupation",
+            "raw_concept_type": "Occupation",
+            "concept_uri": "http://data.europa.eu/esco/occupation/plumbing-supervisor",
+            "status": "released",
+            "source_text": {
+                "preferred_label": "plumbing supervisor",
+                "alt_labels": ["supervising plumber", "plumbing foreman", "commercial plumbing supervisor"],
+                "hidden_labels": [],
+                "description": "Plumbing supervisors monitor plumbing operations, assign tasks, and resolve installation and repair problems.",
+                "definition": None,
+                "scope_note": None,
+                "regulated_profession_note": None,
+            },
+            "translations": {
+                "ru": {
+                    "preferred_label": "руководитель сантехнических работ",
+                    "alt_labels": ["сантехнический мастер"],
+                    "hidden_labels": [],
+                    "description": "Руководители сантехнических работ контролируют сантехнические операции, распределяют задачи и решают проблемы монтажа и ремонта.",
+                    "definition": None,
+                    "scope_note": None,
+                    "regulated_profession_note": None,
+                    "translation_meta": {"model_name": "test-fixture"},
+                }
+            },
+            "classification": {"code": "3123", "isco_group": "3123"},
+        },
+        {
+            "record_type": "concept",
+            "dataset": "esco",
+            "dataset_version": "test",
+            "source_language": "en",
+            "concept_kind": "occupation",
+            "raw_concept_type": "Occupation",
+            "concept_uri": "http://data.europa.eu/esco/occupation/musician",
+            "status": "released",
+            "source_text": {
+                "preferred_label": "musician",
+                "alt_labels": [
+                    "concert master",
+                    "charango player",
+                    "organist",
+                    "violinist",
+                    "drummer",
+                    "guitarist",
+                    "saxophonist",
+                    "clarinet player",
+                    "pianist",
+                    "classical musician",
+                ],
+                "hidden_labels": [],
+                "description": "Musicians perform music for audiences or recordings and may play one or many instruments.",
+                "definition": None,
+                "scope_note": "Includes music performers.",
+                "regulated_profession_note": None,
+            },
+            "translations": {
+                "ru": {
+                    "preferred_label": "музыкант",
+                    "alt_labels": ["пианист", "гитарист", "скрипач"],
+                    "hidden_labels": [],
+                    "description": "Музыканты исполняют музыку для аудитории или записей.",
+                    "definition": None,
+                    "scope_note": "Включает музыкальных исполнителей.",
+                    "regulated_profession_note": None,
+                    "translation_meta": {"model_name": "test-fixture"},
+                }
+            },
+            "classification": {"code": "2652", "isco_group": "2652"},
+        },
+        {
+            "record_type": "concept",
+            "dataset": "esco",
+            "dataset_version": "test",
+            "source_language": "en",
+            "concept_kind": "occupation",
+            "raw_concept_type": "Occupation",
+            "concept_uri": "http://data.europa.eu/esco/occupation/piano-maker",
+            "status": "released",
+            "source_text": {
+                "preferred_label": "piano maker",
+                "alt_labels": ["piano technician", "piano builder"],
+                "hidden_labels": [],
+                "description": "Piano makers create and assemble parts to make pianos.",
+                "definition": None,
+                "scope_note": None,
+                "regulated_profession_note": None,
+            },
+            "translations": {
+                "ru": {
+                    "preferred_label": "изготовитель фортепиано",
+                    "alt_labels": ["настройщик фортепиано"],
+                    "hidden_labels": [],
+                    "description": "Изготовители фортепиано создают и собирают детали для фортепиано.",
+                    "definition": None,
+                    "scope_note": None,
+                    "regulated_profession_note": None,
+                    "translation_meta": {"model_name": "test-fixture"},
+                }
+            },
+            "classification": {"code": "7312", "isco_group": "7312"},
+        },
     ]
     _write_jsonl(directory / "esco_concepts.en_ru.jsonl", concepts)
     _write_jsonl(directory / "esco_relations.jsonl", [])
@@ -214,6 +353,16 @@ def test_healthcheck_includes_local_frontend_cors_headers() -> None:
     )
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
+
+
+def test_esco_retrieval_keeps_late_occupation_alternate_labels() -> None:
+    """Occupation aliases beyond the first few labels should stay searchable."""
+
+    chunks = load_esco_retrieval_chunks()
+    musician = next(chunk for chunk in chunks if chunk.concept_uri.endswith("/musician"))
+
+    assert "English alternate labels:" in musician.text
+    assert "pianist" in musician.text
 
 
 def test_frontend_dist_root_serves_index_html(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -301,7 +450,7 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
     )
     assert first_response.status_code == 200
     first_payload = first_response.json()
-    assert "remote work" in first_payload["memory_summary"].lower()
+    assert "remote work" not in first_payload["memory_summary"].lower()
 
     listed_memory = client.get("/memory/list", params={"user_id": "memory-user"})
     assert listed_memory.status_code == 200
@@ -314,9 +463,110 @@ def test_answer_flow_extracts_and_persists_memory() -> None:
         json={"user_id": "memory-user", "question": question},
     )
     assert second_response.status_code == 200
+    assert "remote work" in second_response.json()["memory_summary"].lower()
     listed_again = client.get("/memory/list", params={"user_id": "memory-user"})
     assert listed_again.status_code == 200
     assert len(listed_again.json()) == 1
+
+
+def test_answer_flow_uses_recent_user_context_for_generic_role_follow_up() -> None:
+    """A generic role-match follow-up should keep the visible chat topic."""
+
+    client = TestClient(create_app())
+    user_id = "plumbing-follow-up-user"
+    response = client.post(
+        "/chat/answer",
+        json={
+            "user_id": user_id,
+            "question": "Can you match me to a specific career title I can plan around?",
+            "conversation_context": [
+                {"role": "user", "text": "I'm interested in plumbing."},
+                {"role": "assistant", "text": "Plumbing could fit hands-on work."},
+                {"role": "user", "text": "Can you match me to a specific career title I can plan around?"},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert any("plumbing" in citation["title"].lower() for citation in payload["citations"])
+    assert "plumbing" in payload["answer"].lower()
+    assert "remote work" not in payload["answer"].lower()
+    assert "async collaboration" not in payload["answer"].lower()
+    assert "I'm interested in plumbing." in payload["prompt_preview"]
+
+
+def test_answer_flow_routes_supported_plumber_chat_through_generator_with_handoff() -> None:
+    """Supported role chat should be model-led while still offering a plan handoff."""
+
+    client = TestClient(create_app())
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": "plumber-handoff-user", "question": "I want to become a plumber."},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["response_kind"] == "answer"
+    assert "Scaffold answer" in payload["answer"]
+    assert "week" not in payload["answer"].lower()
+    assert "hour" not in payload["answer"].lower()
+    assert payload["plan_handoff"]["status"] == "offered"
+    assert payload["plan_handoff"]["target_role"].lower() == "plumber"
+    assert any("plumber" in citation["title"].lower() for citation in payload["citations"])
+
+
+def test_answer_flow_does_not_recall_current_task_request_as_memory() -> None:
+    """A transient task question should not appear as same-turn memory."""
+
+    client = TestClient(create_app())
+    user_id = "transient-task-memory-user"
+    question = "Compare plumber and drain technician as career targets for a hands-on beginner."
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": user_id, "question": question},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert question not in payload["memory_summary"]
+    listed_memory = client.get("/memory/list", params={"user_id": user_id})
+    assert listed_memory.status_code == 200
+    assert listed_memory.json() == []
+
+
+def test_deleted_memory_is_not_used_in_later_answer_summary() -> None:
+    """Deleted persistent memory should not leak back into the answer memory summary."""
+
+    client = TestClient(create_app())
+    user_id = "deleted-memory-user"
+    upsert_response = client.post(
+        "/memory/upsert",
+        json={
+            "item": {
+                "id": "deleted-memory-1",
+                "user_id": user_id,
+                "text": "I prefer remote work and async collaboration.",
+                "category": "user_memory",
+                "importance": 0.8,
+                "confidence": 0.9,
+            }
+        },
+    )
+    assert upsert_response.status_code == 200
+
+    delete_response = client.delete("/memory/deleted-memory-1", params={"user_id": user_id})
+    assert delete_response.status_code == 200
+
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": user_id, "question": "What career paths fit me?"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "remote work" not in payload["memory_summary"].lower()
+    assert "async collaboration" not in payload["memory_summary"].lower()
 
 
 def test_answer_flow_extracts_and_persists_russian_memory() -> None:
@@ -331,7 +581,7 @@ def test_answer_flow_extracts_and_persists_russian_memory() -> None:
     )
     assert response.status_code == 200
     payload = response.json()
-    assert "удаленную работу" in payload["memory_summary"].lower()
+    assert "удаленную работу" not in payload["memory_summary"].lower()
 
     listed_memory = client.get("/memory/list", params={"user_id": "memory-user-ru"})
     assert listed_memory.status_code == 200
@@ -355,8 +605,9 @@ def test_answer_flow_handles_supported_russian_data_analytics_transition() -> No
     assert response.status_code == 200
     payload = response.json()
     assert payload["response_kind"] == "answer"
+    assert "Scaffold answer" in payload["answer"]
     assert "аналитик данных" in payload["answer"].lower()
-    assert "нед" in payload["answer"]
+    assert "нед" not in payload["answer"]
     assert payload["plan_handoff"]["status"] == "offered"
     assert "аналитик данных" in payload["plan_handoff"]["target_role"].lower()
     assert any("data analyst" in citation["title"].lower() for citation in payload["citations"])
@@ -410,6 +661,98 @@ def test_answer_flow_resolves_pending_plan_handoff_replies() -> None:
     assert ambiguous_payload["plan_handoff"]["status"] == "offered"
     assert "clear yes" in ambiguous_payload["answer"]
 
+    contentful_acceptance = client.post(
+        "/chat/answer",
+        json={
+            "user_id": "handoff-contentful-accepted-user",
+            "question": "Yeah let's do a study plan for a pipe welder.",
+            "pending_plan_handoff": {
+                **pending_handoff,
+                "target_role": "pipe welder",
+                "goal": "Build a realistic transition study plan for pipe welder",
+            },
+        },
+    )
+    assert contentful_acceptance.status_code == 200
+    contentful_payload = contentful_acceptance.json()
+    assert contentful_payload["plan_handoff"]["status"] == "accepted"
+    assert contentful_payload["plan_handoff"]["target_role"] == "pipe welder"
+    assert "plan builder" in contentful_payload["answer"]
+
+
+def test_answer_flow_ignores_pending_handoff_when_user_pivots_to_new_role() -> None:
+    """A new substantive role message should not be consumed as plumber handoff state."""
+
+    client = TestClient(create_app())
+    user_id = "handoff-pivot-user"
+    memory_response = client.post(
+        "/memory/upsert",
+        json={
+            "item": {
+                "id": "plumber-goal-memory",
+                "user_id": user_id,
+                "text": "I want to become a plumber.",
+                "category": "user_memory",
+                "importance": 0.8,
+                "confidence": 0.9,
+            }
+        },
+    )
+    assert memory_response.status_code == 200
+    pending_handoff = {
+        "status": "offered",
+        "target_role": "plumber",
+        "goal": "Build a realistic transition study plan for plumber",
+        "source": "supported_role_match",
+    }
+
+    response = client.post(
+        "/chat/answer",
+        json={
+            "user_id": user_id,
+            "question": "No, I'd prefer to explore something different. Like being a pianist.",
+            "pending_plan_handoff": pending_handoff,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "clear yes" not in payload["answer"].lower()
+    assert "plan builder for plumber" not in payload["answer"].lower()
+    assert "plumber" not in payload["memory_summary"].lower()
+    assert "Stored memory used: 0 item(s)." in payload["answer"]
+
+
+def test_answer_flow_filters_old_role_goal_memory_for_later_role_followup() -> None:
+    """A stored old target role should not lock unrelated later exploration."""
+
+    client = TestClient(create_app())
+    user_id = "role-memory-pivot-user"
+    memory_response = client.post(
+        "/memory/upsert",
+        json={
+            "item": {
+                "id": "old-plumber-goal",
+                "user_id": user_id,
+                "text": "I want to become a plumber.",
+                "category": "user_memory",
+                "importance": 0.8,
+                "confidence": 0.9,
+            }
+        },
+    )
+    assert memory_response.status_code == 200
+
+    response = client.post(
+        "/chat/answer",
+        json={"user_id": user_id, "question": "So, what about being a pianist?"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "plumber" not in payload["memory_summary"].lower()
+    assert "Stored memory used: 0 item(s)." in payload["answer"]
+
 
 def test_answer_flow_returns_plan_update_without_raw_burnout_memory() -> None:
     """Chat can propose a safer schedule update without saving raw wellbeing text."""
@@ -445,6 +788,9 @@ def test_answer_flow_returns_plan_update_without_raw_burnout_memory() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["response_kind"] == "answer"
+    assert "Scaffold answer" in payload["answer"]
+    assert payload["answer"] != payload["plan_update"]["summary"]
+    assert "Proposed plan update, if any:" in payload["prompt_preview"]
     assert payload["plan_update"]["kind"] == "relax_schedule"
     updated_plan = payload["plan_update"]["updated_plan"]
     assert updated_plan["study_preferences"]["study_frequency_per_week"] == 2
@@ -552,7 +898,7 @@ def test_answer_service_can_run_without_memory_and_does_not_persist() -> None:
 
 
 def test_answer_flow_handles_external_resource_requests_honestly() -> None:
-    """The answer path should not hallucinate external resources from ESCO-only evidence."""
+    """External resource requests should go through the generator instead of canned text."""
 
     client = TestClient(create_app())
     response = client.post(
@@ -565,13 +911,13 @@ def test_answer_flow_handles_external_resource_requests_honestly() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert "external courses or websites" in payload["answer"]
-    assert "study plan or a search checklist" in payload["answer"]
-    assert "Scaffold answer" not in payload["answer"]
+    assert payload["response_kind"] == "answer"
+    assert "Scaffold answer" in payload["answer"]
+    assert "external courses or websites" not in payload["answer"]
 
 
-def test_answer_flow_limits_unsupported_explicit_role_request_without_persisting_memory() -> None:
-    """Explicit unsupported role requests should get limited guidance without saved memory."""
+def test_answer_flow_routes_unsupported_explicit_role_request_to_generator() -> None:
+    """Explicit unsupported role chat should be model-led while safety blocks stay separate."""
 
     client = TestClient(create_app())
     user_id = "unsupported-role-user"
@@ -582,14 +928,12 @@ def test_answer_flow_limits_unsupported_explicit_role_request_without_persisting
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["response_kind"] == "limited_unsupported"
+    assert payload["response_kind"] == "answer"
     assert payload["plan_handoff"] is None
-    assert "limited guidance rather than a grounded career recommendation" in payload["answer"]
-    assert "locally regulated" in payload["answer"]
-    assert payload["citations"] == []
+    assert "Scaffold answer" in payload["answer"]
     listed_memory = client.get("/memory/list", params={"user_id": user_id})
     assert listed_memory.status_code == 200
-    assert listed_memory.json() == []
+    assert [item["text"] for item in listed_memory.json()] == ["I prefer remote work."]
 
 
 def test_answer_flow_blocks_exploitative_illegal_request() -> None:

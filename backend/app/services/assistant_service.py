@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import re
+
 from backend.app.services.generation.generator_client import get_generator_client
-from backend.app.services.generation.answer_guardrails import (
-    ensure_grounded_plan_support,
-    maybe_build_guardrailed_answer,
-)
+from backend.app.services.generation.answer_guardrails import ensure_grounded_plan_support
 from backend.app.services.generation.prompt_builder import (
     build_answer_prompt,
     build_career_plan_prompt,
@@ -21,6 +20,7 @@ from backend.app.services.generation.plan_adjustments import (
 )
 from backend.app.services.generation.role_matcher import (
     extract_target_role_phrase,
+    extract_role_tokens,
     find_supported_occupation,
     useful_occupations,
 )
@@ -29,6 +29,7 @@ from backend.app.services.generation.schemas import (
     AnswerResponse,
     CareerPlanRequest,
     CareerPlanResponse,
+    ChatContextTurn,
     MemoryItemPayload,
     RetrievedChunk,
 )
@@ -38,12 +39,24 @@ from backend.app.services.generation.skill_enrichment import (
     language_code_for_text,
 )
 from backend.app.services.memory.memory_consolidate import consolidate_memory_items
-from backend.app.services.memory.memory_consolidate import normalize_memory_text
 from backend.app.services.memory.memory_extract import extract_candidate_memory_items
 from backend.app.services.memory.hopfield_memory import summarize_memory_for_prompt
 from backend.app.services.memory.memory_store import default_memory_store
 from backend.app.services.retrieval.rag_pipeline import build_retrieval_context
 from backend.app.services.safety.safety import ensure_request_is_in_scope
+
+_GENERIC_FOLLOW_UP_PATTERN = re.compile(
+    r"\b(that|this|it|those|these|same|one|specific career title|career title|match me|"
+    r"plan around|study plan for that|make a study plan|for that|around that|next step|next steps)\b"
+    r"|конкретн.*(?:роль|профес|должност)|под это|для этого|план.*(?:для|под)",
+    flags=re.IGNORECASE,
+)
+_TRANSIENT_TASK_MEMORY_PATTERN = re.compile(
+    r"^\s*(?:compare|can you|could you|tell me|explain|what|which|how|do you|does|give me|"
+    r"make|create|build|draft|show|list)\b"
+    r"|^\s*(?:сравни|можешь|расскажи|объясни|что|какие|какой|как|дай|составь|покажи|перечисли)\b",
+    flags=re.IGNORECASE,
+)
 
 
 def _extract_request_memory_candidates(user_id: str, text: str) -> list[MemoryItemPayload]:
@@ -53,7 +66,13 @@ def _extract_request_memory_candidates(user_id: str, text: str) -> list[MemoryIt
     if lower_intensity_memory is not None:
         return [lower_intensity_memory]
 
-    return consolidate_memory_items(extract_candidate_memory_items(user_id=user_id, text=text))
+    candidates = extract_candidate_memory_items(user_id=user_id, text=text)
+    stable_candidates = [
+        candidate
+        for candidate in candidates
+        if not _TRANSIENT_TASK_MEMORY_PATTERN.search(candidate.text)
+    ]
+    return consolidate_memory_items(stable_candidates)
 
 
 def _persist_memory_candidates(candidates: list[MemoryItemPayload]) -> None:
@@ -63,41 +82,64 @@ def _persist_memory_candidates(candidates: list[MemoryItemPayload]) -> None:
         default_memory_store.upsert_item(candidate)
 
 
-def _merge_memory_preview(
-    stored_items: list[MemoryItemPayload],
-    candidate_items: list[MemoryItemPayload],
+def _filter_conflicting_role_goal_memory(
+    question: str,
+    memory_items: list[MemoryItemPayload],
 ) -> list[MemoryItemPayload]:
-    """Preview post-write memory state without mutating the persistent store."""
+    """Drop old role-goal memories when the user explicitly pivots to another role."""
 
-    merged: dict[str, MemoryItemPayload] = {}
-    ordered_keys: list[str] = []
+    current_role = extract_target_role_phrase(question)
+    current_tokens = set(extract_role_tokens(current_role))
+    if not current_tokens:
+        return memory_items
 
-    def record(item: MemoryItemPayload) -> None:
-        normalized_text = normalize_memory_text(item.text)
-        if not normalized_text:
-            return
+    filtered_items: list[MemoryItemPayload] = []
+    for item in memory_items:
+        remembered_role = extract_target_role_phrase(item.text)
+        remembered_tokens = set(extract_role_tokens(remembered_role))
+        if remembered_tokens and current_tokens.isdisjoint(remembered_tokens):
+            continue
+        filtered_items.append(item)
+    return filtered_items
 
-        existing = merged.get(normalized_text)
-        if existing is None:
-            merged[normalized_text] = item
-            ordered_keys.append(normalized_text)
-            return
 
-        merged[normalized_text] = existing.model_copy(
-            update={
-                "text": item.text.strip(),
-                "category": item.category,
-                "importance": max(existing.importance, item.importance),
-                "confidence": max(existing.confidence, item.confidence),
-            }
-        )
+def _recent_user_context_lines(
+    conversation_context: list[ChatContextTurn],
+    current_question: str,
+    *,
+    limit: int = 3,
+) -> list[str]:
+    """Return recent user turns before the current question."""
 
-    for item in stored_items:
-        record(item)
-    for item in candidate_items:
-        record(item)
+    current = current_question.strip()
+    user_lines = [
+        turn.text.strip()
+        for turn in conversation_context
+        if turn.role == "user" and turn.text.strip()
+    ]
+    if user_lines and user_lines[-1] == current:
+        user_lines = user_lines[:-1]
+    return user_lines[-limit:]
 
-    return [merged[key] for key in ordered_keys]
+
+def _needs_recent_context(question: str) -> bool:
+    """Return whether a question is probably a follow-up needing prior turns."""
+
+    return _GENERIC_FOLLOW_UP_PATTERN.search(question) is not None
+
+
+def _recent_context_text(conversation_context: list[ChatContextTurn], current_question: str) -> str:
+    lines = _recent_user_context_lines(conversation_context, current_question)
+    return "\n".join(f"- User previously said: {line}" for line in lines)
+
+
+def _retrieval_question_for_request(request: AnswerRequest) -> str:
+    """Build a retrieval query that preserves obvious follow-up context."""
+
+    lines = _recent_user_context_lines(request.conversation_context, request.question)
+    if not lines or not _needs_recent_context(request.question):
+        return request.question
+    return "\n".join([*lines, request.question])
 
 
 def _skill_enrichment_for_request(
@@ -174,74 +216,34 @@ def answer_question(
             text=request.question,
         )
         stored_memory_items = default_memory_store.list_items(user_id=request.user_id)
-        memory_items = _merge_memory_preview(stored_memory_items, pending_memory_candidates)
+        memory_items = _filter_conflicting_role_goal_memory(request.question, stored_memory_items)
     else:
         pending_memory_candidates = []
         stored_memory_items = []
         memory_items = []
+    retrieval_question = _retrieval_question_for_request(request)
+    recent_context = _recent_context_text(request.conversation_context, request.question)
     retrieval_context = build_retrieval_context(
-        question=request.question,
+        question=retrieval_question,
         memory_items=memory_items,
         top_k=top_k,
         use_reranker=use_reranker,
     )
     skill_enrichment = _skill_enrichment_for_request(
-        text=request.question,
+        text=retrieval_question,
         target_role=request.question,
         retrieval_context=retrieval_context,
         user_goal=request.question,
     )
+    plan_update = maybe_build_plan_update(request.question, request.current_plan)
     prompt = build_answer_prompt(
         question=request.question,
         retrieval_context=retrieval_context,
         current_plan=request.current_plan,
         skill_enrichment=skill_enrichment,
+        recent_conversation_context=recent_context,
+        proposed_plan_update_summary=plan_update.summary if plan_update is not None else "",
     )
-    plan_update = maybe_build_plan_update(request.question, request.current_plan)
-    if plan_update is not None:
-        if include_memory:
-            _persist_memory_candidates(pending_memory_candidates)
-        return AnswerResponse(
-            answer=plan_update.summary,
-            citations=[],
-            prompt_preview=prompt,
-            memory_summary=retrieval_context.memory_summary,
-            response_kind="answer",
-            plan_update=plan_update,
-        )
-    guardrailed_answer = maybe_build_guardrailed_answer(
-        question=request.question,
-        retrieval_context=retrieval_context,
-        skill_enrichment=skill_enrichment,
-    )
-    if guardrailed_answer is not None:
-        should_persist_guardrailed_memory = guardrailed_answer.response_kind == "answer"
-        response_memory_summary = (
-            summarize_memory_for_prompt(question=request.question, memory_items=stored_memory_items)
-            if guardrailed_answer.response_kind == "refusal"
-            else retrieval_context.memory_summary
-        )
-        if include_memory and should_persist_guardrailed_memory:
-            _persist_memory_candidates(pending_memory_candidates)
-        answer_text = guardrailed_answer.text
-        plan_handoff = None
-        if guardrailed_answer.response_kind == "answer":
-            offered_handoff = maybe_offer_plan_handoff(
-                question=request.question,
-                retrieval_context=retrieval_context,
-                conversation_context=request.conversation_context,
-                current_answer=answer_text,
-            )
-            if offered_handoff is not None:
-                answer_text, plan_handoff = offered_handoff
-        return AnswerResponse(
-            answer=answer_text,
-            citations=guardrailed_answer.citations,
-            prompt_preview=prompt,
-            memory_summary=response_memory_summary,
-            response_kind=guardrailed_answer.response_kind,
-            plan_handoff=plan_handoff,
-        )
     generator = get_generator_client()
     response = generator.generate_answer(
         question=request.question,
@@ -251,6 +253,8 @@ def answer_question(
     )
     if include_memory:
         _persist_memory_candidates(pending_memory_candidates)
+    if plan_update is not None:
+        return response.model_copy(update={"plan_update": plan_update})
     offered_handoff = maybe_offer_plan_handoff(
         question=request.question,
         retrieval_context=retrieval_context,

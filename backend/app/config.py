@@ -96,22 +96,28 @@ class AppSettings(BaseSettings):
     esco_bilingual_concepts_path: Path = Field(default_factory=_default_esco_bilingual_path)
     esco_skill_limit_per_occupation: int = 8
     generation_runtime: str = "llama-cpp-python"
-    generation_model_name: str = "Qwen/Qwen3.5-2B"
-    generation_model_artifact: str = "unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL"
+    generation_model_name: str = "Qwen/Qwen3.5-9B"
+    generation_model_artifact: str = "unsloth/Qwen3.5-9B-GGUF:UD-Q6_K_XL"
     generation_base_url: str = "http://127.0.0.1:8080"
     generation_request_timeout_seconds: float = 180.0
-    generation_temperature: float = 0.2
-    generation_top_p: float = 0.9
-    generation_answer_max_tokens: int = 512
+    generation_enable_thinking: bool = False
+    generation_temperature: float = 0.7
+    generation_top_p: float = 0.95
+    generation_top_k: int = 20
+    generation_min_p: float = 0.0
+    generation_presence_penalty: float = 1.5
+    generation_repeat_penalty: float = 1.15
+    generation_answer_max_tokens: int = 1024
     generation_plan_max_tokens: int = 768
     generation_skill_enrichment_max_tokens: int = 384
-    generation_context_length: int = 8192
+    generation_context_length: int = 4096
     retrieval_index_path: Path = Field(default_factory=_default_retrieval_index_path)
     retrieval_index_manifest_path: Path = Field(default_factory=_default_retrieval_manifest_path)
     retrieval_vector_size: int = 1024
     retrieval_embedding_provider: str = "qwen3"
     retrieval_embedding_model_id: str = "Qwen/Qwen3-Embedding-0.6B"
     retrieval_embedding_model_name: str = "Qwen/Qwen3-Embedding-0.6B"
+    retrieval_embedding_device: str = "cpu"
     retrieval_query_instruction: str = (
         "Given a career guidance question, retrieve passages that best answer the question."
     )

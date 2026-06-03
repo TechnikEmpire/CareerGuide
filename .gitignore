@@ -256,3 +256,4 @@ eval/out/*
 /.ssh
 /Artifacts
 config/llama_cpp_python_server.local.runtime.json
+.docker-runtime-data/careerguide.db

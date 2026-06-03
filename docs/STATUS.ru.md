@@ -1,7 +1,7 @@
 # Project Status
 
 
-Последнее обновление: 2026-04-28
+Последнее обновление: 2026-06-02
 
 ### Текущая фаза
 
@@ -29,14 +29,14 @@
 - Отдает реальный backend API из `backend/app/`.
 - Строит dense retrieval по отслеживаемому ESCO-corpus на базе SQLite + FAISS HNSW.
 - Использует `Qwen/Qwen3-Embedding-0.6B` как активный retrieval embedder.
-- Использует локальный OpenAI-compatible generation server для `Qwen/Qwen3.5-2B`.
+- Использует локальный OpenAI-compatible generation server для `Qwen/Qwen3.5-9B`.
 - Возвращает grounded chat-ответы с citations.
 - Хранит sentence-level user memory в SQLite-таблице `memory_items`.
 - Извлекает memory через отслеживаемый binary BiLSTM classifier bundle.
 - Разбивает user turns на sentence-like segments с `pySBD` как preferred path и regex как fallback.
 - Дедуплицирует memory по normalized text на пользователя.
 - Вызывает memory через нетренируемый Hopfield-style read в embedding-space с режимами `top1` и `topk`.
-- Дает limited caveated chat guidance для легитимных weakly grounded ролей, но по-прежнему блокирует clearly out-of-scope requests и unsupported exportable plans.
+- Дает model-led grounded chat guidance для легитимных weakly grounded ролей, но по-прежнему блокирует clearly out-of-scope requests и unsupported exportable plans.
 - Генерирует structured career plans с study-preferences, workload metadata и датированными calendar sessions.
 - Экспортирует сохраненные планы в `.ics`.
 - Содержит реальный frontend для chat, plan generation, browser-local profile codes, browser-local theme presets, local conversation history, memory inspection, memory deletion и UI-подачи refusal/scope states.
@@ -111,7 +111,7 @@
 ### Последний проверенный срез
 
 - Retrieval stack: SQLite + FAISS HNSW + `Qwen/Qwen3-Embedding-0.6B`
-- Generator stack: локальный OpenAI-compatible server + `Qwen/Qwen3.5-2B` Unsloth UD-Q4_K_XL GGUF, 8192-token context
+- Generator stack: локальный OpenAI-compatible server + `Qwen/Qwen3.5-9B` Unsloth UD-Q6_K_XL GGUF, 4096-token context, CUDA llama.cpp runtime с CUDA 12 user-space libraries внутри image, отключенным по умолчанию thinking mode, conservative anti-loop sampling и model-led chat wording с детерминированными structured handoff/update controls
 - Memory store: SQLite `memory_items`
 - Memory extraction: sentence-level binary BiLSTM runtime-path
 - Memory recall: Hopfield-style `top1` и `topk`

@@ -71,11 +71,19 @@ class DeterministicHashEmbeddingProvider:
 class Qwen3EmbeddingProvider:
     """Sentence-Transformers wrapper for the Qwen3 embedding series."""
 
-    def __init__(self, model_name: str, *, model_id: str, batch_size: int = 32) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        *,
+        model_id: str,
+        batch_size: int = 32,
+        device: str = "cpu",
+    ) -> None:
         self.model_id = model_id
         self.model_source = model_name
         self.vector_size = settings.retrieval_vector_size
         self.batch_size = batch_size
+        self.device = device
         self._model = None
 
     def embed_query(self, text: str) -> list[float]:
@@ -113,8 +121,32 @@ class Qwen3EmbeddingProvider:
         if self._model is None:
             from sentence_transformers import SentenceTransformer
 
-            self._model = SentenceTransformer(self.model_source)
+            device = _resolve_torch_device(self.device)
+            self._model = SentenceTransformer(self.model_source, device=device)
         return self._model
+
+
+def _resolve_torch_device(device: str) -> str:
+    """Resolve a configured torch device and fail fast for unavailable CUDA."""
+
+    selected = device.strip().lower()
+    if selected in {"", "auto"}:
+        try:
+            import torch
+        except ImportError:
+            return "cpu"
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    if selected == "cuda":
+        try:
+            import torch
+        except ImportError as exc:
+            raise RuntimeError("CUDA retrieval embedding requires PyTorch to be installed.") from exc
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA retrieval embedding was requested, but torch.cuda is not available.")
+        return "cuda"
+    if selected == "cpu":
+        return "cpu"
+    raise ValueError(f"Unsupported retrieval embedding device: {device!r}")
 
 
 @lru_cache(maxsize=1)
@@ -129,5 +161,6 @@ def get_embedding_provider() -> EmbeddingProvider:
             model_name=settings.retrieval_embedding_model_name,
             model_id=settings.retrieval_embedding_model_id,
             batch_size=settings.retrieval_embedding_batch_size,
+            device=settings.retrieval_embedding_device,
         )
     raise ValueError(f"Unsupported retrieval embedding provider: {settings.retrieval_embedding_provider}")

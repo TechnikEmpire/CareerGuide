@@ -1,6 +1,6 @@
 # Active Decisions
 
-Last updated: 2026-04-28
+Last updated: 2026-06-02
 
 ## D-001 Product Direction
 
@@ -23,10 +23,11 @@ Last updated: 2026-04-28
 **English**
 
 - Status: active
-- Decision: The default generator path is `Qwen/Qwen3.5-2B` served through an OpenAI-compatible local GGUF server, with `llama-cpp-python[server]>=0.3.25` as the preferred local implementation.
-- Pinned artifact: `unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL`
-- Decision: The default local context window is capped at 8192 tokens and the server example uses 4 CPU threads for the current 8 GB RAM / 4 vCPU Linode target.
-- Rationale: This keeps the generator on the newer Qwen3.5 line while using the Unsloth GGUF artifact recommended for llama.cpp-compatible local inference. `llama-cpp-python` is pinned to a newer floor so the embedded llama.cpp runtime can load the Qwen3.5 hybrid architecture, and the backend remains isolated behind the same simple HTTP boundary.
+- Decision: The default generator path is `Qwen/Qwen3.5-9B` served through an OpenAI-compatible local GGUF server, with `llama-cpp-python[server]==0.3.25` installed from the CUDA 12.4 wheel index and CUDA 12 runtime libraries included in the image.
+- Pinned artifact: `unsloth/Qwen3.5-9B-GGUF:UD-Q6_K_XL`
+- Decision: The default local context window is capped at 4096 tokens, the server example uses 4 CPU threads, and the app image requires llama.cpp GPU offload support for the RTX 4000 Ada target.
+- Decision: Qwen3.5 thinking mode is disabled by default for demo reliability, while conservative anti-loop sampling remains configured: temperature 0.7, top_p 0.95, top_k 20, min_p 0.0, presence_penalty 1.5, repeat_penalty 1.15. It can be re-enabled without rebuilding by setting `CAREERGUIDE_GENERATION_ENABLE_THINKING=true`.
+- Rationale: The production migration moves from a CPU-only Linode to a 20 GB RTX 4000 Ada GPU plan. The 9B Q6 GGUF should fit with safer 4096-token context headroom, while CUDA-enabled llama.cpp avoids the CPU prompt-evaluation latency seen with the 2B CPU test path. The backend remains isolated behind the same simple HTTP boundary.
 
 ## D-004 Retrieval Stack
 
@@ -318,8 +319,9 @@ Last updated: 2026-04-28
 - Decision: Structured JSON remains appropriate for explicitly structured outputs like career plans, but it is no longer the preferred contract for conversational answers.
 - Decision: Structured outputs like career plans may fall back to deterministic grounded templates when the small local model fails to return valid JSON, rather than surfacing avoidable runtime errors to the user.
 - Decision: Conversational chat answers should sound like normal career coaching, not like source-dump summaries. Exploratory fit questions should prefer tentative options plus one short follow-up question over encyclopedic explanation.
-- Decision: The live backend may override the small-model free-form answer for common failure-prone intents with deterministic grounded guardrails, especially for broad career-fit questions, skill-requirement questions, and external-resource requests that the ESCO-only evidence base cannot honestly satisfy.
-- Rationale: The local small-model stack follows rigid JSON less reliably than it follows short plain-text answer instructions, and forcing JSON made the user-visible chat output feel mechanical and brittle.
+- Decision: Normal chat wording should be model-led. Deterministic code should stay focused on hard safety/scope checks, exportable-plan support validation, chat-to-plan handoff metadata, plan-update metadata, schedule generation, and `.ics` export.
+- Decision: Main chat should not inject study-cadence estimates by default. Study hours, week estimates, and schedule-ready cadence reasoning belong in the structured plan flow or in explicit active-plan update discussion.
+- Rationale: The GPU-backed Qwen3.5 runtime is strong enough for natural grounded chat. Keeping hand-written chat fallbacks in front of the model made answers feel mechanical, caused stale preference leakage, and blurred the intended boundary between exploration chat and planning artifacts.
 
 ## D-037 Grounded Support Refusal for Unsupported Requests
 

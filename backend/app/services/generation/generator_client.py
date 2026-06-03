@@ -12,6 +12,7 @@ from typing import Any, Protocol
 import httpx
 
 from backend.app.config import settings
+from backend.app.services.generation.esco_grounding import extract_description, extract_label
 from backend.app.services.generation.plan_calendar import finalize_career_plan
 from backend.app.services.generation.plan_guardrails import build_fallback_career_plan
 from backend.app.services.generation.schemas import (
@@ -36,6 +37,14 @@ from backend.app.services.generation.skill_enrichment import (
 from backend.app.services.retrieval.rag_pipeline import RetrievalContext
 
 _THINK_TAG_PATTERN = re.compile(r"<think>.*?</think>\s*", flags=re.DOTALL)
+_VISIBLE_RESPONSE_MARKER_PATTERN = re.compile(
+    r"(?im)^\s*\*{0,2}\s*"
+    r"(?:final answer|final response|answer|response|revised draft|drafting response)"
+    r"\s*\*{0,2}\s*:\s*\*{0,2}\s*"
+)
+_VISIBLE_REASONING_START_PATTERN = re.compile(
+    r"(?is)^\s*(?:thinking process|analysis|reasoning|scratchpad|chain[- ]of[- ]thought)\s*:"
+)
 _JSON_FENCE_PATTERN = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", flags=re.DOTALL)
 _PARTIAL_ANSWER_PATTERN = re.compile(
     r'"(?P<field>direct_answer|answer)"\s*:\s*"(?P<answer>.*?)(?=",\s*"(?:cited_refs|cited_chunk_ids)"|\}\s*$|$)',
@@ -280,12 +289,14 @@ class LlamaCppGeneratorClient:
 
         system_prompt = (
             "You are a grounded career guidance assistant. "
-            "Answer only from the supplied evidence, model-enriched practical skill suggestions, and memory summary. "
+            "Answer only from the supplied evidence, model-enriched practical skill suggestions, recent chat context, and memory summary. "
             "Return plain text only, not JSON. "
             "Sound like a thoughtful career coach in a normal conversation, not a database search result. "
             "Translate evidence into plain human advice rather than echoing source labels. "
             "If the evidence is insufficient, say so plainly. "
             "Do not reveal chain-of-thought or thinking tags. "
+            "Do not include analysis, planning, scratchpad, self-correction, or headings like 'Thinking Process'. "
+            "If you reason internally, return only the final user-visible response. "
             "Follow the requested answer language exactly. "
             "Return a complete final answer and do not stop mid-sentence. "
             "Start immediately with the real answer or recommendation. "
@@ -297,12 +308,38 @@ class LlamaCppGeneratorClient:
             "Use inline citations like [1] or [2] for evidence references. "
             "Cite only evidence references that directly support the final answer."
         )
-        raw_text = self._chat_completion(
-            system_prompt=system_prompt,
-            user_prompt=prompt,
-            max_tokens=settings.generation_answer_max_tokens,
-        )
+        try:
+            raw_text = self._chat_completion(
+                system_prompt=system_prompt,
+                user_prompt=prompt,
+                max_tokens=settings.generation_answer_max_tokens,
+            )
+        except GenerationClientError as exc:
+            if "empty completion" not in str(exc):
+                raise
+            try:
+                raw_text = self._chat_completion(
+                    system_prompt=(
+                        system_prompt
+                        + " Recovery mode: return only the final answer text. "
+                        "Do not include headings, reasoning, analysis, or scratchpad."
+                    ),
+                    user_prompt=(
+                        prompt
+                        + "\n\nRecovery instruction:\n"
+                        "Your previous response contained only hidden reasoning. "
+                        "Write the final user-facing answer now, in plain text only."
+                    ),
+                    max_tokens=settings.generation_answer_max_tokens,
+                )
+            except GenerationClientError:
+                return _fallback_grounded_answer(
+                    question=question,
+                    prompt=prompt,
+                    retrieval_context=retrieval_context,
+                )
         answer_text, citations = _extract_answer_payload(raw_text, retrieval_context, question)
+        answer_text = _polish_visible_answer(answer_text)
         return AnswerResponse(
             answer=answer_text,
             citations=citations,
@@ -424,6 +461,10 @@ class LlamaCppGeneratorClient:
             ],
             "temperature": settings.generation_temperature,
             "top_p": settings.generation_top_p,
+            "top_k": settings.generation_top_k,
+            "min_p": settings.generation_min_p,
+            "presence_penalty": settings.generation_presence_penalty,
+            "repeat_penalty": settings.generation_repeat_penalty,
             "max_tokens": max_tokens,
             "stream": False,
         }
@@ -466,7 +507,74 @@ class LlamaCppGeneratorClient:
 def _strip_think_tags(text: str) -> str:
     """Remove reasoning tags that may leak from some local GGUF server configurations."""
 
-    return _THINK_TAG_PATTERN.sub("", text).strip()
+    cleaned = _THINK_TAG_PATTERN.sub("", text).strip()
+    markers = list(_VISIBLE_RESPONSE_MARKER_PATTERN.finditer(cleaned))
+    if markers:
+        return cleaned[markers[-1].end():].strip()
+    if _VISIBLE_REASONING_START_PATTERN.search(cleaned):
+        return ""
+    return cleaned
+
+
+def _fallback_grounded_answer(
+    *,
+    question: str,
+    prompt: str,
+    retrieval_context: RetrievalContext,
+) -> AnswerResponse:
+    """Return a small grounded answer only when local generation cannot produce visible text."""
+
+    language_code = "ru" if re.search(r"[А-Яа-яЁё]", question) else "en"
+    occupation = next(
+        (chunk for chunk in retrieval_context.chunks if chunk.chunk_type == "occupation"),
+        retrieval_context.chunks[0] if retrieval_context.chunks else None,
+    )
+    if occupation is None:
+        answer = (
+            "Мне не удалось получить чистый ответ от локальной модели, и в retrieved evidence нет надежной роли для опоры."
+            if language_code == "ru"
+            else "The local model did not return a clean visible answer, and the retrieved evidence does not contain a reliable role to ground this on."
+        )
+        return AnswerResponse(answer=answer, citations=[], prompt_preview=prompt, memory_summary=retrieval_context.memory_summary)
+
+    role_label = extract_label(occupation, language_code) or occupation.title
+    description = extract_description(occupation, language_code)
+    if language_code == "ru":
+        if description:
+            answer = (
+                f"{_capitalize_sentence_start(role_label)} — поддерживаемое направление для обсуждения. "
+                f"Краткое описание роли: {description.strip()}."
+            )
+        else:
+            answer = f"{_capitalize_sentence_start(role_label)} — поддерживаемое направление для обсуждения."
+    elif description:
+        answer = (
+            f"{_capitalize_sentence_start(role_label)} is a supported direction to explore. "
+            f"A concise description of the role: {description.strip()}."
+        )
+    else:
+        answer = f"{_capitalize_sentence_start(role_label)} is a supported direction to explore."
+    return AnswerResponse(
+        answer=_polish_visible_answer(answer),
+        citations=[occupation],
+        prompt_preview=prompt,
+        memory_summary=retrieval_context.memory_summary,
+    )
+
+
+def _polish_visible_answer(text: str) -> str:
+    """Apply small display cleanup without changing answer content."""
+
+    return _capitalize_sentence_start(text.strip())
+
+
+def _capitalize_sentence_start(text: str) -> str:
+    if not text:
+        return text
+    first_character = text[0]
+    if first_character.islower():
+        return first_character.upper() + text[1:]
+    return text
 
 
 def _extract_json_object(text: str) -> dict[str, Any]:

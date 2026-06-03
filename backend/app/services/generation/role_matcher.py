@@ -27,7 +27,12 @@ _TARGET_ROLE_PATTERNS = (
     re.compile(r"(?:стать|хочу быть|работать как|работать в роли)\s+([^.!?]+)", flags=re.IGNORECASE),
     re.compile(r"\b(?:transition|move|go)\s+into\s+([^.!?]+)", flags=re.IGNORECASE),
     re.compile(r"\b(?:become|be a|be an|work as|pursue)\s+([^.!?]+)", flags=re.IGNORECASE),
+    re.compile(r"\b(?:being|becoming)\s+(?:(?:a|an)\s+)?([^.!?]+)", flags=re.IGNORECASE),
     re.compile(r"\b(?:target role|plan into|plan for)\s+([^.!?]+)", flags=re.IGNORECASE),
+)
+_ROLE_LABEL_LINE_PATTERN = re.compile(
+    r"^(?:Russian label|English label|Russian alternate labels|English alternate labels):\s*(.+?)\s*\.*$",
+    flags=re.IGNORECASE | re.MULTILINE,
 )
 _WORD_PATTERN = re.compile(r"\w+", flags=re.UNICODE)
 _ROLE_STOPWORDS = {
@@ -268,11 +273,18 @@ def first_useful_occupation(retrieval_context: RetrievalContext) -> RetrievedChu
 def role_support_score(role_tokens: list[str], chunk: RetrievedChunk) -> float:
     """Score normalized role tokens against occupation title and text."""
 
+    role_token_set = set(role_tokens)
+    label_text = "\n".join([chunk.title, *_ROLE_LABEL_LINE_PATTERN.findall(chunk.text)])
+    label_tokens = {_normalize_role_token(token) for token in _WORD_PATTERN.findall(label_text.casefold())}
+    label_overlap_ratio = len(role_token_set & label_tokens) / len(role_token_set)
+    if label_overlap_ratio == 1.0:
+        return 1.0
+
     haystack = f"{chunk.title}\n{chunk.text}".casefold()
     chunk_tokens = {_normalize_role_token(token) for token in _WORD_PATTERN.findall(haystack)}
-    overlap_ratio = len(set(role_tokens) & chunk_tokens) / len(set(role_tokens))
+    overlap_ratio = len(role_token_set & chunk_tokens) / len(role_token_set)
     similarity = SequenceMatcher(None, " ".join(role_tokens), haystack[:240]).ratio()
-    return max(overlap_ratio, similarity)
+    return max(label_overlap_ratio, overlap_ratio, similarity)
 
 
 def _trim_role_phrase(text: str) -> str:

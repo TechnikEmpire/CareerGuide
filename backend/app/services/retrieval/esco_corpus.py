@@ -9,6 +9,8 @@ import json
 from pathlib import Path
 
 from backend.app.config import settings
+
+
 @dataclass(frozen=True)
 class EscoRetrievalChunk:
     """Retrieval-ready ESCO chunk before embedding."""
@@ -128,10 +130,12 @@ def _compose_chunk_text(
         f"English label: {_preferred_label(record, 'en')}.",
     ]
 
+    alt_label_limit = 32 if concept_kind == "occupation" else 12
     alt_labels_ru = _list_text(
-        record.get("translations", {}).get("ru", {}).get("alt_labels", [])  # type: ignore[union-attr]
+        record.get("translations", {}).get("ru", {}).get("alt_labels", []),  # type: ignore[union-attr]
+        limit=alt_label_limit,
     )
-    alt_labels_en = _list_text(source_text.get("alt_labels", []))  # type: ignore[union-attr]
+    alt_labels_en = _list_text(source_text.get("alt_labels", []), limit=alt_label_limit)  # type: ignore[union-attr]
     if alt_labels_ru:
         parts.append(f"Russian alternate labels: {alt_labels_ru}.")
     if alt_labels_en:

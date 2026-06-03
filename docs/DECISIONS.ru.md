@@ -1,6 +1,6 @@
 # Active Decisions
 
-Последнее обновление: 2026-04-28
+Последнее обновление: 2026-06-02
 
 ## D-001 Product Direction
 
@@ -23,10 +23,11 @@
 **Русский**
 
 - Статус: активно
-- Решение: Путь генератора по умолчанию - `Qwen/Qwen3.5-2B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]>=0.3.25` является предпочтительной локальной реализацией.
-- Зафиксированный артефакт: `unsloth/Qwen3.5-2B-GGUF:UD-Q4_K_XL`
-- Решение: Локальное окно контекста по умолчанию ограничено 8192 токенами, а server example использует 4 CPU threads для текущего Linode с 8 GB RAM / 4 vCPU.
-- Обоснование: Это сохраняет generator на более новой линейке Qwen3.5 и использует Unsloth GGUF-артефакт, рекомендованный для llama.cpp-compatible local inference. `llama-cpp-python` закреплен на более новой нижней границе, чтобы embedded llama.cpp runtime мог загрузить hybrid architecture Qwen3.5, а backend сохраняет тот же простой HTTP-boundary.
+- Решение: Путь генератора по умолчанию - `Qwen/Qwen3.5-9B`, обслуживаемый через локальный OpenAI-compatible GGUF-server, где `llama-cpp-python[server]==0.3.25` устанавливается из CUDA 12.4 wheel index, а CUDA 12 runtime libraries включены в image.
+- Зафиксированный артефакт: `unsloth/Qwen3.5-9B-GGUF:UD-Q6_K_XL`
+- Решение: Локальное окно контекста по умолчанию ограничено 4096 токенами, server example использует 4 CPU threads, а app image требует поддержку llama.cpp GPU offload для RTX 4000 Ada target.
+- Решение: Qwen3.5 thinking mode отключен по умолчанию ради надежности demo, при этом conservative anti-loop sampling остается настроенным: temperature 0.7, top_p 0.95, top_k 20, min_p 0.0, presence_penalty 1.5, repeat_penalty 1.15. Его можно снова включить без rebuild через `CAREERGUIDE_GENERATION_ENABLE_THINKING=true`.
+- Обоснование: Production migration переводит проект с CPU-only Linode на GPU-план с 20 GB RTX 4000 Ada. 9B Q6 GGUF должен помещаться с более безопасным 4096-token context headroom, а CUDA-enabled llama.cpp снимает CPU prompt-evaluation latency, обнаруженную при тестировании 2B CPU-path. Backend сохраняет тот же простой HTTP-boundary.
 
 ## D-004 Retrieval Stack
 
@@ -318,8 +319,9 @@
 - Решение: Структурированный JSON остается уместным для явно структурированных output, таких как career plan, но больше не является предпочтительным контрактом для conversational answer.
 - Решение: Для структурированных output, таких как career plan, runtime может использовать детерминированный grounded-template fallback, если локальная small-model не вернула валидный JSON, вместо того чтобы показывать пользователю устранимую runtime-ошибку.
 - Решение: Conversational chat-ответы должны звучать как нормальный карьерный коучинг, а не как summary source-дампа. Для exploratory fit-вопросов предпочтительны осторожные варианты и один короткий follow-up question вместо энциклопедического объяснения.
-- Решение: Live-backend может заменять free-form answer от small-model детерминированными grounded-guardrails для наиболее проблемных intent-типов, особенно для broad career-fit questions, вопросов о требуемых skills и запросов на external resources, которые текущая ESCO-only evidence-base не может честно удовлетворить.
-- Обоснование: Локальный стек small-model надежнее следует коротким инструкциям для plain-text answer, чем жесткому JSON-контракту, а принудительный JSON делал chat-output для пользователя механическим и хрупким.
+- Решение: Обычный chat-text должен писать model-runtime. Детерминированный код должен оставаться для hard safety/scope checks, проверки поддержки exportable-plan, metadata для chat-to-plan handoff, metadata для plan-update, генерации расписания и `.ics` export.
+- Решение: Main chat не должен по умолчанию добавлять study-cadence estimates. Часы, недели и schedule-ready reasoning принадлежат structured plan flow или явному обсуждению изменения active plan.
+- Обоснование: GPU-backed Qwen3.5 runtime достаточно силен для естественного grounded chat. Рукописные chat-fallbacks перед model делали ответы механическими, приводили к stale preference leakage и размывали границу между exploration chat и planning artifacts.
 
 ## D-037 Grounded Support Refusal for Unsupported Requests
 

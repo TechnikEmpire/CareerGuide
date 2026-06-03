@@ -34,12 +34,12 @@ def test_retrieval_service_rebuilds_stale_artifacts_before_failing(
     monkeypatch.setattr(
         faiss_hnsw,
         "_sqlite_corpus_matches",
-        lambda expected_count, *, embedding_model, vector_size: next(sqlite_checks),
+        lambda expected_count, *, embedding_model, vector_size, source_corpus_hash: next(sqlite_checks),
     )
     monkeypatch.setattr(
         faiss_hnsw,
         "_faiss_artifacts_match",
-        lambda expected_count, *, embedding_model, vector_size: next(faiss_checks),
+        lambda expected_count, *, embedding_model, vector_size, source_corpus_hash: next(faiss_checks),
     )
 
     rebuild_calls: list[bool] = []
@@ -70,12 +70,12 @@ def test_retrieval_service_raises_clear_error_when_auto_rebuild_fails(
     monkeypatch.setattr(
         faiss_hnsw,
         "_sqlite_corpus_matches",
-        lambda expected_count, *, embedding_model, vector_size: False,
+        lambda expected_count, *, embedding_model, vector_size, source_corpus_hash: False,
     )
     monkeypatch.setattr(
         faiss_hnsw,
         "_faiss_artifacts_match",
-        lambda expected_count, *, embedding_model, vector_size: False,
+        lambda expected_count, *, embedding_model, vector_size, source_corpus_hash: False,
     )
 
     def fail_rebuild(force: bool = False) -> None:

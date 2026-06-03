@@ -36,11 +36,14 @@ def test_build_answer_prompt_adds_conversational_coaching_rules() -> None:
         _retrieval_context(),
     )
 
-    assert "Write like a helpful career coach in conversation" in prompt
+    assert "This is exploratory career chat" in prompt
+    assert "Write like a helpful career coach in a normal conversation" in prompt
     assert "Translate the evidence into normal human language." in prompt
     assert "Do not echo ESCO labels or source titles" in prompt
     assert "If the evidence mostly covers skills rather than occupations" in prompt
     assert "End with one short follow-up question that keeps the dialogue moving." in prompt
+    assert "Study cadence guidance:" not in prompt
+    assert "Do not turn normal chat into a study schedule" in prompt
 
 
 def test_build_answer_prompt_skips_forced_follow_up_for_non_exploratory_question() -> None:
@@ -50,6 +53,18 @@ def test_build_answer_prompt_skips_forced_follow_up_for_non_exploratory_question
     )
 
     assert "End with one short follow-up question that keeps the dialogue moving." not in prompt
+
+
+def test_build_answer_prompt_includes_plan_update_summary_without_cadence_block() -> None:
+    prompt = build_answer_prompt(
+        "I am overwhelmed. Please relax the schedule.",
+        _retrieval_context(),
+        proposed_plan_update_summary="I suggest lowering the study load and adding recovery breaks.",
+    )
+
+    assert "Proposed plan update, if any:" in prompt
+    assert "I suggest lowering the study load" in prompt
+    assert "Study cadence guidance:" not in prompt
 
 
 def test_build_career_plan_prompt_includes_study_preferences_and_richer_shape() -> None:
@@ -67,6 +82,7 @@ def test_build_career_plan_prompt_includes_study_preferences_and_richer_shape() 
     )
 
     assert "Study preferences:" in prompt
+    assert "Study cadence guidance:" in prompt
     assert "Sessions per week: 3" in prompt
     assert '"focus_skills": ["..."]' in prompt
     assert '"estimated_hours": 4.5' in prompt

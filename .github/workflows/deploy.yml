@@ -2,11 +2,6 @@ name: Deploy
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows:
-      - Container Image
-    types:
-      - completed
 
 concurrency:
   group: deploy-production
@@ -14,12 +9,6 @@ concurrency:
 
 jobs:
   deploy:
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main'
-      )
     runs-on: ubuntu-latest
     env:
       GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}

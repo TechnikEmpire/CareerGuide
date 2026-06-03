@@ -13,6 +13,8 @@ import sys
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MIN_LLAMA_CPP_PYTHON_VERSION = "0.3.25"
 FORCE_FLASH_ATTENTION = True
+REQUIRE_GPU_ENV = "CAREERGUIDE_REQUIRE_LLAMA_CPP_GPU"
+THINKING_ENV = "CAREERGUIDE_GENERATION_ENABLE_THINKING"
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,11 +68,48 @@ def ensure_supported_llama_cpp_python() -> None:
         )
 
 
+def gpu_offload_required(env: dict[str, str] | None = None) -> bool:
+    """Return whether this runtime must fail if llama.cpp lacks GPU offload."""
+
+    values = os.environ if env is None else env
+    return values.get(REQUIRE_GPU_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def llama_cpp_supports_gpu_offload(bindings: object | None = None) -> bool:
+    """Return whether the installed llama.cpp bindings report GPU offload support."""
+
+    if bindings is None:
+        try:
+            from llama_cpp import llama_cpp as bindings
+        except ImportError:
+            return False
+
+    support_fn = getattr(bindings, "llama_supports_gpu_offload", None)
+    if not callable(support_fn):
+        return False
+    return bool(support_fn())
+
+
+def ensure_gpu_offload_available_if_required(env: dict[str, str] | None = None) -> None:
+    """Fail early when the production GPU image accidentally has a CPU runtime."""
+
+    if not gpu_offload_required(env):
+        return
+    if llama_cpp_supports_gpu_offload():
+        return
+    raise SystemExit(
+        "The installed `llama-cpp-python` does not report GPU offload support.\n"
+        "Install a CUDA-enabled llama-cpp-python wheel or unset "
+        f"{REQUIRE_GPU_ENV} for CPU-only local testing."
+    )
+
+
 def prepare_runtime_config(config_file: Path) -> tuple[Path, dict]:
     """Load a llama.cpp server config and force runtime-only safety defaults."""
 
     payload = json.loads(config_file.read_text(encoding="utf-8"))
     force_flash_attention(payload)
+    apply_thinking_override(payload)
     runtime_config_path = config_file.with_name(f"{config_file.stem}.runtime.json")
     runtime_config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return runtime_config_path, payload
@@ -82,6 +121,27 @@ def force_flash_attention(payload: dict) -> dict:
     for model_config in payload.get("models", []):
         if isinstance(model_config, dict):
             model_config["flash_attn"] = FORCE_FLASH_ATTENTION
+    return payload
+
+
+def _env_bool(name: str, *, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def apply_thinking_override(payload: dict) -> dict:
+    """Force the generated llama.cpp config to match the app thinking-mode setting."""
+
+    enabled = _env_bool(THINKING_ENV, default=False)
+    for model_config in payload.get("models", []):
+        if isinstance(model_config, dict):
+            kwargs = model_config.setdefault("chat_template_kwargs", {})
+            if isinstance(kwargs, dict):
+                kwargs["enable_thinking"] = enabled
+            else:
+                model_config["chat_template_kwargs"] = {"enable_thinking": enabled}
     return payload
 
 
@@ -107,6 +167,7 @@ def main() -> None:
             "Run `python -m backend.scripts.setup_local_models --force` to regenerate the local paths."
         )
     ensure_supported_llama_cpp_python()
+    ensure_gpu_offload_available_if_required()
     if importlib.util.find_spec("llama_cpp.server") is None:
         raise SystemExit("Missing `llama_cpp.server`; reinstall `requirements-runtime.txt`.")
 

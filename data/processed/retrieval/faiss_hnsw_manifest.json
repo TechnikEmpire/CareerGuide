@@ -1,8 +1,9 @@
 {
-  "built_at": "2026-03-22T19:29:37.727514+00:00",
+  "built_at": "2026-06-03T00:29:35.343002+00:00",
   "chunk_count": 16978,
   "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
   "vector_size": 1024,
+  "source_corpus_hash": "179923e214bc3a3c344b866d841ee85ceae9b35d70b85145198ff427b8ff5291",
   "faiss_hnsw_m": 32,
   "faiss_hnsw_ef_construction": 80
 }
